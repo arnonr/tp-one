@@ -1,0 +1,26 @@
+@import "./tokens.css";
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  font-family: "Sarabun", "Noto Sans Thai", -apple-system, BlinkMacSystemFont, sans-serif;
+  font-size: var(--text-base);
+  color: var(--color-text);
+  background: var(--color-surface-variant);
+  -webkit-font-smoothing: antialiased;
+}
+
+body {
+  min-height: 100vh;
+}
+
+a {
+  color: var(--color-primary);
+  text-decoration: none;
+}
