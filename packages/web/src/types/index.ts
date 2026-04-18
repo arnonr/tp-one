@@ -97,3 +97,48 @@ export interface ApiError {
   message: string;
   statusCode: number;
 }
+
+// Annual Operational Plan
+export type PlanStatus = "draft" | "active" | "completed";
+export type IndicatorType = "amount" | "count" | "percentage";
+
+export interface AnnualPlan {
+  id: string;
+  year: number;
+  name: string;
+  status: PlanStatus;
+  createdById: string;
+}
+
+export interface PlanCategory {
+  id: string;
+  planId: string;
+  code: string;
+  name: string;
+  sortOrder: number;
+}
+
+export interface PlanIndicator {
+  id: string;
+  categoryId: string;
+  code: string;
+  name: string;
+  description?: string;
+  targetValue: string;
+  unit?: string;
+  indicatorType: IndicatorType;
+  assigneeId?: string;
+  sortOrder: number;
+}
+
+export interface IndicatorUpdate {
+  id: string;
+  indicatorId: string;
+  reportedValue: string;
+  reportedMonth: number;
+  reportedYear: number;
+  progressPct?: string;
+  note?: string;
+  evidenceUrl?: string;
+  reportedBy: string;
+}

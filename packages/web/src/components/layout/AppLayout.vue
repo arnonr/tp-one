@@ -8,7 +8,7 @@ import {
   CalendarOutline,
   FolderOutline,
   DocumentTextOutline,
-  LogOutOutline,
+  StatsChartOutline,
 } from "@vicons/ionicons5";
 
 const router = useRouter();
@@ -19,10 +19,15 @@ const menuOptions = [
   { label: "บอร์ดงาน", key: "tasks", icon: () => h(NIcon, null, { default: () => h(CheckmarkCircleOutline) }) },
   { label: "ปฏิทิน", key: "task-calendar", icon: () => h(NIcon, null, { default: () => h(CalendarOutline) }) },
   { label: "โครงการ", key: "projects", icon: () => h(NIcon, null, { default: () => h(FolderOutline) }) },
+  { label: "แผนปฏิบัติการ", key: "plans", icon: () => h(NIcon, null, { default: () => h(StatsChartOutline) }) },
   { label: "รายงาน", key: "reports", icon: () => h(NIcon, null, { default: () => h(DocumentTextOutline) }) },
 ];
 
-const activeKey = computed(() => route.name as string);
+const activeKey = computed(() => {
+  const name = route.name as string;
+  if (name === "plan-detail") return "plans";
+  return name;
+});
 
 function handleMenuUpdate(key: string) {
   router.push({ name: key });
