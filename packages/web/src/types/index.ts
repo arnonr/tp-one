@@ -1,4 +1,7 @@
-export type UserRole = "admin" | "manager" | "staff";
+export type UserRole = "admin" | "staff";
+
+export type WorkspaceMemberRole = "owner" | "editor" | "viewer";
+export type ProjectMemberRole = "owner" | "member" | "viewer";
 
 export interface User {
   id: string;
@@ -19,6 +22,12 @@ export interface Workspace {
   description?: string;
   ownerId: string;
   isActive: boolean;
+}
+
+export interface WorkspaceMember {
+  workspaceId: string;
+  userId: string;
+  role: WorkspaceMemberRole;
 }
 
 export interface WorkspaceStatus {
@@ -42,6 +51,12 @@ export interface Project {
   endDate?: string;
   ownerId: string;
   progress: string;
+}
+
+export interface ProjectMember {
+  projectId: string;
+  userId: string;
+  role: ProjectMemberRole;
 }
 
 export type TaskPriority = "urgent" | "high" | "normal" | "low";

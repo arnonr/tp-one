@@ -11,7 +11,7 @@
 | หน่วยงานเจ้าของโครงการ | อุทยานเทคโนโลยี (Technology Park) |
 | ประเภทหน่วยงาน | หน่วยงานรับบริการวิชาการ มหาวิทยาลัย (หน่วยงานรัฐ) |
 | วันที่จัดทำเอกสาร | 2026-04-17 |
-| เวอร์ชันเอกสาร | 1.0 |
+| เวอร์ชันเอกสาร | 1.1 |
 
 ---
 
@@ -73,25 +73,43 @@
 
 ### 4.2 บทบาทและสิทธิ์ (RBAC)
 
-| บทบาท | จำนวนประมาณ | หน้าที่หลัก |
-|-------|------------|-----------|
+ระบบใช้ **2 บทบาทระดับระบบ (Global Role)** + **สิทธิ์ระดับ Workspace/Project**
+
+| บทบาทระดับระบบ | จำนวนประมาณ | หน้าที่หลัก |
+|---------------|------------|-----------|
 | **Admin** | 1-3 คน | จัดการระบบทั้งหมด จัดการผู้ใช้ ดูข้อมูลทุก workspace |
-| **Manager** | 5-15 คน | จัดการ workspace ของตัวเอง มอบหมายงาน อนุมัติ ดูรายงาน |
-| **Staff** | 15-80 คน | รับมอบหมายงาน ทำงาน รายงานผล อัปเดตสถานะ |
+| **Staff** | 15-90 คน | ทำงานตามสิทธิ์ที่ได้รับในแต่ละ workspace/project |
 
-### 4.3 ตารางสิทธิ์ตามบทบาท
+สิทธิ์เฉพาะเจาะจงกำหนดที่ระดับ **Workspace** และ **Project**:
 
-| ฟีเจอร์ | Admin | Manager | Staff |
-|---------|-------|---------|-------|
-| จัดการ Workspace | ทั้งหมด | ของตัวเอง | - |
-| สร้างโครงการ | ✓ | ✓ | ✓ |
-| ลบโครงการ | ✓ | ของตัวเอง | - |
-| สร้างงาน | ✓ | ✓ | ✓ |
-| มอบหมายงานให้คนอื่น | ✓ | ✓ | - |
-| ลบงาน | ✓ | ของตัวเอง | ของตัวเอง |
-| ดู Dashboard ทั้งหมด | ✓ | Workspace ตัวเอง | งานตัวเอง |
-| Export รายงาน | ✓ | ✓ | งานตัวเอง |
-| จัดการผู้ใช้ | ✓ | - | - |
+**สิทธิ์ระดับ Workspace** (`workspace_members`):
+| สิทธิ์ | คำอธิบาย |
+|-------|---------|
+| owner | สร้าง workspace เป็นเจ้าของ แก้ไข/ลบ workspace ได้, เพิ่ม/ลบสมาชิก, กำหนดสถานะ |
+| editor | สร้าง/แก้ไขงานใน workspace, มอบหมายงาน, เปลี่ยนสถานะ |
+| viewer | ดูข้อมูลใน workspace ได้อย่างเดียว |
+
+**สิทธิ์ระดับ Project** (`project_members`):
+| สิทธิ์ | คำอธิบาย |
+|-------|---------|
+| owner | แก้ไข/ลบโครงการ เพิ่ม/ลบสมาชิก จัดการ KPI |
+| member | สร้าง/แก้ไขงานในโครงการ อัปเดตสถานะ |
+| viewer | ดูข้อมูลโครงการได้อย่างเดียว |
+
+### 4.3 ตารางสิทธิ์ (Global Role + Workspace/Project Permission)
+
+| ฟีเจอร์ | Admin | Staff (ws owner/editor) | Staff (ws viewer) | Staff (ไม่มีสิทธิ์) |
+|---------|-------|------|--------|---------|
+| จัดการ Workspace | ทั้งหมด | ของตัวเอง (owner) | - | - |
+| เพิ่ม/ลบสมาชิก Workspace | ✓ | owner เท่านั้น | - | - |
+| สร้างโครงการ | ✓ | ✓ | - | - |
+| ลบโครงการ | ✓ | project owner | - | - |
+| สร้างงาน | ✓ | ✓ | - | - |
+| มอบหมายงานให้คนอื่น | ✓ | ✓ | - | - |
+| ลบงาน | ✓ | ของตัวเอง | - | - |
+| ดู Dashboard | ทั้งหมด | Workspace ตัวเอง | ดูได้อย่างเดียว | - |
+| Export รายงาน | ✓ | Workspace ตัวเอง | ✓ | - |
+| จัดการผู้ใช้ | ✓ | - | - | - |
 
 ---
 
@@ -103,7 +121,7 @@
 |----|---------|----------|
 | FR-AUTH-01 | ผู้ใช้เข้าสู่ระบบผ่าน SSO ของมหาวิทยาลัย (OAuth2/CAS/LDAP) | สูง |
 | FR-AUTH-02 | ระบบจัดการ JWT token พร้อม refresh mechanism | สูง |
-| FR-AUTH-03 | ระบบควบคุมสิทธิ์ตามบทบาท (RBAC) 3 ระดับ | สูง |
+| FR-AUTH-03 | ระบบควบคุมสิทธิ์ 2 ระดับระบบ (admin/staff) + สิทธิ์ระดับ workspace/project | สูง |
 | FR-AUTH-04 | Admin จัดการบทบาทผู้ใช้ได้ | สูง |
 | FR-AUTH-05 | ระบบ logout + ลบ session | กลาง |
 
@@ -115,6 +133,7 @@
 | FR-WS-02 | กำหนดประเภท Workspace (rental, consulting, training, incubation, general) | สูง |
 | FR-WS-03 | กำหนด custom statuses ของแต่ละ Workspace | สูง |
 | FR-WS-04 | กำหนดสีของ Workspace และ Status ได้ | กลาง |
+| FR-WS-05 | เพิ่ม/ลบสมาชิก Workspace พร้อมกำหนดสิทธิ์ (owner, editor, viewer) | สูง |
 
 ### 5.3 ระบบจัดการงาน (Task Management)
 
@@ -204,7 +223,7 @@
 | ข้อกำหนด | รายละเอียด |
 |---------|-----------|
 | Authentication | SSO มหาวิทยาลัย (OAuth2/CAS/LDAP) |
-| Authorization | RBAC 3 ระดับ (admin/manager/staff) |
+| Authorization | RBAC 2 ระดับระบบ (admin/staff) + workspace/project-level permissions |
 | Data transmission | HTTPS ทุกการสื่อสาร |
 | Password | ไม่จัดเก็บรหัสผ่าน (ใช้ SSO) |
 | Session | JWT + refresh token |
@@ -288,6 +307,7 @@
 
 ```
 users --< workspaces (owner)
+users --< workspace_members
 users --< projects (owner)
 users --< tasks (assignee, reporter)
 users --< comments
@@ -296,6 +316,7 @@ users --< user_notification_settings (1:1)
 users --< project_members
 
 workspaces --< workspace_statuses
+workspaces --< workspace_members
 workspaces --< projects
 workspaces --< tasks
 workspaces --< tags
@@ -319,6 +340,7 @@ tasks >-- workspace_statuses
 |--------|---------------------|-----------|
 | users | 20-100 | เก็บข้อมูลผู้ใช้ |
 | workspaces | 5-20 | แบ่งงานตามประเภทบริการ |
+| workspace_members | 50-500 | สมาชิกและสิทธิ์ระดับ workspace |
 | workspace_statuses | 20-100 | สถานะที่กำหนดเองต่อ workspace |
 | projects | 50-200 | โครงการต่างๆ |
 | project_kpis | 100-500 | KPI ของแต่ละโครงการ |

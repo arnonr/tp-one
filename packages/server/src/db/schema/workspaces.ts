@@ -31,7 +31,20 @@ export const workspaceStatuses = pgTable("workspace_statuses", {
   isDefault: boolean("is_default").default(false),
 });
 
+export const workspaceMemberRoleEnum = pgEnum("workspace_member_role", [
+  "owner",
+  "editor",
+  "viewer",
+]);
+
+export const workspaceMembers = pgTable("workspace_members", {
+  workspaceId: uuid("workspace_id").references(() => workspaces.id).notNull(),
+  userId: uuid("user_id").references(() => users.id).notNull(),
+  role: workspaceMemberRoleEnum("role").default("viewer"),
+});
+
 export const workspaceRelations = relations(workspaces, ({ one, many }) => ({
   owner: one(users, { fields: [workspaces.ownerId], references: [users.id] }),
   statuses: many(workspaceStatuses),
+  members: many(workspaceMembers),
 }));
