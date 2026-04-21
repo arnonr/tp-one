@@ -1,0 +1,66 @@
+# Dependencies — ไม่ต้องอ่านเด็ดขาด (334MB+)
+node_modules/
+**/node_modules/
+
+# Bun lockfile — ไบนารีขนาดใหญ่
+bun.lock
+**/bun.lock
+bun.lockb
+**/bun.lockb
+yarn.lock
+package-lock.json
+pnpm-lock.yaml
+
+# Build output
+dist/
+build/
+.output/
+*.tsbuildinfo
+
+# Environment & secrets
+.env
+.env.local
+.env.production
+.env.staging
+**/.env
+**/.env.local
+
+# Logs
+*.log
+logs/
+npm-debug.log*
+bun-debug.log
+
+# OS files
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+*~
+
+# IDE
+.idea/
+.vscode/
+*.sublime-*
+.windsurf/
+
+# Docker volumes & uploaded data
+data/
+pgdata/
+uploads/
+
+# Git internals
+.git/
+
+# Test coverage output
+coverage/
+.nyc_output/
+
+# Drizzle generated SQL (อ่าน schema/*.ts แทน)
+packages/server/src/db/migrations/*.sql
+
+# Cache directories
+.cache/
+.parcel-cache/
+.vite/
+*.tgz

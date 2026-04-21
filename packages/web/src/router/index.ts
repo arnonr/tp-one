@@ -3,57 +3,24 @@ import { createRouter, createWebHistory } from "vue-router";
 const router = createRouter({
   history: createWebHistory(),
   routes: [
-    {
-      path: "/",
-      name: "dashboard",
-      component: () => import("@/views/DashboardView.vue"),
-    },
-    {
-      path: "/login",
-      name: "login",
-      component: () => import("@/views/LoginView.vue"),
-    },
-    {
-      path: "/tasks",
-      name: "tasks",
-      component: () => import("@/views/TaskBoardView.vue"),
-    },
-    {
-      path: "/tasks/list",
-      name: "task-list",
-      component: () => import("@/views/TaskListView.vue"),
-    },
-    {
-      path: "/tasks/calendar",
-      name: "task-calendar",
-      component: () => import("@/views/TaskCalendarView.vue"),
-    },
-    {
-      path: "/projects",
-      name: "projects",
-      component: () => import("@/views/ProjectListView.vue"),
-    },
-    {
-      path: "/projects/:id/gantt",
-      name: "project-gantt",
-      component: () => import("@/views/ProjectGanttView.vue"),
-    },
-    {
-      path: "/plans",
-      name: "plans",
-      component: () => import("@/views/AnnualPlanView.vue"),
-    },
-    {
-      path: "/plans/:id",
-      name: "plan-detail",
-      component: () => import("@/views/PlanDetailView.vue"),
-    },
-    {
-      path: "/reports",
-      name: "reports",
-      component: () => import("@/views/ReportView.vue"),
-    },
+    { path: "/", redirect: "/my-work" },
+    { path: "/login", name: "login", component: () => import("@/views/LoginView.vue") },
+    { path: "/my-work", name: "my-work", component: () => import("@/views/MyWorkView.vue"), meta: { title: "งานของฉัน" } },
+    { path: "/dashboard", name: "dashboard", component: () => import("@/views/DashboardView.vue"), meta: { title: "Dashboard" } },
+    { path: "/tasks", name: "tasks", component: () => import("@/views/TaskListView.vue"), meta: { title: "งานทั้งหมด" } },
+    { path: "/tasks/board", name: "task-board", component: () => import("@/views/TaskBoardView.vue"), meta: { title: "Kanban Board" } },
+    { path: "/tasks/calendar", name: "task-calendar", component: () => import("@/views/TaskCalendarView.vue"), meta: { title: "ปฏิทิน" } },
+    { path: "/projects", name: "projects", component: () => import("@/views/ProjectListView.vue"), meta: { title: "โครงการ" } },
+    { path: "/projects/:id", name: "project-detail", component: () => import("@/views/ProjectGanttView.vue"), meta: { title: "รายละเอียดโครงการ" } },
+    { path: "/plans", name: "plans", component: () => import("@/views/AnnualPlanView.vue"), meta: { title: "แผนปฏิบัติการ" } },
+    { path: "/plans/:id", name: "plan-detail", component: () => import("@/views/PlanDetailView.vue"), meta: { title: "รายละเอียดแผน" } },
+    { path: "/reports", name: "reports", component: () => import("@/views/ReportView.vue"), meta: { title: "รายงาน" } },
   ],
+});
+
+router.beforeEach((to) => {
+  const title = to.meta.title as string | undefined;
+  document.title = title ? `${title} — TP-One` : "TP-One";
 });
 
 export default router;
