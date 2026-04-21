@@ -23,6 +23,7 @@ import {
 } from "@vicons/ionicons5";
 import { useRouter } from "vue-router";
 import type { DataTableColumns } from "naive-ui";
+import PageHeader from "@/components/common/PageHeader.vue";
 
 const router = useRouter();
 const loading = ref(false);
@@ -132,18 +133,16 @@ const columns: DataTableColumns<Task> = [
 <template>
   <NSpin :show="loading">
     <div class="task-list-page">
-      <div class="page-header">
-        <div>
-          <h1 class="page-title">งานทั้งหมด</h1>
-          <NText depth="3" class="page-subtitle">{{ filteredTasks.length }} งาน</NText>
-        </div>
-        <NButton type="primary">
-          <template #icon>
-            <NIcon><AddCircleOutline /></NIcon>
-          </template>
-          สร้างงาน
-        </NButton>
-      </div>
+      <PageHeader title="งานทั้งหมด" :subtitle="`${filteredTasks.length} งาน`">
+        <template #actions>
+          <NButton type="primary">
+            <template #icon>
+              <NIcon><AddCircleOutline /></NIcon>
+            </template>
+            สร้างงาน
+          </NButton>
+        </template>
+      </PageHeader>
 
       <!-- View Tabs -->
       <NTabs v-model:value="activeTab" type="segment" class="view-tabs">
@@ -218,24 +217,6 @@ const columns: DataTableColumns<Task> = [
   display: flex;
   flex-direction: column;
   gap: var(--space-md);
-}
-
-.page-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-}
-
-.page-title {
-  font-size: var(--text-hero);
-  font-weight: 700;
-  color: var(--color-text);
-  line-height: var(--leading-tight);
-}
-
-.page-subtitle {
-  font-size: var(--text-sm);
-  margin-top: var(--space-2xs);
 }
 
 .view-tabs {

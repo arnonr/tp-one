@@ -9,6 +9,7 @@ import {
   AddCircleOutline,
 } from "@vicons/ionicons5";
 import { useRouter } from "vue-router";
+import PageHeader from "@/components/common/PageHeader.vue";
 
 const router = useRouter();
 const loading = ref(false);
@@ -51,18 +52,16 @@ const upcomingTasks: TaskItem[] = [
 <template>
   <NSpin :show="loading">
     <div class="my-work">
-      <div class="page-header">
-        <div>
-          <h1 class="page-title">งานของฉัน</h1>
-          <NText depth="3" class="page-subtitle">งานที่มอบหมายให้คุณทั้งหมด</NText>
-        </div>
-        <NButton type="primary">
-          <template #icon>
-            <NIcon><AddCircleOutline /></NIcon>
-          </template>
-          สร้างงาน
-        </NButton>
-      </div>
+      <PageHeader title="งานของฉัน" subtitle="งานที่มอบหมายให้คุณทั้งหมด">
+        <template #actions>
+          <NButton type="primary">
+            <template #icon>
+              <NIcon><AddCircleOutline /></NIcon>
+            </template>
+            สร้างงาน
+          </NButton>
+        </template>
+      </PageHeader>
 
       <!-- Summary -->
       <div class="summary-bar">
@@ -186,24 +185,6 @@ const upcomingTasks: TaskItem[] = [
   display: flex;
   flex-direction: column;
   gap: var(--space-lg);
-}
-
-.page-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-}
-
-.page-title {
-  font-size: var(--text-hero);
-  font-weight: 700;
-  color: var(--color-text);
-  line-height: var(--leading-tight);
-}
-
-.page-subtitle {
-  font-size: var(--text-sm);
-  margin-top: var(--space-2xs);
 }
 
 /* ── Summary Bar ── */

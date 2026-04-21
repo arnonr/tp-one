@@ -20,6 +20,7 @@ import {
   DocumentTextOutline,
 } from "@vicons/ionicons5";
 import { useFiscalYear } from "@/composables/useFiscalYear";
+import PageHeader from "@/components/common/PageHeader.vue";
 
 const loading = ref(false);
 const { fyLabel, fyOptions, selectedFY } = useFiscalYear();
@@ -100,12 +101,8 @@ const categoryStats: CategoryStat[] = [
 <template>
   <NSpin :show="loading">
     <div class="report-page">
-      <div class="page-header">
-        <div>
-          <h1 class="page-title">รายงาน</h1>
-          <NText depth="3" class="page-subtitle">{{ fyLabel }}</NText>
-        </div>
-        <NSpace>
+      <PageHeader title="รายงาน" :subtitle="fyLabel">
+        <template #actions>
           <NButton>
             <template #icon>
               <NIcon><PrintOutline /></NIcon>
@@ -118,8 +115,8 @@ const categoryStats: CategoryStat[] = [
             </template>
             ส่งออก Excel
           </NButton>
-        </NSpace>
-      </div>
+        </template>
+      </PageHeader>
 
       <!-- Filters -->
       <NCard class="filter-card" :bordered="false">
@@ -185,23 +182,7 @@ const categoryStats: CategoryStat[] = [
   gap: var(--space-lg);
 }
 
-.page-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-}
 
-.page-title {
-  font-size: var(--text-hero);
-  font-weight: 700;
-  color: var(--color-text);
-  line-height: var(--leading-tight);
-}
-
-.page-subtitle {
-  font-size: var(--text-sm);
-  margin-top: var(--space-2xs);
-}
 
 .filter-card {
   border-radius: var(--radius-lg);

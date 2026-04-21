@@ -19,6 +19,7 @@ import {
   ArrowForwardOutline,
 } from "@vicons/ionicons5";
 import { useFiscalYear } from "@/composables/useFiscalYear";
+import PageHeader from "@/components/common/PageHeader.vue";
 
 const { fyLabel } = useFiscalYear();
 const loading = ref(false);
@@ -106,12 +107,7 @@ const STATUS_COLORS: Record<string, string> = {
 <template>
   <NSpin :show="loading">
     <div class="dashboard">
-      <div class="page-header">
-        <div>
-          <h1 class="page-title">แดชบอร์ด</h1>
-          <NText depth="3" class="page-subtitle">{{ fyLabel }}</NText>
-        </div>
-      </div>
+      <PageHeader title="แดชบอร์ด" :subtitle="fyLabel" />
 
       <!-- Stat Cards -->
       <NGrid :cols="4" :x-gap="16" :y-gap="16" responsive="screen" item-responsive>
@@ -232,24 +228,6 @@ const STATUS_COLORS: Record<string, string> = {
   display: flex;
   flex-direction: column;
   gap: var(--space-lg);
-}
-
-.page-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-}
-
-.page-title {
-  font-size: var(--text-hero);
-  font-weight: 700;
-  color: var(--color-text);
-  line-height: var(--leading-tight);
-}
-
-.page-subtitle {
-  font-size: var(--text-sm);
-  margin-top: var(--space-2xs);
 }
 
 /* ── Stat Cards ── */

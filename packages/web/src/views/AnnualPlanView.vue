@@ -19,6 +19,7 @@ import {
 } from "@vicons/ionicons5";
 import { useRouter } from "vue-router";
 import { useFiscalYear } from "@/composables/useFiscalYear";
+import PageHeader from "@/components/common/PageHeader.vue";
 import type { DataTableColumns } from "naive-ui";
 
 const router = useRouter();
@@ -108,18 +109,16 @@ const columns: DataTableColumns<Plan> = [
 <template>
   <NSpin :show="loading">
     <div class="plan-page">
-      <div class="page-header">
-        <div>
-          <h1 class="page-title">แผนปฏิบัติการรายปี</h1>
-          <NText depth="3" class="page-subtitle">{{ fyLabel }} — {{ plans.length }} แผน</NText>
-        </div>
-        <NButton type="primary">
-          <template #icon>
-            <NIcon><AddCircleOutline /></NIcon>
-          </template>
-          สร้างแผนใหม่
-        </NButton>
-      </div>
+      <PageHeader title="แผนปฏิบัติการรายปี" :subtitle="`${fyLabel} — ${plans.length} แผน`">
+        <template #actions>
+          <NButton type="primary">
+            <template #icon>
+              <NIcon><AddCircleOutline /></NIcon>
+            </template>
+            สร้างแผนใหม่
+          </NButton>
+        </template>
+      </PageHeader>
 
       <!-- Filters -->
       <NCard class="filter-card" :bordered="false">
@@ -150,24 +149,6 @@ const columns: DataTableColumns<Plan> = [
   display: flex;
   flex-direction: column;
   gap: var(--space-md);
-}
-
-.page-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-}
-
-.page-title {
-  font-size: var(--text-hero);
-  font-weight: 700;
-  color: var(--color-text);
-  line-height: var(--leading-tight);
-}
-
-.page-subtitle {
-  font-size: var(--text-sm);
-  margin-top: var(--space-2xs);
 }
 
 .filter-card {

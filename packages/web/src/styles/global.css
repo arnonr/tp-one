@@ -25,6 +25,21 @@ body {
   min-height: 100vh;
 }
 
+/* ── NCard header tint ── */
+.n-card > .n-card__header {
+  background: var(--color-surface-variant) !important;
+  border-bottom: 1px solid var(--color-border-light) !important;
+}
+
+/* ── NDataTable header tint ── */
+.n-data-table .n-data-table-th {
+  background: var(--color-surface-variant) !important;
+  font-weight: 600 !important;
+  font-size: var(--text-xs) !important;
+  letter-spacing: 0.03em !important;
+  color: var(--color-text-secondary) !important;
+}
+
 a {
   color: var(--color-primary);
   text-decoration: none;

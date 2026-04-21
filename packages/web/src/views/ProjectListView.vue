@@ -10,6 +10,7 @@ import {
 } from "@vicons/ionicons5";
 import { useRouter } from "vue-router";
 import { useFiscalYear } from "@/composables/useFiscalYear";
+import PageHeader from "@/components/common/PageHeader.vue";
 
 const router = useRouter();
 const loading = ref(false);
@@ -47,18 +48,16 @@ const projects: Project[] = [
 <template>
   <NSpin :show="loading">
     <div class="project-page">
-      <div class="page-header">
-        <div>
-          <h1 class="page-title">โครงการ</h1>
-          <NText depth="3" class="page-subtitle">{{ fyLabel }} — {{ projects.length }} โครงการ</NText>
-        </div>
-        <NButton type="primary">
-          <template #icon>
-            <NIcon><AddCircleOutline /></NIcon>
-          </template>
-          สร้างโครงการ
-        </NButton>
-      </div>
+      <PageHeader title="โครงการ" :subtitle="`${fyLabel} — ${projects.length} โครงการ`">
+        <template #actions>
+          <NButton type="primary">
+            <template #icon>
+              <NIcon><AddCircleOutline /></NIcon>
+            </template>
+            สร้างโครงการ
+          </NButton>
+        </template>
+      </PageHeader>
 
       <NGrid :cols="2" :x-gap="16" :y-gap="16" responsive="screen" item-responsive>
         <NGi v-for="project in projects" :key="project.id" span="2 l:1">
@@ -127,24 +126,6 @@ const projects: Project[] = [
   display: flex;
   flex-direction: column;
   gap: var(--space-lg);
-}
-
-.page-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-}
-
-.page-title {
-  font-size: var(--text-hero);
-  font-weight: 700;
-  color: var(--color-text);
-  line-height: var(--leading-tight);
-}
-
-.page-subtitle {
-  font-size: var(--text-sm);
-  margin-top: var(--space-2xs);
 }
 
 .project-card {

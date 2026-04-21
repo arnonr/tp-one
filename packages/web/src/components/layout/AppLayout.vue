@@ -27,6 +27,8 @@ import {
   ChevronUpOutline,
   MenuOutline,
   CloseOutline,
+  ChevronBackOutline,
+  ChevronForwardOutline,
 } from "@vicons/ionicons5";
 import LoginView from "../../views/LoginView.vue";
 import { useAuthStore } from "../../stores/auth";
@@ -37,6 +39,7 @@ const authStore = useAuthStore();
 const searchQuery = ref("");
 const isMobile = ref(false);
 const mobileOpen = ref(false);
+const siderCollapsed = ref(false);
 
 function checkMobile() {
   isMobile.value = window.innerWidth < 1024;
@@ -75,6 +78,9 @@ const darkMenuTheme = {
     itemIconColorActive: "#60a5fa",
     itemIconColorActiveHover: "#93c5fd",
     itemIconColorChildActive: "#60a5fa",
+    itemIconColorCollapsed: "rgba(255, 255, 255, 0.4)",
+    itemIconColorActiveCollapsed: "#60a5fa",
+    itemIconColorHoverCollapsed: "rgba(255, 255, 255, 0.75)",
     arrowColor: "rgba(255, 255, 255, 0.3)",
     arrowColorHover: "rgba(255, 255, 255, 0.6)",
     arrowColorActive: "rgba(255, 255, 255, 0.75)",
@@ -194,39 +200,59 @@ onMounted(async () => {
       <!-- ── Desktop Sidebar ── -->
       <NLayoutSider
         v-if="!isMobile"
-        :width="240"
+        :width="siderCollapsed ? 64 : 240"
         :native-scrollbar="false"
         :bordered="false"
         content-style="padding: 0; display: flex; flex-direction: column; height: 100%;"
         class="dark-sider"
       >
-        <div class="sider-brand">
+        <div class="sider-brand" :class="{ 'sider-brand--collapsed': siderCollapsed }">
           <div class="brand-logo">TP</div>
-          <div>
-            <div class="brand-name">TP-One</div>
-            <div class="brand-sub">อุทยานเทคโนโลยี</div>
-          </div>
+          <Transition name="fade-slide">
+            <div v-if="!siderCollapsed">
+              <div class="brand-name">TP-One</div>
+              <div class="brand-sub">อุทยานเทคโนโลยี</div>
+            </div>
+          </Transition>
         </div>
-        <div class="nav-section-label">เมนูหลัก</div>
-        <div class="sider-nav">
+        <Transition name="fade-slide">
+          <div v-if="!siderCollapsed" class="nav-section-label">เมนูหลัก</div>
+        </Transition>
+        <div class="sider-nav" :class="{ 'sider-nav--collapsed': siderCollapsed }">
           <NConfigProvider :theme-overrides="darkMenuTheme">
-            <NMenu :value="activeKey" :options="menuOptions" @update:value="handleMenuUpdate" />
+            <NMenu
+              :value="activeKey"
+              :options="menuOptions"
+              :collapsed="siderCollapsed"
+              :collapsed-width="64"
+              :collapsed-icon-size="20"
+              @update:value="handleMenuUpdate"
+            />
           </NConfigProvider>
         </div>
         <NDropdown :options="userDropdownOptions" @select="handleUserAction" placement="right-end">
-          <div class="sider-user">
+          <div class="sider-user" :class="{ 'sider-user--collapsed': siderCollapsed }">
             <NAvatar round :size="32" class="sider-user-avatar">
               {{ authStore.user?.name?.charAt(0) || "?" }}
             </NAvatar>
-            <div class="sider-user-text">
-              <div class="sider-user-name">{{ authStore.user?.name || "ผู้ใช้" }}</div>
-              <div class="sider-user-role">
-                {{ authStore.user?.role === "admin" ? "ผู้ดูแลระบบ" : "เจ้าหน้าที่" }}
+            <Transition name="fade-slide">
+              <div v-if="!siderCollapsed" class="sider-user-text">
+                <div class="sider-user-name">{{ authStore.user?.name || "ผู้ใช้" }}</div>
+                <div class="sider-user-role">
+                  {{ authStore.user?.role === "admin" ? "ผู้ดูแลระบบ" : "เจ้าหน้าที่" }}
+                </div>
               </div>
-            </div>
-            <NIcon :size="14" color="rgba(255,255,255,0.3)"><ChevronUpOutline /></NIcon>
+            </Transition>
+            <NIcon v-if="!siderCollapsed" :size="14" color="rgba(255,255,255,0.3)"><ChevronUpOutline /></NIcon>
           </div>
         </NDropdown>
+        <!-- Collapse toggle button -->
+        <button class="collapse-btn" @click="siderCollapsed = !siderCollapsed">
+          <NIcon :size="16" color="rgba(255,255,255,0.5)">
+            <ChevronBackOutline v-if="!siderCollapsed" />
+            <ChevronForwardOutline v-else />
+          </NIcon>
+        </button>
       </NLayoutSider>
 
       <!-- ── Main Area ── -->
@@ -309,6 +335,7 @@ onMounted(async () => {
 /* ── Desktop Sidebar ── */
 :deep(.dark-sider.n-layout-sider) {
   background: #111827 !important;
+  transition: width 0.22s cubic-bezier(0.16, 1, 0.3, 1) !important;
 }
 
 :deep(.dark-sider .n-scrollbar-content) {
@@ -330,6 +357,12 @@ onMounted(async () => {
   gap: 11px;
   padding: 18px 16px 14px;
   border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+  overflow: hidden;
+}
+
+.sider-brand--collapsed {
+  padding: 18px 0 14px;
+  justify-content: center;
 }
 
 .brand-logo {
@@ -375,6 +408,10 @@ onMounted(async () => {
   overflow-y: auto;
 }
 
+.sider-nav--collapsed {
+  padding: 0;
+}
+
 .sider-user {
   display: flex;
   align-items: center;
@@ -383,6 +420,12 @@ onMounted(async () => {
   border-top: 1px solid rgba(255, 255, 255, 0.07);
   cursor: pointer;
   transition: background 150ms ease;
+  overflow: hidden;
+}
+
+.sider-user--collapsed {
+  justify-content: center;
+  padding: 10px 0 12px;
 }
 
 .sider-user:hover {
@@ -490,7 +533,9 @@ onMounted(async () => {
 .main-content {
   padding: 20px 20px;
   min-height: calc(100vh - 56px);
-  background: var(--color-background);
+  background-color: var(--color-background);
+  background-image: radial-gradient(circle, rgba(148, 163, 184, 0.2) 1px, transparent 1px);
+  background-size: 20px 20px;
   overflow-y: auto;
 }
 
@@ -537,6 +582,37 @@ onMounted(async () => {
   background: rgba(0, 0, 0, 0.5);
   z-index: 399;
   backdrop-filter: blur(2px);
+}
+
+/* ── Collapse Button ── */
+.collapse-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 32px;
+  background: none;
+  border: none;
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+  cursor: pointer;
+  transition: background 150ms ease;
+  flex-shrink: 0;
+}
+
+.collapse-btn:hover {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+/* ── Fade-slide Transition ── */
+.fade-slide-enter-active,
+.fade-slide-leave-active {
+  transition: opacity 0.15s ease, transform 0.15s ease;
+}
+
+.fade-slide-enter-from,
+.fade-slide-leave-to {
+  opacity: 0;
+  transform: translateX(-6px);
 }
 
 /* ── Transitions ── */
