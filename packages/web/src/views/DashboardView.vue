@@ -57,7 +57,7 @@ const stats: StatCard[] = [
     value: 89,
     icon: CheckmarkDoneOutline,
     color: "var(--color-success)",
-    bgColor: "var(--color-success-bg)",
+    bg: "var(--color-success-bg)",
     trend: "อัตราสำเร็จ 69%",
     trendUp: true,
   },
@@ -66,7 +66,7 @@ const stats: StatCard[] = [
     value: 12,
     icon: FolderOutline,
     color: "var(--color-info)",
-    bgColor: "var(--color-info-bg)",
+    bg: "var(--color-info-bg)",
     trend: "3 โครงการใกล้เสร็จ",
     trendUp: false,
   },
@@ -467,5 +467,33 @@ const STATUS_COLORS: Record<string, string> = {
 
 .activity-time {
   font-size: var(--text-xs);
+}
+
+/* ── Mobile Responsive ── */
+@media (max-width: 767px) {
+  .page-title {
+    font-size: var(--text-xl);
+  }
+
+  .task-row {
+    flex-wrap: wrap;
+    gap: var(--space-xs);
+    align-items: flex-start;
+  }
+
+  .task-main {
+    width: 100%;
+  }
+
+  .task-meta {
+    width: 100%;
+    flex-wrap: wrap;
+    margin-left: calc(var(--space-sm) + 8px);
+    gap: var(--space-xs);
+  }
+
+  .task-date {
+    width: 100%;
+  }
 }
 </style>

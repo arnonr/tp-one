@@ -1,0 +1,195 @@
+- generic [ref=e5]:
+  - complementary [ref=e6]:
+    - generic [ref=e7]:
+      - generic [ref=e8]: TP
+      - generic [ref=e9]:
+        - generic [ref=e10]: TP-One
+        - generic [ref=e11]: อุทยานเทคโนโลยี
+    - generic [ref=e12]: เมนูหลัก
+    - menu [ref=e15]:
+      - menuitem "งานของฉัน" [ref=e16]:
+        - img [ref=e17] [cursor=pointer]:
+          - img [ref=e18]
+        - text: งานของฉัน
+      - menuitem "แดชบอร์ด" [ref=e21]:
+        - img [ref=e22] [cursor=pointer]:
+          - img [ref=e23]
+        - text: แดชบอร์ด
+      - menuitem "งานทั้งหมด" [ref=e28]:
+        - img [ref=e29] [cursor=pointer]:
+          - img [ref=e30]
+        - text: งานทั้งหมด
+      - menuitem "โครงการ" [ref=e33]:
+        - img [ref=e34] [cursor=pointer]:
+          - img [ref=e35]
+        - text: โครงการ
+      - menuitem "แผนปฏิบัติการ" [ref=e37]:
+        - img [ref=e38] [cursor=pointer]:
+          - img [ref=e39]
+        - text: แผนปฏิบัติการ
+      - menuitem "รายงาน" [ref=e45]:
+        - img [ref=e46] [cursor=pointer]:
+          - img [ref=e47]
+        - text: รายงาน
+    - generic [ref=e50] [cursor=pointer]:
+      - generic [ref=e52]: ผ
+      - generic [ref=e53]:
+        - generic [ref=e54]: ผู้ดูแลระบบ
+        - generic [ref=e55]: ผู้ดูแลระบบ
+      - img [ref=e56]:
+        - img [ref=e57]
+  - generic [ref=e60]:
+    - banner [ref=e61]:
+      - heading "โครงการ" [level=1] [ref=e63]
+      - generic [ref=e64]:
+        - generic [ref=e66]:
+          - img [ref=e68]:
+            - img [ref=e69]
+          - generic [ref=e72]:
+            - textbox "ค้นหา..." [ref=e73]
+            - generic:
+              - generic: ค้นหา...
+        - generic [ref=e76]:
+          - img [ref=e78] [cursor=pointer]:
+            - img [ref=e79]
+          - superscript [ref=e82]:
+            - generic [ref=e85]:
+              - generic [ref=e86]: "3"
+              - generic [ref=e88]: "3"
+              - generic [ref=e89]: "3"
+    - main [ref=e90]:
+      - generic [ref=e93]:
+        - generic [ref=e94]:
+          - generic [ref=e95]:
+            - heading "โครงการ" [level=1] [ref=e96]
+            - text: ปีงบ 2569 — 5 โครงการ
+          - button "สร้างโครงการ" [ref=e97] [cursor=pointer]:
+            - img [ref=e99]:
+              - img [ref=e100]
+            - generic [ref=e102]: สร้างโครงการ
+        - generic [ref=e103]:
+          - generic [ref=e106] [cursor=pointer]:
+            - generic [ref=e107]:
+              - generic [ref=e108]:
+                - img [ref=e109]:
+                  - img [ref=e110]
+                - generic [ref=e112]: เช่าพื้นที่
+              - generic [ref=e113]: กำลังดำเนินการ
+            - generic [ref=e114]: บริการเช่าพื้นที่สำนักงาน
+            - generic [ref=e115]: จัดการสัญญาเช่า บำรุงรักษาพื้นที่ และบริการผู้เช่า
+            - generic [ref=e117]:
+              - generic [ref=e118]:
+                - generic [ref=e119]: ความคืบหน้า
+                - generic [ref=e120]: 75%
+              - progressbar [ref=e121]
+            - generic [ref=e126]:
+              - generic [ref=e127]:
+                - generic [ref=e128]:
+                  - img [ref=e129]:
+                    - img [ref=e130]
+                  - generic [ref=e135]: 5 คน
+                - generic [ref=e136]:
+                  - img [ref=e137]:
+                    - img [ref=e138]
+                  - generic [ref=e141]: 32 งาน
+              - generic [ref=e142]: กำหนด30 ก.ย. 2569
+          - generic [ref=e145] [cursor=pointer]:
+            - generic [ref=e146]:
+              - generic [ref=e147]:
+                - img [ref=e148]:
+                  - img [ref=e149]
+                - generic [ref=e151]: ที่ปรึกษา/วิจัย
+              - generic [ref=e152]: กำลังดำเนินการ
+            - generic [ref=e153]: บริการให้คำปรึกษาและวิจัย
+            - generic [ref=e154]: ให้คำปรึกษาวิชาการ สนับสนุนงานวิจัย และถ่ายทอดเทคโนโลยี
+            - generic [ref=e156]:
+              - generic [ref=e157]:
+                - generic [ref=e158]: ความคืบหน้า
+                - generic [ref=e159]: 67%
+              - progressbar [ref=e160]
+            - generic [ref=e165]:
+              - generic [ref=e166]:
+                - generic [ref=e167]:
+                  - img [ref=e168]:
+                    - img [ref=e169]
+                  - generic [ref=e174]: 4 คน
+                - generic [ref=e175]:
+                  - img [ref=e176]:
+                    - img [ref=e177]
+                  - generic [ref=e180]: 18 งาน
+              - generic [ref=e181]: กำหนด30 ก.ย. 2569
+          - generic [ref=e184] [cursor=pointer]:
+            - generic [ref=e185]:
+              - generic [ref=e186]:
+                - img [ref=e187]:
+                  - img [ref=e188]
+                - generic [ref=e190]: อบรม/สัมนา
+              - generic [ref=e191]: กำลังดำเนินการ
+            - generic [ref=e192]: อบรมและสัมนาวิชาการ
+            - generic [ref=e193]: จัดอบรม สัมนา และเวิร์คช็อปด้านเทคโนโลยี
+            - generic [ref=e195]:
+              - generic [ref=e196]:
+                - generic [ref=e197]: ความคืบหน้า
+                - generic [ref=e198]: 53%
+              - progressbar [ref=e199]
+            - generic [ref=e204]:
+              - generic [ref=e205]:
+                - generic [ref=e206]:
+                  - img [ref=e207]:
+                    - img [ref=e208]
+                  - generic [ref=e213]: 3 คน
+                - generic [ref=e214]:
+                  - img [ref=e215]:
+                    - img [ref=e216]
+                  - generic [ref=e219]: 15 งาน
+              - generic [ref=e220]: กำหนด30 ก.ย. 2569
+          - generic [ref=e223] [cursor=pointer]:
+            - generic [ref=e224]:
+              - generic [ref=e225]:
+                - img [ref=e226]:
+                  - img [ref=e227]
+                - generic [ref=e229]: บ่มเพาะสตาร์ทอัป
+              - generic [ref=e230]: กำลังดำเนินการ
+            - generic [ref=e231]: บ่มเพาะสตาร์ทอัปรุ่นที่ 5
+            - generic [ref=e232]: คัดเลือก ให้คำปรึกษา และสนับสนุนสตาร์ทอัปใหม่
+            - generic [ref=e234]:
+              - generic [ref=e235]:
+                - generic [ref=e236]: ความคืบหน้า
+                - generic [ref=e237]: 64%
+              - progressbar [ref=e238]
+            - generic [ref=e243]:
+              - generic [ref=e244]:
+                - generic [ref=e245]:
+                  - img [ref=e246]:
+                    - img [ref=e247]
+                  - generic [ref=e252]: 6 คน
+                - generic [ref=e253]:
+                  - img [ref=e254]:
+                    - img [ref=e255]
+                  - generic [ref=e258]: 22 งาน
+              - generic [ref=e259]: กำหนด30 ก.ย. 2569
+          - generic [ref=e262] [cursor=pointer]:
+            - generic [ref=e263]:
+              - generic [ref=e264]:
+                - img [ref=e265]:
+                  - img [ref=e266]
+                - generic [ref=e268]: พัฒนาระบบ
+              - generic [ref=e269]: วางแผน
+            - generic [ref=e270]: ปรับปรุงระบบจัดการภายใน
+            - generic [ref=e271]: พัฒนาระบบ IT เพื่อเพิ่มประสิทธิภาพการทำงาน
+            - generic [ref=e273]:
+              - generic [ref=e274]:
+                - generic [ref=e275]: ความคืบหน้า
+                - generic [ref=e276]: 25%
+              - progressbar [ref=e277]
+            - generic [ref=e282]:
+              - generic [ref=e283]:
+                - generic [ref=e284]:
+                  - img [ref=e285]:
+                    - img [ref=e286]
+                  - generic [ref=e291]: 2 คน
+                - generic [ref=e292]:
+                  - img [ref=e293]:
+                    - img [ref=e294]
+                  - generic [ref=e297]: 8 งาน
+              - generic [ref=e298]: กำหนด31 ธ.ค. 2569

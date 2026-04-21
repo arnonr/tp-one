@@ -158,7 +158,7 @@ const columns: DataTableColumns<Task> = [
         <NTabPane name="board">
           <template #tab>
             <div class="tab-label">
-              <NIcon :size="16"><GridViewOutline /></NIcon>
+              <NIcon :size="16"><GridOutline /></NIcon>
               บอร์ด
             </div>
           </template>
@@ -175,14 +175,14 @@ const columns: DataTableColumns<Task> = [
 
       <!-- Filters -->
       <NCard class="filter-card" :bordered="false">
-        <NSpace :size="12" align="center">
-          <NIcon :size="18" color="var(--color-text-tertiary)"><FilterOutline /></NIcon>
+        <div class="filter-row">
+          <NIcon :size="18" color="var(--color-text-tertiary)" class="filter-icon"><FilterOutline /></NIcon>
           <NSelect
             v-model:value="statusFilter"
             :options="statusOptions"
             placeholder="สถานะ"
             size="small"
-            style="width: 180px"
+            class="filter-select"
             clearable
           />
           <NSelect
@@ -190,11 +190,11 @@ const columns: DataTableColumns<Task> = [
             :options="priorityOptions"
             placeholder="ความสำคัญ"
             size="small"
-            style="width: 150px"
+            class="filter-select"
             clearable
           />
-          <NInput placeholder="ค้นหางาน..." size="small" style="width: 240px" clearable />
-        </NSpace>
+          <NInput placeholder="ค้นหางาน..." size="small" class="filter-search" clearable />
+        </div>
       </NCard>
 
       <!-- Task Table -->
@@ -205,6 +205,7 @@ const columns: DataTableColumns<Task> = [
           :bordered="false"
           :single-line="false"
           :row-key="(row: Task) => row.id"
+          :scroll-x="800"
           size="small"
         />
       </NCard>
@@ -252,8 +253,42 @@ const columns: DataTableColumns<Task> = [
   box-shadow: var(--shadow-xs);
 }
 
+.filter-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  flex-wrap: wrap;
+}
+
+.filter-icon {
+  flex-shrink: 0;
+}
+
+.filter-select {
+  width: 160px;
+}
+
+.filter-search {
+  width: 220px;
+}
+
 .table-card {
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-sm);
+}
+
+@media (max-width: 767px) {
+  .page-title {
+    font-size: var(--text-xl);
+  }
+
+  .filter-icon {
+    display: none;
+  }
+
+  .filter-select,
+  .filter-search {
+    width: 100%;
+  }
 }
 </style>

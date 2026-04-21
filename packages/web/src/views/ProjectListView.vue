@@ -246,4 +246,14 @@ const projects: Project[] = [
   font-size: var(--text-xs);
   font-weight: 500;
 }
+
+@media (max-width: 767px) {
+  .page-title {
+    font-size: var(--text-xl);
+  }
+
+  .project-name {
+    font-size: var(--text-base);
+  }
+}
 </style>

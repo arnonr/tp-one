@@ -1,0 +1,113 @@
+- generic [ref=e7]:
+  - banner [ref=e8]:
+    - button [ref=e9] [cursor=pointer]:
+      - img [ref=e10]:
+        - img [ref=e11]
+    - heading "รายงาน" [level=1] [ref=e12]
+    - generic [ref=e14]:
+      - img [ref=e16] [cursor=pointer]:
+        - img [ref=e17]
+      - superscript [ref=e20]:
+        - generic [ref=e23]:
+          - generic [ref=e24]: "3"
+          - generic [ref=e26]: "3"
+          - generic [ref=e27]: "3"
+  - main [ref=e28]:
+    - generic [ref=e31]:
+      - generic [ref=e32]:
+        - generic [ref=e33]:
+          - heading "รายงาน" [level=1] [ref=e34]
+          - text: ปีงบ 2569
+        - button "พิมพ์" [ref=e35] [cursor=pointer]:
+          - img [ref=e37]:
+            - img [ref=e38]
+          - generic [ref=e43]: พิมพ์
+        - button "ส่งออก Excel" [ref=e44] [cursor=pointer]:
+          - img [ref=e46]:
+            - img [ref=e47]
+          - generic [ref=e50]: ส่งออก Excel
+      - generic [ref=e51]:
+        - text: "ตัวกรอง:"
+        - generic [ref=e54] [cursor=pointer]:
+          - generic "ปีงบ 2569" [ref=e55]:
+            - generic [ref=e56]: ปีงบ 2569
+          - img "loading" [ref=e57]:
+            - img [ref=e62]
+        - generic [ref=e66] [cursor=pointer]:
+          - generic:
+            - generic: หมวดบริการ
+          - img "loading" [ref=e67]:
+            - img [ref=e72]
+      - generic [ref=e74]:
+        - generic [ref=e77]:
+          - img [ref=e79]:
+            - img [ref=e80]
+          - generic [ref=e83]:
+            - generic [ref=e84]: "128"
+            - generic [ref=e85]: งานทั้งหมด
+          - generic [ref=e86]: รายงานสรุปภาพรวม
+          - generic [ref=e87]: สรุปจำนวนงาน สถานะ และผลการดำเนินงานรายหมวด
+          - button "เปิดรายงาน" [ref=e88] [cursor=pointer]:
+            - img [ref=e90]:
+              - img [ref=e91]
+            - generic [ref=e94]: เปิดรายงาน
+        - generic [ref=e97]:
+          - img [ref=e99]:
+            - img [ref=e100]
+          - generic [ref=e105]:
+            - generic [ref=e106]: 69%
+            - generic [ref=e107]: อัตราสำเร็จ
+          - generic [ref=e108]: รายงานผลการดำเนินงาน
+          - generic [ref=e109]: เปรียบเทียบผลการดำเนินงานตามแผนปฏิบัติการรายไตรมาส
+          - button "เปิดรายงาน" [ref=e110] [cursor=pointer]:
+            - img [ref=e112]:
+              - img [ref=e113]
+            - generic [ref=e116]: เปิดรายงาน
+        - generic [ref=e119]:
+          - img [ref=e121]:
+            - img [ref=e122]
+          - generic [ref=e125]:
+            - generic [ref=e126]: +12%
+            - generic [ref=e127]: เพิ่มขึ้นจากปีก่อน
+          - generic [ref=e128]: รายงานแนวโน้มรายเดือน
+          - generic [ref=e129]: แนวโน้มจำนวนงานที่สร้างและเสร็จสิ้นในแต่ละเดือน
+          - button "เปิดรายงาน" [ref=e130] [cursor=pointer]:
+            - img [ref=e132]:
+              - img [ref=e133]
+            - generic [ref=e136]: เปิดรายงาน
+        - generic [ref=e139]:
+          - img [ref=e141]:
+            - img [ref=e142]
+          - generic [ref=e145]:
+            - generic [ref=e146]: "45"
+            - generic [ref=e147]: ตัวชี้วัด
+          - generic [ref=e148]: รายงานรายงานตัวชี้วัด
+          - generic [ref=e149]: ผลการติดตามตัวชี้วัดตามแผนปฏิบัติการรายปี
+          - button "เปิดรายงาน" [ref=e150] [cursor=pointer]:
+            - img [ref=e152]:
+              - img [ref=e153]
+            - generic [ref=e156]: เปิดรายงาน
+      - generic [ref=e157]:
+        - heading "ผลการดำเนินงานตามหมวดบริการ" [ref=e158]:
+          - heading "ผลการดำเนินงานตามหมวดบริการ" [ref=e159]
+        - generic [ref=e160]:
+          - generic [ref=e161]:
+            - generic [ref=e164]:
+              - generic [ref=e165]: เช่าพื้นที่
+              - text: 24/32 งาน
+            - generic [ref=e168]: 75%
+          - generic [ref=e169]:
+            - generic [ref=e172]:
+              - generic [ref=e173]: ที่ปรึกษา/วิจัย
+              - text: 12/18 งาน
+            - generic [ref=e176]: 67%
+          - generic [ref=e177]:
+            - generic [ref=e180]:
+              - generic [ref=e181]: อบรม/สัมนา
+              - text: 8/15 งาน
+            - generic [ref=e184]: 53%
+          - generic [ref=e185]:
+            - generic [ref=e188]:
+              - generic [ref=e189]: บ่มเพาะสตาร์ทอัป
+              - text: 14/22 งาน
+            - generic [ref=e192]: 64%

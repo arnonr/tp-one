@@ -347,4 +347,48 @@ const upcomingTasks: TaskItem[] = [
   color: var(--color-danger) !important;
   font-weight: 500;
 }
+
+/* ── Mobile Responsive ── */
+@media (max-width: 767px) {
+  .page-header {
+    flex-wrap: wrap;
+    gap: var(--space-sm);
+  }
+
+  .page-title {
+    font-size: var(--text-xl);
+  }
+
+  .summary-bar {
+    flex-wrap: wrap;
+    gap: var(--space-sm);
+    padding: var(--space-sm) var(--space-md);
+  }
+
+  .summary-divider {
+    display: none;
+  }
+
+  .summary-item {
+    flex: 1;
+    min-width: 80px;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 2px;
+  }
+
+  .summary-num {
+    font-size: var(--text-lg);
+  }
+
+  .task-row {
+    flex-wrap: wrap;
+    gap: var(--space-xs);
+  }
+
+  .task-meta {
+    flex-wrap: wrap;
+    margin-left: calc(var(--space-sm) + 8px);
+  }
+}
 </style>

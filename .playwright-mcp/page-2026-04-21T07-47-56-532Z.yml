@@ -1,0 +1,144 @@
+- generic [ref=e7]:
+  - banner [ref=e8]:
+    - button [ref=e9] [cursor=pointer]:
+      - img [ref=e10]:
+        - img [ref=e11]
+    - heading "แดชบอร์ด" [level=1] [ref=e12]
+    - generic [ref=e14]:
+      - img [ref=e16] [cursor=pointer]:
+        - img [ref=e17]
+      - superscript [ref=e20]:
+        - generic [ref=e23]:
+          - generic [ref=e24]: "3"
+          - generic [ref=e26]: "3"
+          - generic [ref=e27]: "3"
+  - main [ref=e28]:
+    - generic [ref=e31]:
+      - generic [ref=e33]:
+        - heading "แดชบอร์ด" [level=1] [ref=e34]
+        - text: ปีงบ 2569
+      - generic [ref=e35]:
+        - generic [ref=e38]:
+          - img [ref=e40]:
+            - img [ref=e41]
+          - generic [ref=e44]:
+            - text: งานทั้งหมด
+            - generic [ref=e45]: "128"
+            - generic [ref=e46]:
+              - img [ref=e47]:
+                - img [ref=e48]
+              - generic [ref=e51]: +12% จากเดือนก่อน
+        - generic [ref=e54]:
+          - img [ref=e56]:
+            - img [ref=e57]
+          - generic [ref=e60]:
+            - text: กำลังดำเนินการ
+            - generic [ref=e61]: "34"
+            - generic [ref=e62]:
+              - img [ref=e63]:
+                - img [ref=e64]
+              - generic [ref=e67]: +5 งานสัปดาห์นี้
+        - generic [ref=e70]:
+          - img [ref=e72]:
+            - img [ref=e73]
+          - generic [ref=e77]:
+            - text: เสร็จสิ้น
+            - generic [ref=e78]: "89"
+            - generic [ref=e79]:
+              - img [ref=e80]:
+                - img [ref=e81]
+              - generic [ref=e84]: อัตราสำเร็จ 69%
+        - generic [ref=e87]:
+          - img [ref=e89]:
+            - img [ref=e90]
+          - generic [ref=e92]:
+            - text: โครงการ
+            - generic [ref=e93]: "12"
+            - generic [ref=e94]:
+              - img [ref=e95]:
+                - img [ref=e96]
+              - generic [ref=e99]: 3 โครงการใกล้เสร็จ
+      - generic [ref=e100]:
+        - heading "งานล่าสุด ดูทั้งหมด" [ref=e101]:
+          - heading "งานล่าสุด ดูทั้งหมด" [ref=e102]:
+            - generic [ref=e103]:
+              - generic [ref=e104]: งานล่าสุด
+              - button "ดูทั้งหมด" [ref=e105] [cursor=pointer]:
+                - img [ref=e107]:
+                  - img [ref=e108]
+                - generic [ref=e110]: ดูทั้งหมด
+        - generic [ref=e111]:
+          - generic [ref=e112]:
+            - generic [ref=e115]:
+              - generic [ref=e116]: จัดเตรียมเอกสารสัญญาเช่า
+              - text: เช่าพื้นที่
+            - generic [ref=e117]:
+              - generic [ref=e118]: กำลังดำเนินการ
+              - generic [ref=e119]: เร่งด่วน
+              - generic [ref=e120]: 22 เม.ย. 2569
+          - generic [ref=e121]:
+            - generic [ref=e124]:
+              - generic [ref=e125]: ติดตามผลการอบรม AI Workshop
+              - text: อบรม/สัมนา
+            - generic [ref=e126]:
+              - generic [ref=e127]: รอดำเนินการ
+              - generic [ref=e128]: สูง
+              - generic [ref=e129]: 25 เม.ย. 2569
+          - generic [ref=e130]:
+            - generic [ref=e133]:
+              - generic [ref=e134]: ประเมินผลโครงการบ่มเพาะฯ Q2
+              - text: บ่มเพาะสตาร์ทอัป
+            - generic [ref=e135]:
+              - generic [ref=e136]: กำลังดำเนินการ
+              - generic [ref=e137]: ปกติ
+              - generic [ref=e138]: 30 เม.ย. 2569
+          - generic [ref=e139]:
+            - generic [ref=e142]:
+              - generic [ref=e143]: จัดทำรายงานให้คำปรึกษาภาคเรียน 2
+              - text: ที่ปรึกษา/วิจัย
+            - generic [ref=e144]:
+              - generic [ref=e145]: รอดำเนินการ
+              - generic [ref=e146]: ต่ำ
+              - generic [ref=e147]: 15 พ.ค. 2569
+          - generic [ref=e148]:
+            - generic [ref=e151]:
+              - generic [ref=e152]: อัปเดตแผนปฏิบัติการ Q3
+              - text: แผนปฏิบัติการ
+            - generic [ref=e153]:
+              - generic [ref=e154]: กำลังดำเนินการ
+              - generic [ref=e155]: สูง
+              - generic [ref=e156]: 28 เม.ย. 2569
+      - generic [ref=e157]:
+        - generic [ref=e159]:
+          - heading "ภาพรวมโครงการ" [ref=e160]:
+            - heading "ภาพรวมโครงการ" [ref=e161]
+          - generic [ref=e162]:
+            - generic [ref=e165]:
+              - generic [ref=e166]: เช่าพื้นที่
+              - text: 12 งาน
+            - generic [ref=e167]: 75%
+          - generic [ref=e168]:
+            - generic [ref=e171]:
+              - generic [ref=e172]: อบรม/สัมนา
+              - text: 8 งาน
+            - generic [ref=e173]: 60%
+          - generic [ref=e174]:
+            - generic [ref=e177]:
+              - generic [ref=e178]: บ่มเพาะสตาร์ทอัป
+              - text: 5 งาน
+            - generic [ref=e179]: 40%
+        - generic [ref=e181]:
+          - heading "กิจกรรมล่าสุด" [ref=e182]:
+            - heading "กิจกรรมล่าสุด" [ref=e183]
+          - generic [ref=e186]:
+            - generic [ref=e187]: สมชาย อัปเดตสถานะงาน
+            - text: 5 นาทีก่อน
+          - generic [ref=e190]:
+            - generic [ref=e191]: วิภา สร้างงานใหม่
+            - text: 1 ชั่วโมงก่อน
+          - generic [ref=e194]:
+            - generic [ref=e195]: ประเสริฐ เพิ่มความคิดเห็น
+            - text: 2 ชั่วโมงก่อน
+          - generic [ref=e198]:
+            - generic [ref=e199]: สุนีย์ อนุมัติแผนปฏิบัติการ
+            - text: 3 ชั่วโมงก่อน

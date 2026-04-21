@@ -1,0 +1,174 @@
+- generic [ref=e31]:
+  - complementary [ref=e32]:
+    - generic [ref=e33]:
+      - generic [ref=e34]: TP
+      - generic [ref=e35]:
+        - generic [ref=e36]: TP-One
+        - generic [ref=e37]: อุทยานเทคโนโลยี
+    - generic [ref=e38]: เมนูหลัก
+    - menu [ref=e41]:
+      - menuitem "งานของฉัน" [ref=e42]:
+        - img [ref=e43] [cursor=pointer]:
+          - img [ref=e44]
+        - text: งานของฉัน
+      - menuitem "แดชบอร์ด" [ref=e47]:
+        - img [ref=e48] [cursor=pointer]:
+          - img [ref=e49]
+        - text: แดชบอร์ด
+      - menuitem "งานทั้งหมด" [ref=e54]:
+        - img [ref=e55] [cursor=pointer]:
+          - img [ref=e56]
+        - text: งานทั้งหมด
+      - menuitem "โครงการ" [ref=e59]:
+        - img [ref=e60] [cursor=pointer]:
+          - img [ref=e61]
+        - text: โครงการ
+      - menuitem "แผนปฏิบัติการ" [ref=e63]:
+        - img [ref=e64] [cursor=pointer]:
+          - img [ref=e65]
+        - text: แผนปฏิบัติการ
+      - menuitem "รายงาน" [ref=e71]:
+        - img [ref=e72] [cursor=pointer]:
+          - img [ref=e73]
+        - text: รายงาน
+    - generic [ref=e76] [cursor=pointer]:
+      - generic [ref=e78]: ผ
+      - generic [ref=e79]:
+        - generic [ref=e80]: ผู้ดูแลระบบ
+        - generic [ref=e81]: ผู้ดูแลระบบ
+      - img [ref=e82]:
+        - img [ref=e83]
+  - generic [ref=e86]:
+    - banner [ref=e87]:
+      - heading "งานของฉัน" [level=1] [ref=e89]
+      - generic [ref=e90]:
+        - generic [ref=e92]:
+          - img [ref=e94]:
+            - img [ref=e95]
+          - generic [ref=e98]:
+            - textbox "ค้นหา..." [ref=e99]
+            - generic:
+              - generic: ค้นหา...
+        - generic [ref=e102]:
+          - img [ref=e104] [cursor=pointer]:
+            - img [ref=e105]
+          - superscript [ref=e108]:
+            - generic [ref=e111]:
+              - generic [ref=e112]: "3"
+              - generic [ref=e114]: "3"
+              - generic [ref=e115]: "3"
+    - main [ref=e116]:
+      - generic [ref=e119]:
+        - generic [ref=e120]:
+          - generic [ref=e121]:
+            - heading "งานของฉัน" [level=1] [ref=e122]
+            - text: งานที่มอบหมายให้คุณทั้งหมด
+          - button "สร้างงาน" [ref=e123] [cursor=pointer]:
+            - img [ref=e125]:
+              - img [ref=e126]
+            - generic [ref=e128]: สร้างงาน
+        - generic [ref=e129]:
+          - generic [ref=e130]:
+            - generic [ref=e131]: "3"
+            - generic [ref=e132]: วันนี้
+          - generic [ref=e134]:
+            - generic [ref=e135]: "2"
+            - generic [ref=e136]: เลยกำหนด
+          - generic [ref=e138]:
+            - generic [ref=e139]: "4"
+            - generic [ref=e140]: กำลังจะมาถึง
+        - generic [ref=e141]:
+          - heading "วันนี้ 3" [ref=e142]:
+            - heading "วันนี้ 3" [ref=e143]:
+              - generic [ref=e145]:
+                - img [ref=e146]:
+                  - img [ref=e147]
+                - generic [ref=e150]: วันนี้
+                - generic [ref=e152]: "3"
+          - generic [ref=e153]:
+            - generic [ref=e154]:
+              - generic [ref=e157]:
+                - generic [ref=e158]: จัดเตรียมเอกสารสัญญาเช่า สำนักงาน A
+                - text: เช่าพื้นที่
+              - generic [ref=e159]:
+                - generic [ref=e160]: เร่งด่วน
+                - generic [ref=e161]: วันนี้
+            - generic [ref=e162]:
+              - generic [ref=e165]:
+                - generic [ref=e166]: ตรวจสอบรายงานการเงิน Q2
+                - text: แผนปฏิบัติการ
+              - generic [ref=e167]:
+                - generic [ref=e168]: สูง
+                - generic [ref=e169]: วันนี้
+            - generic [ref=e170]:
+              - generic [ref=e173]:
+                - generic [ref=e174]: ประสานงานวิทยากร AI Workshop
+                - text: อบรม/สัมนา
+              - generic [ref=e175]:
+                - generic [ref=e176]: ปกติ
+                - generic [ref=e177]: วันนี้
+        - generic [ref=e178]:
+          - heading "เลยกำหนด 2" [ref=e179]:
+            - heading "เลยกำหนด 2" [ref=e180]:
+              - generic [ref=e182]:
+                - img [ref=e183]:
+                  - img [ref=e184]
+                - generic [ref=e188]: เลยกำหนด
+                - generic [ref=e190]: "2"
+          - generic [ref=e191]:
+            - generic [ref=e192]:
+              - generic [ref=e195]:
+                - generic [ref=e196]: ส่งรายงานให้คำปรึกษาภาคเรียน 2/2568
+                - text: ที่ปรึกษา/วิจัย
+              - generic [ref=e197]:
+                - generic [ref=e198]: เร่งด่วน
+                - generic [ref=e199]: เลย 3 วัน
+            - generic [ref=e200]:
+              - generic [ref=e203]:
+                - generic [ref=e204]: อัปเดตข้อมูลผู้เช่าห้อง 301-305
+                - text: เช่าพื้นที่
+              - generic [ref=e205]:
+                - generic [ref=e206]: สูง
+                - generic [ref=e207]: เลย 1 วัน
+        - generic [ref=e208]:
+          - heading "กำลังจะมาถึง 4 ดูทั้งหมด" [ref=e209]:
+            - heading "กำลังจะมาถึง 4 ดูทั้งหมด" [ref=e210]:
+              - generic [ref=e211]:
+                - generic [ref=e212]:
+                  - img [ref=e213]:
+                    - img [ref=e214]
+                  - generic [ref=e217]: กำลังจะมาถึง
+                  - generic [ref=e219]: "4"
+                - button "ดูทั้งหมด" [ref=e220] [cursor=pointer]:
+                  - img [ref=e222]:
+                    - img [ref=e223]
+                  - generic [ref=e225]: ดูทั้งหมด
+          - generic [ref=e226]:
+            - generic [ref=e227]:
+              - generic [ref=e230]:
+                - generic [ref=e231]: ประเมินผลโครงการบ่มเพาะฯ รุ่นที่ 5
+                - text: บ่มเพาะสตาร์ทอัป
+              - generic [ref=e232]:
+                - generic [ref=e233]: สูง
+                - generic [ref=e234]: อีก 2 วัน
+            - generic [ref=e235]:
+              - generic [ref=e238]:
+                - generic [ref=e239]: จัดทำแผนดำเนินงาน Q3
+                - text: แผนปฏิบัติการ
+              - generic [ref=e240]:
+                - generic [ref=e241]: ปกติ
+                - generic [ref=e242]: อีก 5 วัน
+            - generic [ref=e243]:
+              - generic [ref=e246]:
+                - generic [ref=e247]: ติดตามผลการอบรม Data Analytics
+                - text: อบรม/สัมนา
+              - generic [ref=e248]:
+                - generic [ref=e249]: ต่ำ
+                - generic [ref=e250]: อีก 7 วัน
+            - generic [ref=e251]:
+              - generic [ref=e254]:
+                - generic [ref=e255]: เตรียมเอกสารประชุมคณะกรรมการ
+                - text: แผนปฏิบัติการ
+              - generic [ref=e256]:
+                - generic [ref=e257]: ปกติ
+                - generic [ref=e258]: อีก 3 วัน

@@ -109,4 +109,16 @@
   --z-header: 200;
   --z-modal: 1000;
   --z-toast: 1100;
+
+  /* ── Sidebar (dark) ── */
+  --sidebar-width: 240px;
+  --header-height: 56px;
+  --color-sidebar: #111827;
+  --color-sidebar-brand: #f9fafb;
+  --color-sidebar-text: rgba(255, 255, 255, 0.6);
+  --color-sidebar-text-active: #ffffff;
+  --color-sidebar-muted: rgba(255, 255, 255, 0.28);
+  --color-sidebar-divider: rgba(255, 255, 255, 0.07);
+  --color-sidebar-hover: rgba(255, 255, 255, 0.07);
+  --color-sidebar-active: rgba(59, 130, 246, 0.18);
 }

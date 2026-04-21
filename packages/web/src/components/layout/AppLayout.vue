@@ -9,13 +9,12 @@ import {
   NAvatar,
   NDropdown,
   NBadge,
-  NText,
+  NConfigProvider,
 } from "naive-ui";
-import { h, computed, ref, onMounted } from "vue";
+import { h, computed, ref, onMounted, onUnmounted, watch } from "vue";
 import {
   HomeOutline,
   CheckmarkCircleOutline,
-  CalendarOutline,
   FolderOutline,
   DocumentTextOutline,
   StatsChartOutline,
@@ -25,6 +24,9 @@ import {
   LogOutOutline,
   SettingsOutline,
   PersonCircleOutline,
+  ChevronUpOutline,
+  MenuOutline,
+  CloseOutline,
 } from "@vicons/ionicons5";
 import LoginView from "../../views/LoginView.vue";
 import { useAuthStore } from "../../stores/auth";
@@ -33,49 +35,115 @@ const router = useRouter();
 const route = useRoute();
 const authStore = useAuthStore();
 const searchQuery = ref("");
+const isMobile = ref(false);
+const mobileOpen = ref(false);
+
+function checkMobile() {
+  isMobile.value = window.innerWidth < 1024;
+}
+
+onMounted(() => {
+  checkMobile();
+  window.addEventListener("resize", checkMobile);
+});
+
+onUnmounted(() => {
+  window.removeEventListener("resize", checkMobile);
+});
+
+watch(route, () => {
+  mobileOpen.value = false;
+});
+
+watch(isMobile, (val) => {
+  if (!val) mobileOpen.value = false;
+});
+
+const darkMenuTheme = {
+  Menu: {
+    color: "transparent",
+    itemColorHover: "rgba(255, 255, 255, 0.07)",
+    itemColorActive: "rgba(59, 130, 246, 0.18)",
+    itemColorActiveHover: "rgba(59, 130, 246, 0.24)",
+    itemColorActiveCollapsed: "rgba(59, 130, 246, 0.18)",
+    itemTextColor: "rgba(255, 255, 255, 0.6)",
+    itemTextColorHover: "rgba(255, 255, 255, 0.9)",
+    itemTextColorActive: "#ffffff",
+    itemTextColorChildActive: "#ffffff",
+    itemIconColor: "rgba(255, 255, 255, 0.4)",
+    itemIconColorHover: "rgba(255, 255, 255, 0.75)",
+    itemIconColorActive: "#60a5fa",
+    itemIconColorActiveHover: "#93c5fd",
+    itemIconColorChildActive: "#60a5fa",
+    arrowColor: "rgba(255, 255, 255, 0.3)",
+    arrowColorHover: "rgba(255, 255, 255, 0.6)",
+    arrowColorActive: "rgba(255, 255, 255, 0.75)",
+    arrowColorChildActive: "rgba(255, 255, 255, 0.75)",
+    groupTextColor: "rgba(255, 255, 255, 0.28)",
+    dividerColor: "rgba(255, 255, 255, 0.08)",
+    borderRadius: "8px",
+    itemHeight: "40px",
+    fontSize: "14px",
+  },
+};
 
 const menuOptions = [
   {
     label: "งานของฉัน",
     key: "my-work",
-    icon: () => h(NIcon, { size: 20 }, { default: () => h(PersonOutline) }),
+    icon: () => h(NIcon, { size: 18 }, { default: () => h(PersonOutline) }),
   },
   {
     label: "แดชบอร์ด",
     key: "dashboard",
-    icon: () => h(NIcon, { size: 20 }, { default: () => h(HomeOutline) }),
+    icon: () => h(NIcon, { size: 18 }, { default: () => h(HomeOutline) }),
   },
   { type: "divider" as const, key: "d1" },
   {
     label: "งานทั้งหมด",
     key: "tasks",
-    icon: () => h(NIcon, { size: 20 }, { default: () => h(CheckmarkCircleOutline) }),
+    icon: () => h(NIcon, { size: 18 }, { default: () => h(CheckmarkCircleOutline) }),
   },
   {
     label: "โครงการ",
     key: "projects",
-    icon: () => h(NIcon, { size: 20 }, { default: () => h(FolderOutline) }),
+    icon: () => h(NIcon, { size: 18 }, { default: () => h(FolderOutline) }),
   },
   {
     label: "แผนปฏิบัติการ",
     key: "plans",
-    icon: () => h(NIcon, { size: 20 }, { default: () => h(StatsChartOutline) }),
+    icon: () => h(NIcon, { size: 18 }, { default: () => h(StatsChartOutline) }),
   },
   { type: "divider" as const, key: "d2" },
   {
     label: "รายงาน",
     key: "reports",
-    icon: () => h(NIcon, { size: 20 }, { default: () => h(DocumentTextOutline) }),
+    icon: () => h(NIcon, { size: 18 }, { default: () => h(DocumentTextOutline) }),
   },
 ];
 
 const activeKey = computed(() => {
   const name = route.name as string;
-  if (name === "my-work") return "my-work";
   if (name === "task-board" || name === "task-calendar") return "tasks";
   if (name === "plan-detail") return "plans";
   if (name === "project-detail") return "projects";
   return name;
+});
+
+const currentPageTitle = computed(() => {
+  const titleMap: Record<string, string> = {
+    "my-work": "งานของฉัน",
+    dashboard: "แดชบอร์ด",
+    tasks: "งานทั้งหมด",
+    "task-board": "บอร์ดงาน",
+    "task-calendar": "ปฏิทินงาน",
+    projects: "โครงการ",
+    "project-detail": "รายละเอียดโครงการ",
+    plans: "แผนปฏิบัติการรายปี",
+    "plan-detail": "รายละเอียดแผน",
+    reports: "รายงาน",
+  };
+  return titleMap[route.name as string] || "TP-One";
 });
 
 const userDropdownOptions = [
@@ -121,170 +189,289 @@ onMounted(async () => {
 
 <template>
   <LoginView v-if="!authStore.isAuthenticated" />
-  <NLayout v-else has-sider style="height: 100vh">
-    <NLayoutSider
-      bordered
-      :width="260"
-      :native-scrollbar="false"
-      content-class="sider-content"
-      content-style="padding: 0;"
-    >
-      <div class="sider-header">
+  <template v-else>
+    <NLayout :has-sider="!isMobile" style="height: 100vh">
+      <!-- ── Desktop Sidebar ── -->
+      <NLayoutSider
+        v-if="!isMobile"
+        :width="240"
+        :native-scrollbar="false"
+        :bordered="false"
+        content-style="padding: 0; display: flex; flex-direction: column; height: 100%;"
+        class="dark-sider"
+      >
         <div class="sider-brand">
-          <div class="sider-logo">TP</div>
+          <div class="brand-logo">TP</div>
           <div>
-            <div class="sider-title">TP-One</div>
-            <div class="sider-subtitle">อุทยานเทคโนโลยี</div>
+            <div class="brand-name">TP-One</div>
+            <div class="brand-sub">อุทยานเทคโนโลยี</div>
           </div>
         </div>
-      </div>
-      <div class="sider-menu-wrapper">
-        <NMenu
-          :value="activeKey"
-          :options="menuOptions"
-          @update:value="handleMenuUpdate"
-        />
-      </div>
-      <div class="sider-footer">
-        <div class="sider-version">v1.0.0-dev</div>
-      </div>
-    </NLayoutSider>
-    <NLayout>
-      <header class="app-header">
-        <div class="header-left">
-          <NInput
-            v-model:value="searchQuery"
-            placeholder="ค้นหางาน โครงการ แผนปฏิบัติการ..."
-            clearable
-            class="search-input"
-          >
-            <template #prefix>
-              <NIcon :size="18" color="var(--color-text-tertiary)">
-                <SearchOutline />
-              </NIcon>
-            </template>
-          </NInput>
+        <div class="nav-section-label">เมนูหลัก</div>
+        <div class="sider-nav">
+          <NConfigProvider :theme-overrides="darkMenuTheme">
+            <NMenu :value="activeKey" :options="menuOptions" @update:value="handleMenuUpdate" />
+          </NConfigProvider>
         </div>
-        <div class="header-actions">
-          <NBadge :value="0" :max="99">
-            <div class="notification-btn">
-              <NIcon :size="22" color="var(--color-text-secondary)">
-                <NotificationsOutline />
-              </NIcon>
+        <NDropdown :options="userDropdownOptions" @select="handleUserAction" placement="right-end">
+          <div class="sider-user">
+            <NAvatar round :size="32" class="sider-user-avatar">
+              {{ authStore.user?.name?.charAt(0) || "?" }}
+            </NAvatar>
+            <div class="sider-user-text">
+              <div class="sider-user-name">{{ authStore.user?.name || "ผู้ใช้" }}</div>
+              <div class="sider-user-role">
+                {{ authStore.user?.role === "admin" ? "ผู้ดูแลระบบ" : "เจ้าหน้าที่" }}
+              </div>
             </div>
-          </NBadge>
-          <div class="header-divider" />
-          <NDropdown :options="userDropdownOptions" @select="handleUserAction">
-            <div class="user-trigger">
-              <NAvatar round :size="32" class="user-avatar">
+            <NIcon :size="14" color="rgba(255,255,255,0.3)"><ChevronUpOutline /></NIcon>
+          </div>
+        </NDropdown>
+      </NLayoutSider>
+
+      <!-- ── Main Area ── -->
+      <NLayout>
+        <header class="app-header">
+          <!-- Hamburger (mobile only) -->
+          <button v-if="isMobile" class="hamburger-btn" @click="mobileOpen = true">
+            <NIcon :size="22" color="var(--color-text-secondary)"><MenuOutline /></NIcon>
+          </button>
+          <h1 class="header-title">{{ currentPageTitle }}</h1>
+          <div class="header-right">
+            <NInput
+              v-if="!isMobile"
+              v-model:value="searchQuery"
+              placeholder="ค้นหา..."
+              clearable
+              class="search-input"
+            >
+              <template #prefix>
+                <NIcon :size="15" color="var(--color-text-tertiary)"><SearchOutline /></NIcon>
+              </template>
+            </NInput>
+            <NBadge :value="3" :max="99">
+              <div class="notif-btn">
+                <NIcon :size="20" color="var(--color-text-secondary)"><NotificationsOutline /></NIcon>
+              </div>
+            </NBadge>
+          </div>
+        </header>
+        <main class="main-content">
+          <router-view />
+        </main>
+      </NLayout>
+    </NLayout>
+
+    <!-- ── Mobile Sidebar Drawer ── -->
+    <Teleport to="body">
+      <Transition name="drawer">
+        <div v-if="isMobile && mobileOpen" class="mobile-drawer">
+          <div class="sider-brand">
+            <div class="brand-logo">TP</div>
+            <div>
+              <div class="brand-name">TP-One</div>
+              <div class="brand-sub">อุทยานเทคโนโลยี</div>
+            </div>
+            <button class="drawer-close-btn" @click="mobileOpen = false">
+              <NIcon :size="20" color="rgba(255,255,255,0.5)"><CloseOutline /></NIcon>
+            </button>
+          </div>
+          <div class="nav-section-label">เมนูหลัก</div>
+          <div class="sider-nav">
+            <NConfigProvider :theme-overrides="darkMenuTheme">
+              <NMenu :value="activeKey" :options="menuOptions" @update:value="handleMenuUpdate" />
+            </NConfigProvider>
+          </div>
+          <NDropdown :options="userDropdownOptions" @select="handleUserAction" placement="right-end">
+            <div class="sider-user">
+              <NAvatar round :size="32" class="sider-user-avatar">
                 {{ authStore.user?.name?.charAt(0) || "?" }}
               </NAvatar>
-              <div class="user-info">
-                <NText class="user-name">{{ authStore.user?.name || "ผู้ใช้" }}</NText>
-                <NText class="user-role" depth="3">{{ authStore.user?.role === "admin" ? "ผู้ดูแลระบบ" : "เจ้าหน้าที่" }}</NText>
+              <div class="sider-user-text">
+                <div class="sider-user-name">{{ authStore.user?.name || "ผู้ใช้" }}</div>
+                <div class="sider-user-role">
+                  {{ authStore.user?.role === "admin" ? "ผู้ดูแลระบบ" : "เจ้าหน้าที่" }}
+                </div>
               </div>
+              <NIcon :size="14" color="rgba(255,255,255,0.3)"><ChevronUpOutline /></NIcon>
             </div>
           </NDropdown>
         </div>
-      </header>
-      <main class="main-content">
-        <router-view />
-      </main>
-    </NLayout>
-  </NLayout>
+      </Transition>
+      <Transition name="overlay">
+        <div v-if="isMobile && mobileOpen" class="sidebar-overlay" @click="mobileOpen = false" />
+      </Transition>
+    </Teleport>
+  </template>
 </template>
 
 <style scoped>
-/* ── Sidebar ── */
-.sider-content {
+/* ── Desktop Sidebar ── */
+:deep(.dark-sider.n-layout-sider) {
+  background: #111827 !important;
+}
+
+:deep(.dark-sider .n-scrollbar-content) {
   display: flex;
   flex-direction: column;
+  height: 100%;
+  min-height: 100%;
+  background: #111827;
 }
 
-.sider-header {
-  padding: var(--space-lg) var(--space-lg) var(--space-md);
-  border-bottom: 1px solid var(--color-border-light);
+:deep(.dark-sider .n-layout-sider-scroll-container) {
+  background: #111827;
 }
 
+/* ── Shared Sidebar Styles ── */
 .sider-brand {
   display: flex;
   align-items: center;
-  gap: var(--space-sm);
+  gap: 11px;
+  padding: 18px 16px 14px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.07);
 }
 
-.sider-logo {
+.brand-logo {
   width: 36px;
   height: 36px;
-  background: linear-gradient(135deg, var(--color-primary), var(--color-primary-dark));
-  color: white;
-  border-radius: var(--radius-md);
+  background: linear-gradient(135deg, #3b82f6, #6366f1);
+  border-radius: 9px;
   display: flex;
   align-items: center;
   justify-content: center;
+  font-weight: 800;
+  font-size: 12px;
+  color: white;
+  flex-shrink: 0;
+  box-shadow: 0 4px 10px rgba(59, 130, 246, 0.35);
+}
+
+.brand-name {
+  font-size: 15px;
   font-weight: 700;
-  font-size: var(--text-sm);
+  color: #f9fafb;
+  line-height: 1.3;
+}
+
+.brand-sub {
+  font-size: 10.5px;
+  color: rgba(255, 255, 255, 0.38);
+  margin-top: 1px;
+}
+
+.nav-section-label {
+  padding: 14px 20px 5px;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.28);
+}
+
+.sider-nav {
+  flex: 1;
+  padding: 0 8px;
+  overflow-y: auto;
+}
+
+.sider-user {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px 12px;
+  border-top: 1px solid rgba(255, 255, 255, 0.07);
+  cursor: pointer;
+  transition: background 150ms ease;
+}
+
+.sider-user:hover {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.sider-user-avatar {
+  background: rgba(59, 130, 246, 0.25) !important;
+  color: #93c5fd !important;
+  font-weight: 700;
+  font-size: 14px;
   flex-shrink: 0;
 }
 
-.sider-title {
-  font-size: var(--text-lg);
-  font-weight: 700;
-  color: var(--color-text);
-  line-height: var(--leading-tight);
-}
-
-.sider-subtitle {
-  font-size: var(--text-xs);
-  color: var(--color-text-tertiary);
-  margin-top: 2px;
-}
-
-.sider-menu-wrapper {
+.sider-user-text {
   flex: 1;
-  padding: var(--space-sm) var(--space-xs);
+  min-width: 0;
 }
 
-.sider-footer {
-  padding: var(--space-sm) var(--space-lg);
-  border-top: 1px solid var(--color-border-light);
+.sider-user-name {
+  font-size: 13px;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.82);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
-.sider-version {
-  font-size: var(--text-xs);
-  color: var(--color-text-tertiary);
+.sider-user-role {
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.37);
+  margin-top: 1px;
 }
 
 /* ── Header ── */
 .app-header {
-  height: var(--header-height);
+  height: 56px;
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  padding: 0 var(--space-xl);
-  border-bottom: 1px solid var(--color-border);
+  gap: 12px;
+  padding: 0 20px;
   background: var(--color-surface);
+  border-bottom: 1px solid var(--color-border);
   position: sticky;
   top: 0;
   z-index: var(--z-header);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04);
 }
 
-.header-left {
+.hamburger-btn {
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: none;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background var(--duration-fast) var(--ease-out);
+}
+
+.hamburger-btn:hover {
+  background: var(--color-surface-variant);
+}
+
+.header-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--color-text);
   flex: 1;
-  max-width: 480px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
 }
 
 .search-input {
-  width: 100%;
+  width: 220px;
 }
 
-.header-actions {
-  display: flex;
-  align-items: center;
-  gap: var(--space-sm);
-  margin-left: var(--space-lg);
-}
-
-.notification-btn {
+.notif-btn {
   width: 36px;
   height: 36px;
   display: flex;
@@ -295,56 +482,81 @@ onMounted(async () => {
   transition: background var(--duration-fast) var(--ease-out);
 }
 
-.notification-btn:hover {
+.notif-btn:hover {
   background: var(--color-surface-variant);
-}
-
-.header-divider {
-  width: 1px;
-  height: 24px;
-  background: var(--color-border);
-  margin: 0 var(--space-xs);
-}
-
-.user-trigger {
-  display: flex;
-  align-items: center;
-  gap: var(--space-sm);
-  cursor: pointer;
-  padding: var(--space-2xs) var(--space-sm);
-  border-radius: var(--radius-md);
-  transition: background var(--duration-fast) var(--ease-out);
-}
-
-.user-trigger:hover {
-  background: var(--color-surface-variant);
-}
-
-.user-avatar {
-  background: var(--color-primary-lighter);
-  color: var(--color-primary);
-  font-weight: 600;
-}
-
-.user-info {
-  display: flex;
-  flex-direction: column;
-  line-height: var(--leading-tight);
-}
-
-.user-name {
-  font-size: var(--text-sm);
-  font-weight: 500;
-}
-
-.user-role {
-  font-size: var(--text-xs);
 }
 
 /* ── Main Content ── */
 .main-content {
-  padding: var(--space-xl);
-  min-height: calc(100vh - var(--header-height));
+  padding: 20px 20px;
+  min-height: calc(100vh - 56px);
   background: var(--color-background);
+  overflow-y: auto;
+}
+
+@media (min-width: 1024px) {
+  .main-content {
+    padding: 24px 28px;
+  }
+}
+
+/* ── Mobile Drawer ── */
+.mobile-drawer {
+  position: fixed;
+  inset: 0 auto 0 0;
+  width: 260px;
+  background: #111827;
+  z-index: 400;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 4px 0 24px rgba(0, 0, 0, 0.4);
+}
+
+.drawer-close-btn {
+  margin-left: auto;
+  width: 30px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.07);
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.drawer-close-btn:hover {
+  background: rgba(255, 255, 255, 0.12);
+}
+
+/* ── Overlay ── */
+.sidebar-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 399;
+  backdrop-filter: blur(2px);
+}
+
+/* ── Transitions ── */
+.drawer-enter-active,
+.drawer-leave-active {
+  transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.drawer-enter-from,
+.drawer-leave-to {
+  transform: translateX(-100%);
+}
+
+.overlay-enter-active,
+.overlay-leave-active {
+  transition: opacity 0.25s ease;
+}
+
+.overlay-enter-from,
+.overlay-leave-to {
+  opacity: 0;
 }
 </style>

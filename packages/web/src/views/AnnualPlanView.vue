@@ -137,6 +137,7 @@ const columns: DataTableColumns<Plan> = [
           :bordered="false"
           :single-line="false"
           :row-key="(row: Plan) => row.id"
+          :scroll-x="860"
           size="small"
         />
       </NCard>
@@ -177,5 +178,16 @@ const columns: DataTableColumns<Plan> = [
 .table-card {
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-sm);
+}
+
+@media (max-width: 767px) {
+  .page-title {
+    font-size: var(--text-xl);
+  }
+
+  .page-header {
+    flex-wrap: wrap;
+    gap: var(--space-sm);
+  }
 }
 </style>

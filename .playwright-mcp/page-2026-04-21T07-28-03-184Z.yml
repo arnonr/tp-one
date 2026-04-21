@@ -1,0 +1,80 @@
+- generic [ref=e31]:
+  - complementary [ref=e32]:
+    - generic [ref=e33]:
+      - generic [ref=e34]: TP
+      - generic [ref=e35]:
+        - generic [ref=e36]: TP-One
+        - generic [ref=e37]: อุทยานเทคโนโลยี
+    - generic [ref=e38]: เมนูหลัก
+    - menu [ref=e41]:
+      - menuitem "งานของฉัน" [ref=e42]:
+        - img [ref=e43] [cursor=pointer]:
+          - img [ref=e44]
+        - text: งานของฉัน
+      - menuitem "แดชบอร์ด" [ref=e47]:
+        - img [ref=e48] [cursor=pointer]:
+          - img [ref=e49]
+        - text: แดชบอร์ด
+      - menuitem "งานทั้งหมด" [ref=e54]:
+        - img [ref=e55] [cursor=pointer]:
+          - img [ref=e56]
+        - text: งานทั้งหมด
+      - menuitem "โครงการ" [ref=e59]:
+        - img [ref=e60] [cursor=pointer]:
+          - img [ref=e61]
+        - text: โครงการ
+      - menuitem "แผนปฏิบัติการ" [ref=e63]:
+        - img [ref=e64] [cursor=pointer]:
+          - img [ref=e65]
+        - text: แผนปฏิบัติการ
+      - menuitem "รายงาน" [ref=e71]:
+        - img [ref=e72] [cursor=pointer]:
+          - img [ref=e73]
+        - text: รายงาน
+    - generic [ref=e76] [cursor=pointer]:
+      - generic [ref=e78]: ผ
+      - generic [ref=e79]:
+        - generic [ref=e80]: ผู้ดูแลระบบ
+        - generic [ref=e81]: ผู้ดูแลระบบ
+      - img [ref=e82]:
+        - img [ref=e83]
+  - generic [ref=e86]:
+    - banner [ref=e87]:
+      - heading "TP-One" [level=1] [ref=e89]
+      - generic [ref=e90]:
+        - generic [ref=e92]:
+          - img [ref=e94]:
+            - img [ref=e95]
+          - generic [ref=e98]:
+            - textbox "ค้นหา..." [ref=e99]
+            - generic:
+              - generic: ค้นหา...
+        - generic [ref=e102]:
+          - img [ref=e104] [cursor=pointer]:
+            - img [ref=e105]
+          - superscript [ref=e108]:
+            - generic [ref=e111]:
+              - generic [ref=e112]: "3"
+              - generic [ref=e114]: "3"
+              - generic [ref=e115]: "3"
+    - main [ref=e116]:
+      - generic [ref=e119]:
+        - generic [ref=e120]:
+          - generic [ref=e121]: TP
+          - generic [ref=e122]: TP-One
+          - text: ระบบจัดการงานอุทยานเทคโนโลยี
+        - generic [ref=e123]:
+          - generic [ref=e124]: เข้าสู่ระบบ
+          - generic [ref=e125]: ใช้อีเมลมหาวิทยาลัยเพื่อเข้าสู่ระบบ
+          - generic [ref=e127]:
+            - img [ref=e129]:
+              - img [ref=e130]
+            - generic [ref=e133]:
+              - textbox "อีเมลมหาวิทยาลัย" [ref=e134]
+              - generic:
+                - generic: อีเมลมหาวิทยาลัย
+          - button "เข้าสู่ระบบ" [ref=e135] [cursor=pointer]:
+            - img [ref=e137]:
+              - img [ref=e138]
+            - generic [ref=e141]: เข้าสู่ระบบ
+          - generic [ref=e142]: "โหมดพัฒนา: ใช้อีเมลในระบบเพื่อเข้าสู่ระบบ"
