@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, h, onMounted, watch } from 'vue'
+import { ref, computed, h, onMounted, onUnmounted, watch } from 'vue'
 import {
   NCard,
   NDataTable,
@@ -48,6 +48,7 @@ const wsStore = useWorkspaceStore()
 
 const currentFY = getFiscalYear()
 const activeTab = ref('list')
+const isMobile = ref(window.innerWidth < 768)
 const tasks = ref<any[]>([])
 const total = ref(0)
 const page = ref(1)
@@ -272,6 +273,7 @@ const columns = [
     title: 'สถานะ',
     key: 'status',
     width: 140,
+    sorter: true,
     render(row: any) {
       const wsStatuses = taskStore.workspaceStatuses[row.workspaceId] || []
       const options = wsStatuses.map((s: any) => ({ key: s.id, label: s.name }))
@@ -375,6 +377,18 @@ function resetFilters() {
   loadAllStatuses()
 }
 
+function getInitials(name: string, index: number) {
+  const initials = name.length >= 2 ? name.slice(0, 2) : name
+  const colors = ['#e8f5e9', '#e3f2fd', '#fff3e0', '#fce4ec', '#f3e5f5', '#e0f7fa']
+  const textColors = ['#2e7d32', '#1565c0', '#e65100', '#c62828', '#6a1b9a', '#00695c']
+  const ci = index % colors.length
+  return { initials, bg: colors[ci], color: textColors[ci] }
+}
+
+function onResize() {
+  isMobile.value = window.innerWidth < 768
+}
+
 function handleSorterChange(sorter: any) {
   if (!sorter || sorter.order === false) {
     sortBy.value = null
@@ -414,6 +428,7 @@ watch([workspaceFilter, projectFilter, statusFilter, priorityFilter, fiscalYearF
 watch([startDateFromFilter, startDateToFilter, dueDateFromFilter, dueDateToFilter], fetchTasks, { deep: true })
 
 onMounted(async () => {
+  window.addEventListener('resize', onResize)
   if (!wsStore.workspaces.length) await wsStore.fetchWorkspaces()
   workspaces.value = wsStore.workspaces
   const wsId = wsStore.currentWorkspaceId
@@ -422,6 +437,10 @@ onMounted(async () => {
   } else {
     await Promise.all([loadProjects(), loadAllStatuses(), fetchTasks(), taskStore.fetchAllStatuses()])
   }
+})
+
+onUnmounted(() => {
+  window.removeEventListener('resize', onResize)
 })
 </script>
 
@@ -543,8 +562,8 @@ onMounted(async () => {
         </transition>
       </NCard>
 
-      <!-- Task Table -->
-      <NCard class="table-card" :bordered="false">
+      <!-- Task Table (desktop) -->
+      <NCard v-if="!isMobile" class="table-card" :bordered="false">
         <NDataTable :columns="columns" :data="tasks" :bordered="false" :single-line="false"
           :row-key="(row: any) => row.id" v-model:expanded-row-keys="expandedRowKeys" :remote-sort="true"
           :sort-by="sortBy ? { columnKey: sortBy, order: sortOrder || false } : undefined"
@@ -557,6 +576,41 @@ onMounted(async () => {
             },
           })" :scroll-x="1100" size="small" />
       </NCard>
+
+      <!-- Task Cards (mobile) -->
+      <div v-else class="task-cards">
+        <div v-for="task in tasks" :key="task.id" class="task-card" @click="openDetail(task.id)">
+          <div class="task-card__header">
+            <div class="task-card__title">{{ task.title }}</div>
+            <div class="task-card__badges">
+              <StatusBadge :name="task.statusName || '—'" :color="task.statusColor" />
+              <PriorityBadge :priority="task.priority" />
+            </div>
+          </div>
+          <div class="task-card__meta">
+            <span v-if="task.workspaceName" class="task-card__workspace">
+              <NTag size="small" :bordered="false" type="info">{{ task.workspaceName }}</NTag>
+            </span>
+            <span v-if="task.projectName" class="task-card__project">{{ task.projectName }}</span>
+          </div>
+          <div class="task-card__footer">
+            <div class="task-card__dates">
+              <span v-if="task.dueDate" class="task-card__date">
+                กำหนด: <ThaiDate :date="task.dueDate" format="short" />
+              </span>
+              <span v-if="task.subtaskCount" class="task-card__subtasks" @click.stop="toggleExpand(task.id)">
+                {{ task.completedSubtaskCount || 0 }}/{{ task.subtaskCount }} งานย่อย
+              </span>
+            </div>
+            <div v-if="task.assignees?.length" class="task-card__assignees">
+              <span v-for="(a, idx) in task.assignees" :key="a.id || idx" class="task-card__avatar"
+                :style="{ background: getInitials(a.name || '??', Number(idx)).bg, color: getInitials(a.name || '??', Number(idx)).color }">
+                {{ getInitials(a.name || '??', Number(idx)).initials }}
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
 
       <div class="task-pagination">
         <NPagination v-model:page="page" v-model:page-size="pageSize" :item-count="total" :page-sizes="[10, 20, 50]" />
@@ -735,6 +789,124 @@ onMounted(async () => {
 
   .date-range-divider {
     display: none;
+  }
+
+  .table-card {
+    display: none;
+  }
+}
+
+/* Mobile task cards */
+.task-cards {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.task-card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg, 10px);
+  padding: 12px;
+  cursor: pointer;
+  transition: box-shadow 0.15s ease;
+
+  &:active {
+    box-shadow: 0 0 0 2px var(--color-primary, #18a058);
+  }
+}
+
+.task-card__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.task-card__title {
+  font-weight: 500;
+  font-size: 14px;
+  line-height: 1.4;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  line-clamp: 2;
+}
+
+.task-card__badges {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.task-card__meta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 6px;
+  font-size: 12px;
+  color: var(--color-text-tertiary);
+}
+
+.task-card__project {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.task-card__footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid var(--color-border);
+}
+
+.task-card__dates {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 12px;
+  color: var(--color-text-secondary);
+}
+
+.task-card__date {
+  white-space: nowrap;
+}
+
+.task-card__subtasks {
+  font-size: 11px;
+  color: var(--color-text-tertiary);
+  background: var(--color-surface-variant, #f0f0f0);
+  padding: 1px 6px;
+  border-radius: 10px;
+  width: fit-content;
+}
+
+.task-card__assignees {
+  display: flex;
+  align-items: center;
+}
+
+.task-card__avatar {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  font-weight: 600;
+  border: 2px solid #fff;
+
+  & + & {
+    margin-left: -6px;
   }
 }
 </style>

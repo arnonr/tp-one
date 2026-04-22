@@ -56,6 +56,7 @@ export const TaskService = {
     const sortableColumns: Record<string, any> = {
       title: tasks.title,
       priority: tasks.priority,
+      status: workspaceStatuses.name,
       startDate: tasks.startDate,
       dueDate: tasks.dueDate,
       createdAt: tasks.createdAt,
