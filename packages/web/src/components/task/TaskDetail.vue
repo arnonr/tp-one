@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, watch } from 'vue'
+import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import {
   NDrawer, NDrawerContent, NDescriptions, NDescriptionsItem, NButton,
   NSpace, NIcon, NInput, NPopconfirm, NSpin, NTag, NCheckbox,
@@ -35,6 +35,13 @@ const message = useMessage()
 const dialog = useDialog()
 const taskStore = useTaskStore()
 const { copy, formatTaskFull } = useClipboard()
+
+const windowWidth = ref(typeof window !== 'undefined' ? window.innerWidth : 1024)
+function handleResize() { windowWidth.value = window.innerWidth }
+onMounted(() => window.addEventListener('resize', handleResize))
+onUnmounted(() => window.removeEventListener('resize', handleResize))
+const isMobile = computed(() => windowWidth.value < 640)
+const drawerWidth = computed(() => isMobile.value ? windowWidth.value : 560)
 
 const commentText = ref('')
 const newSubtaskTitle = ref('')
@@ -237,7 +244,7 @@ function handleClose() {
 </script>
 
 <template>
-  <NDrawer :show="show" :width="560" placement="right" :mask-closable="true" @update:show="emit('update:show', $event)">
+  <NDrawer :show="show" :width="drawerWidth" placement="right" :mask-closable="true" @update:show="emit('update:show', $event)">
     <NDrawerContent :title="task?.title || 'รายละเอียดงาน'" closable>
       <NSpin :show="loading">
         <template v-if="task">
@@ -275,7 +282,7 @@ function handleClose() {
           </NSpace>
 
           <!-- Task Info -->
-          <NDescriptions label-placement="left" :column="1" bordered size="small" class="detail-info">
+          <NDescriptions :label-placement="isMobile ? 'top' : 'left'" :column="1" bordered size="small" class="detail-info">
             <NDescriptionsItem label="ความสำคัญ">
               <PriorityBadge :priority="task.priority" />
             </NDescriptionsItem>
@@ -455,7 +462,7 @@ function handleClose() {
                 placeholder="รอจากหน่วยงาน / บุคคล *"
                 style="margin-bottom:6px"
               />
-              <NSpace :size="6" style="margin-bottom:6px">
+              <NSpace :size="6" :vertical="isMobile" style="margin-bottom:6px">
                 <NInput
                   v-model:value="newWaiting.contactPerson"
                   size="small"
@@ -847,5 +854,78 @@ function handleClose() {
 
 .waiting-form {
   padding-top: 4px;
+}
+
+@media (max-width: 640px) {
+  .detail-actions {
+    flex-wrap: wrap;
+    gap: 4px;
+    justify-content: flex-start;
+  }
+
+  .detail-info {
+    overflow-x: hidden;
+  }
+
+  .section-content {
+    word-break: break-word;
+    overflow-wrap: break-word;
+  }
+
+  .section-header {
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+
+  .waiting-meta {
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .waiting-name {
+    word-break: break-word;
+  }
+
+  .follow-up-entry {
+    flex-wrap: wrap;
+  }
+
+  .fu-note {
+    min-width: 0;
+    word-break: break-word;
+  }
+
+  .follow-up-row {
+    flex-wrap: wrap;
+  }
+
+  .subtask-add {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .subtask-add :deep(.n-button) {
+    align-self: flex-end;
+  }
+
+  .comment-input {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .comment-input :deep(.n-button) {
+    align-self: flex-end;
+  }
+
+  .comment-body {
+    word-break: break-word;
+    overflow-wrap: break-word;
+  }
+
+  .due-relative {
+    display: block;
+    margin-left: 0;
+    margin-top: 2px;
+  }
 }
 </style>
