@@ -8,6 +8,8 @@ import { taskPlugin } from "./modules/task/task.plugin";
 import { projectPlugin } from "./modules/project/project.plugin";
 import { templatePlugin } from "./modules/template/template.plugin";
 import { myWorkPlugin } from "./modules/my-work/my-work.plugin";
+import { notificationPlugin } from "./modules/notification/notification.plugin";
+import { quickNotePlugin } from "./modules/quick-note/quick-note.plugin";
 import { usersPlugin } from "./modules/auth/users.plugin";
 import { AppError } from "./shared/errors";
 
@@ -26,6 +28,8 @@ const app = new Elysia()
   .use(projectPlugin)
   .use(templatePlugin)
   .use(myWorkPlugin)
+  .use(notificationPlugin)
+  .use(quickNotePlugin)
   .use(usersPlugin)
   .get("/api/health", () => ({ status: "ok", timestamp: new Date().toISOString() }))
   .onError(({ error, set }) => {
@@ -40,3 +44,7 @@ const app = new Elysia()
   .listen(process.env.PORT || 3019);
 
 console.log(`TP-One API running at http://localhost:${app.server!.port}`);
+
+// Start background workers (cron jobs for standup and deadline reminders)
+import { startWorkers } from './workers/notification.worker';
+startWorkers();

@@ -32,14 +32,20 @@ import {
   GridOutline,
 } from "@vicons/ionicons5";
 import LoginView from "../../views/LoginView.vue";
+import NotificationPanel from "./NotificationPanel.vue";
+import QuickNotePanel from "./QuickNotePanel.vue";
+import { useNotificationStore } from "@/stores/notification";
 import { useAuthStore } from "../../stores/auth";
 import WorkspaceSelector from "./WorkspaceSelector.vue";
 import { useWorkspaceStore } from "@/stores/workspace";
+import { useQuickNoteStore } from "@/stores/quick-note";
 
 const router = useRouter();
 const route = useRoute();
 const authStore = useAuthStore();
 const wsStore = useWorkspaceStore();
+const notifStore = useNotificationStore();
+const noteStore = useQuickNoteStore();
 const searchQuery = ref("");
 const isMobile = ref(false);
 const mobileOpen = ref(false);
@@ -52,18 +58,21 @@ function checkMobile() {
 onMounted(() => {
   checkMobile();
   window.addEventListener("resize", checkMobile);
+
+  if (authStore.isAuthenticated && !authStore.user) {
+    try {
+      authStore.fetchMe();
+    } catch {
+      authStore.logout();
+    }
+  }
+  wsStore.fetchWorkspaces();
+  notifStore.startPolling();
 });
 
 onUnmounted(() => {
   window.removeEventListener("resize", checkMobile);
-});
-
-watch(route, () => {
-  mobileOpen.value = false;
-});
-
-watch(isMobile, (val) => {
-  if (!val) mobileOpen.value = false;
+  notifStore.stopPolling();
 });
 
 const darkMenuTheme = {
@@ -201,6 +210,11 @@ onMounted(async () => {
     }
   }
   await wsStore.fetchWorkspaces();
+  notifStore.startPolling();
+});
+
+onUnmounted(() => {
+  notifStore.stopPolling();
 });
 </script>
 
@@ -275,12 +289,13 @@ onMounted(async () => {
                 </NIcon>
               </template>
             </NInput>
+            <button class="quick-note-btn" title="บันทึกด่วน" @click="noteStore.togglePanel">
+              <NIcon :size="18" color="var(--color-text-secondary)">
+                <DocumentTextOutline />
+              </NIcon>
+            </button>
             <NBadge :value="3" :max="99">
-              <div class="notif-btn">
-                <NIcon :size="20" color="var(--color-text-secondary)">
-                  <NotificationsOutline />
-                </NIcon>
-              </div>
+              <NotificationPanel />
             </NBadge>
           </div>
         </header>
@@ -289,6 +304,9 @@ onMounted(async () => {
         </main>
       </NLayout>
     </NLayout>
+
+    <!-- ── Quick Note Panel ── -->
+    <QuickNotePanel />
 
     <!-- ── Mobile Sidebar Drawer ── -->
     <Teleport to="body">
@@ -532,6 +550,23 @@ onMounted(async () => {
 }
 
 .notif-btn:hover {
+  background: var(--color-surface-variant);
+}
+
+.quick-note-btn {
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: none;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: background var(--duration-fast) var(--ease-out);
+}
+
+.quick-note-btn:hover {
   background: var(--color-surface-variant);
 }
 

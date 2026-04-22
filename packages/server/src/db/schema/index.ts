@@ -6,3 +6,4 @@ export * from "./notifications";
 export * from "./annual-plans";
 export * from "./waiting";
 export * from "./templates";
+export * from "./quick-notes";

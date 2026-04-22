@@ -109,6 +109,15 @@ export interface Notification {
   isRead: boolean;
 }
 
+export type NotificationType =
+  | 'task_assigned'
+  | 'task_status_changed'
+  | 'task_comment'
+  | 'task_due_soon'
+  | 'project_update'
+  | 'mention'
+  | 'system';
+
 export interface ApiError {
   message: string;
   statusCode: number;

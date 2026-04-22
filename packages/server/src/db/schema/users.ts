@@ -8,6 +8,7 @@ export const users = pgTable("users", {
   email: varchar("email", { length: 255 }).notNull().unique(),
   role: roleEnum("role").default("staff").notNull(),
   avatarUrl: varchar("avatar_url", { length: 500 }),
+  telegramChatId: varchar("telegram_chat_id", { length: 255 }),
   isActive: boolean("is_active").default(true).notNull(),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
