@@ -1,7 +1,7 @@
 import { db } from '../../config/database';
 import { tasks, workspaceStatuses, users, workspaces, taskAssignees } from '../../db/schema';
 import { taskWaiting } from '../../db/schema/waiting';
-import { eq, and, isNull, sql, desc } from 'drizzle-orm';
+import { eq, and, isNull, sql, desc, type SQL } from 'drizzle-orm';
 
 function todayStr() {
   return new Date().toISOString().split('T')[0];
@@ -15,12 +15,39 @@ function endOfWeekStr() {
   return d.toISOString().split('T')[0];
 }
 
+function workspaceFilter(workspaceId?: string): SQL | undefined {
+  if (!workspaceId) return undefined;
+  return eq(tasks.workspaceId, workspaceId);
+}
+
+const taskFields = {
+  id: tasks.id,
+  title: tasks.title,
+  description: tasks.description,
+  priority: tasks.priority,
+  statusId: tasks.statusId,
+  statusName: workspaceStatuses.name,
+  statusColor: workspaceStatuses.color,
+  workspaceId: tasks.workspaceId,
+  workspaceName: workspaces.name,
+  projectId: tasks.projectId,
+  assigneeId: taskAssignees.userId,
+  assigneeName: users.name,
+  reporterId: tasks.reporterId,
+  startDate: tasks.startDate,
+  dueDate: tasks.dueDate,
+  completedAt: tasks.completedAt,
+  sortOrder: tasks.sortOrder,
+  createdAt: tasks.createdAt,
+  updatedAt: tasks.updatedAt,
+};
+
 export const MyWorkService = {
-  async getSummary(userId: string) {
+  async getSummary(userId: string, workspaceId?: string) {
     const today = todayStr();
+    const wf = workspaceFilter(workspaceId);
 
     const [todayTasks, overdueTasks, weekTasks, waitingTasks] = await Promise.all([
-      // Tasks due today (assigned to user)
       db.select({ count: sql<number>`count(*)::int` })
         .from(tasks)
         .innerJoin(taskAssignees, eq(tasks.id, taskAssignees.taskId))
@@ -28,8 +55,8 @@ export const MyWorkService = {
           eq(taskAssignees.userId, userId),
           isNull(tasks.completedAt),
           eq(tasks.dueDate, today),
+          wf,
         )),
-      // Overdue tasks
       db.select({ count: sql<number>`count(*)::int` })
         .from(tasks)
         .innerJoin(taskAssignees, eq(tasks.id, taskAssignees.taskId))
@@ -38,8 +65,8 @@ export const MyWorkService = {
           isNull(tasks.completedAt),
           sql`${tasks.dueDate} < ${today}`,
           sql`${tasks.dueDate} IS NOT NULL`,
+          wf,
         )),
-      // Tasks due this week (not today, not overdue)
       db.select({ count: sql<number>`count(*)::int` })
         .from(tasks)
         .innerJoin(taskAssignees, eq(tasks.id, taskAssignees.taskId))
@@ -48,8 +75,8 @@ export const MyWorkService = {
           isNull(tasks.completedAt),
           sql`${tasks.dueDate} <= ${endOfWeekStr()}`,
           sql`${tasks.dueDate} > ${today}`,
+          wf,
         )),
-      // Waiting for others
       db.select({ count: sql<number>`count(*)::int` })
         .from(taskWaiting)
         .innerJoin(tasks, eq(taskWaiting.taskId, tasks.id))
@@ -57,6 +84,7 @@ export const MyWorkService = {
         .where(and(
           eq(taskAssignees.userId, userId),
           eq(taskWaiting.isResolved, false),
+          wf,
         )),
     ]);
 
@@ -68,30 +96,9 @@ export const MyWorkService = {
     };
   },
 
-  async getToday(userId: string) {
-    const today = todayStr();
+  async getToday(userId: string, workspaceId?: string) {
     return db
-      .select({
-        id: tasks.id,
-        title: tasks.title,
-        description: tasks.description,
-        priority: tasks.priority,
-        statusId: tasks.statusId,
-        statusName: workspaceStatuses.name,
-        statusColor: workspaceStatuses.color,
-        workspaceId: tasks.workspaceId,
-        workspaceName: workspaces.name,
-        projectId: tasks.projectId,
-        assigneeId: taskAssignees.userId,
-        assigneeName: users.name,
-        reporterId: tasks.reporterId,
-        startDate: tasks.startDate,
-        dueDate: tasks.dueDate,
-        completedAt: tasks.completedAt,
-        sortOrder: tasks.sortOrder,
-        createdAt: tasks.createdAt,
-        updatedAt: tasks.updatedAt,
-      })
+      .select(taskFields)
       .from(tasks)
       .innerJoin(taskAssignees, eq(tasks.id, taskAssignees.taskId))
       .leftJoin(workspaceStatuses, eq(tasks.statusId, workspaceStatuses.id))
@@ -100,35 +107,15 @@ export const MyWorkService = {
       .where(and(
         eq(taskAssignees.userId, userId),
         isNull(tasks.completedAt),
-        eq(tasks.dueDate, today),
+        eq(tasks.dueDate, todayStr()),
+        workspaceFilter(workspaceId),
       ))
       .orderBy(desc(tasks.priority), desc(tasks.createdAt));
   },
 
-  async getOverdue(userId: string) {
-    const today = todayStr();
+  async getOverdue(userId: string, workspaceId?: string) {
     return db
-      .select({
-        id: tasks.id,
-        title: tasks.title,
-        description: tasks.description,
-        priority: tasks.priority,
-        statusId: tasks.statusId,
-        statusName: workspaceStatuses.name,
-        statusColor: workspaceStatuses.color,
-        workspaceId: tasks.workspaceId,
-        workspaceName: workspaces.name,
-        projectId: tasks.projectId,
-        assigneeId: taskAssignees.userId,
-        assigneeName: users.name,
-        reporterId: tasks.reporterId,
-        startDate: tasks.startDate,
-        dueDate: tasks.dueDate,
-        completedAt: tasks.completedAt,
-        sortOrder: tasks.sortOrder,
-        createdAt: tasks.createdAt,
-        updatedAt: tasks.updatedAt,
-      })
+      .select(taskFields)
       .from(tasks)
       .innerJoin(taskAssignees, eq(tasks.id, taskAssignees.taskId))
       .leftJoin(workspaceStatuses, eq(tasks.statusId, workspaceStatuses.id))
@@ -137,37 +124,18 @@ export const MyWorkService = {
       .where(and(
         eq(taskAssignees.userId, userId),
         isNull(tasks.completedAt),
-        sql`${tasks.dueDate} < ${today}`,
+        sql`${tasks.dueDate} < ${todayStr()}`,
         sql`${tasks.dueDate} IS NOT NULL`,
+        workspaceFilter(workspaceId),
       ))
       .orderBy(tasks.dueDate);
   },
 
-  async getUpcoming(userId: string) {
+  async getUpcoming(userId: string, workspaceId?: string) {
     const today = todayStr();
     const endOfWeek = endOfWeekStr();
     return db
-      .select({
-        id: tasks.id,
-        title: tasks.title,
-        description: tasks.description,
-        priority: tasks.priority,
-        statusId: tasks.statusId,
-        statusName: workspaceStatuses.name,
-        statusColor: workspaceStatuses.color,
-        workspaceId: tasks.workspaceId,
-        workspaceName: workspaces.name,
-        projectId: tasks.projectId,
-        assigneeId: taskAssignees.userId,
-        assigneeName: users.name,
-        reporterId: tasks.reporterId,
-        startDate: tasks.startDate,
-        dueDate: tasks.dueDate,
-        completedAt: tasks.completedAt,
-        sortOrder: tasks.sortOrder,
-        createdAt: tasks.createdAt,
-        updatedAt: tasks.updatedAt,
-      })
+      .select(taskFields)
       .from(tasks)
       .innerJoin(taskAssignees, eq(tasks.id, taskAssignees.taskId))
       .leftJoin(workspaceStatuses, eq(tasks.statusId, workspaceStatuses.id))
@@ -178,11 +146,12 @@ export const MyWorkService = {
         isNull(tasks.completedAt),
         sql`${tasks.dueDate} > ${today}`,
         sql`${tasks.dueDate} <= ${endOfWeek}`,
+        workspaceFilter(workspaceId),
       ))
       .orderBy(tasks.dueDate);
   },
 
-  async getWaiting(userId: string) {
+  async getWaiting(userId: string, workspaceId?: string) {
     return db
       .select({
         taskId: tasks.id,
@@ -200,17 +169,18 @@ export const MyWorkService = {
       .where(and(
         eq(taskAssignees.userId, userId),
         eq(taskWaiting.isResolved, false),
+        workspaceFilter(workspaceId),
       ))
       .orderBy(taskWaiting.expectedDate);
   },
 
-  async getAll(userId: string) {
+  async getAll(userId: string, workspaceId?: string) {
     const [summary, today, overdue, upcoming, waiting] = await Promise.all([
-      this.getSummary(userId),
-      this.getToday(userId),
-      this.getOverdue(userId),
-      this.getUpcoming(userId),
-      this.getWaiting(userId),
+      this.getSummary(userId, workspaceId),
+      this.getToday(userId, workspaceId),
+      this.getOverdue(userId, workspaceId),
+      this.getUpcoming(userId, workspaceId),
+      this.getWaiting(userId, workspaceId),
     ]);
 
     return { summary, today, overdue, upcoming, waiting };
