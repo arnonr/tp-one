@@ -350,34 +350,38 @@ onMounted(async () => {
       <PageHeader title="รายการงาน" :subtitle="`${total} งาน`">
         <template #actions>
           <NButtonGroup>
-            <NButton
-              size="small"
-              :type="activeTab === 'list' ? 'primary' : 'default'"
-              @click="activeTab = 'list'"
-            >
-              <template #icon><NIcon :size="15"><ListOutline /></NIcon></template>
+            <NButton size="small" :type="activeTab === 'list' ? 'primary' : 'default'" @click="activeTab = 'list'">
+              <template #icon>
+                <NIcon :size="15">
+                  <ListOutline />
+                </NIcon>
+              </template>
               รายการ
             </NButton>
-            <NButton
-              size="small"
-              :type="activeTab === 'board' ? 'primary' : 'default'"
-              @click="handleTabChange('board')"
-            >
-              <template #icon><NIcon :size="15"><GridOutline /></NIcon></template>
+            <NButton size="small" :type="activeTab === 'board' ? 'primary' : 'default'"
+              @click="handleTabChange('board')">
+              <template #icon>
+                <NIcon :size="15">
+                  <GridOutline />
+                </NIcon>
+              </template>
               กระดาน
             </NButton>
-            <NButton
-              size="small"
-              :type="activeTab === 'calendar' ? 'primary' : 'default'"
-              @click="handleTabChange('calendar')"
-            >
-              <template #icon><NIcon :size="15"><CalendarOutline /></NIcon></template>
+            <NButton size="small" :type="activeTab === 'calendar' ? 'primary' : 'default'"
+              @click="handleTabChange('calendar')">
+              <template #icon>
+                <NIcon :size="15">
+                  <CalendarOutline />
+                </NIcon>
+              </template>
               ปฏิทิน
             </NButton>
           </NButtonGroup>
           <NButton type="primary" @click="openCreateForm">
             <template #icon>
-              <NIcon><AddCircleOutline /></NIcon>
+              <NIcon>
+                <AddCircleOutline />
+              </NIcon>
             </template>
             สร้างงานใหม่
           </NButton>
@@ -394,7 +398,11 @@ onMounted(async () => {
             ตัวกรอง
           </div>
           <NButton size="small" secondary @click="resetFilters">
-            <template #icon><NIcon><RefreshOutline /></NIcon></template>
+            <template #icon>
+              <NIcon>
+                <RefreshOutline />
+              </NIcon>
+            </template>
             ล้างตัวกรอง
           </NButton>
         </div>
@@ -417,40 +425,39 @@ onMounted(async () => {
         <div class="filter-dates">
           <div class="date-range-group">
             <span class="date-label">วันเริ่มต้น</span>
-            <div class="filter-date"><ThaiDatePicker v-model:value="startDateFromFilter" placeholder="จาก" /></div>
+            <div class="filter-date">
+              <ThaiDatePicker v-model:value="startDateFromFilter" placeholder="จาก" />
+            </div>
             <span class="date-sep">—</span>
-            <div class="filter-date"><ThaiDatePicker v-model:value="startDateToFilter" placeholder="ถึง" /></div>
+            <div class="filter-date">
+              <ThaiDatePicker v-model:value="startDateToFilter" placeholder="ถึง" />
+            </div>
           </div>
           <div class="date-range-divider" />
           <div class="date-range-group">
             <span class="date-label">กำหนดส่ง</span>
-            <div class="filter-date"><ThaiDatePicker v-model:value="dueDateFromFilter" placeholder="จาก" /></div>
+            <div class="filter-date">
+              <ThaiDatePicker v-model:value="dueDateFromFilter" placeholder="จาก" />
+            </div>
             <span class="date-sep">—</span>
-            <div class="filter-date"><ThaiDatePicker v-model:value="dueDateToFilter" placeholder="ถึง" /></div>
+            <div class="filter-date">
+              <ThaiDatePicker v-model:value="dueDateToFilter" placeholder="ถึง" />
+            </div>
           </div>
         </div>
       </NCard>
 
       <!-- Task Table -->
       <NCard class="table-card" :bordered="false">
-        <NDataTable
-          :columns="columns"
-          :data="tasks"
-          :bordered="false"
-          :single-line="false"
-          :row-key="(row: any) => row.id"
-          v-model:expanded-row-keys="expandedRowKeys"
-          :row-props="(row: any) => ({
+        <NDataTable :columns="columns" :data="tasks" :bordered="false" :single-line="false"
+          :row-key="(row: any) => row.id" v-model:expanded-row-keys="expandedRowKeys" :row-props="(row: any) => ({
             style: 'cursor: pointer',
             onClick: (e: MouseEvent) => {
               const target = e.target as HTMLElement
               if (target.closest('.n-data-table-expand-trigger')) return
               openDetail(row.id)
             },
-          })"
-          :scroll-x="1100"
-          size="small"
-        />
+          })" :scroll-x="1100" size="small" />
       </NCard>
 
       <div class="task-pagination">
@@ -554,7 +561,7 @@ onMounted(async () => {
 }
 
 .filter-date {
-  width: 138px;
+  width: 160px;
   flex-shrink: 0;
 }
 
@@ -594,6 +601,7 @@ onMounted(async () => {
 }
 
 @media (max-width: 767px) {
+
   .filter-search,
   .filter-fy,
   .filter-select,
