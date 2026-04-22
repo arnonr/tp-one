@@ -1,4 +1,4 @@
-import { pgTable, uuid, varchar, text, boolean, timestamp, pgEnum } from "drizzle-orm/pg-core";
+import { pgTable, uuid, varchar, text, boolean, timestamp, pgEnum, uniqueIndex } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
 import { users } from "./users";
 
@@ -41,7 +41,9 @@ export const workspaceMembers = pgTable("workspace_members", {
   workspaceId: uuid("workspace_id").references(() => workspaces.id).notNull(),
   userId: uuid("user_id").references(() => users.id).notNull(),
   role: workspaceMemberRoleEnum("role").default("viewer"),
-});
+}, (table) => [
+  uniqueIndex("workspace_members_unique").on(table.workspaceId, table.userId),
+]);
 
 export const workspaceRelations = relations(workspaces, ({ one, many }) => ({
   owner: one(users, { fields: [workspaces.ownerId], references: [users.id] }),

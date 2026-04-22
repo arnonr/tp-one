@@ -8,6 +8,34 @@
       "when": 1776744748125,
       "tag": "0000_condemned_mordo",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1776773059539,
+      "tag": "0001_green_kinsey_walden",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1776775391046,
+      "tag": "0002_mixed_black_crow",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1776783167863,
+      "tag": "0003_productive_wolf_cub",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1776836021382,
+      "tag": "0004_tidy_piledriver",
+      "breakpoints": true
     }
   ]
 }
