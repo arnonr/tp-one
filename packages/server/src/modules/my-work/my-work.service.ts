@@ -1,23 +1,28 @@
 import { db } from '../../config/database';
-import { tasks, workspaceStatuses, users, workspaces, taskAssignees } from '../../db/schema';
+import { tasks, workspaceStatuses, workspaces, taskAssignees } from '../../db/schema';
 import { taskWaiting } from '../../db/schema/waiting';
 import { eq, and, isNull, sql, desc, type SQL } from 'drizzle-orm';
 
 function todayStr() {
-  return new Date().toISOString().split('T')[0];
+  return new Date().toLocaleDateString('sv-SE', { timeZone: 'Asia/Bangkok' });
 }
 
 function endOfWeekStr() {
-  const d = new Date();
-  const day = d.getDay();
+  const now = new Date();
+  const bangkokNow = new Date(now.toLocaleString('en-US', { timeZone: 'Asia/Bangkok' }));
+  const day = bangkokNow.getDay();
   const diff = day === 0 ? 0 : 7 - day;
-  d.setDate(d.getDate() + diff);
-  return d.toISOString().split('T')[0];
+  bangkokNow.setDate(bangkokNow.getDate() + diff);
+  return bangkokNow.toLocaleDateString('sv-SE', { timeZone: 'Asia/Bangkok' });
 }
 
 function workspaceFilter(workspaceId?: string): SQL | undefined {
   if (!workspaceId) return undefined;
   return eq(tasks.workspaceId, workspaceId);
+}
+
+function myTaskCondition(userId: string) {
+  return sql`EXISTS (SELECT 1 FROM task_assignees WHERE task_id = ${tasks.id} AND user_id = ${userId})`;
 }
 
 const taskFields = {
@@ -31,9 +36,6 @@ const taskFields = {
   workspaceId: tasks.workspaceId,
   workspaceName: workspaces.name,
   projectId: tasks.projectId,
-  assigneeId: taskAssignees.userId,
-  assigneeName: users.name,
-  reporterId: tasks.reporterId,
   startDate: tasks.startDate,
   dueDate: tasks.dueDate,
   completedAt: tasks.completedAt,
@@ -45,23 +47,22 @@ const taskFields = {
 export const MyWorkService = {
   async getSummary(userId: string, workspaceId?: string) {
     const today = todayStr();
+    const endOfWeek = endOfWeekStr();
     const wf = workspaceFilter(workspaceId);
 
     const [todayTasks, overdueTasks, weekTasks, waitingTasks] = await Promise.all([
       db.select({ count: sql<number>`count(*)::int` })
         .from(tasks)
-        .innerJoin(taskAssignees, eq(tasks.id, taskAssignees.taskId))
         .where(and(
-          eq(taskAssignees.userId, userId),
+          myTaskCondition(userId),
           isNull(tasks.completedAt),
           eq(tasks.dueDate, today),
           wf,
         )),
       db.select({ count: sql<number>`count(*)::int` })
         .from(tasks)
-        .innerJoin(taskAssignees, eq(tasks.id, taskAssignees.taskId))
         .where(and(
-          eq(taskAssignees.userId, userId),
+          myTaskCondition(userId),
           isNull(tasks.completedAt),
           sql`${tasks.dueDate} < ${today}`,
           sql`${tasks.dueDate} IS NOT NULL`,
@@ -69,20 +70,18 @@ export const MyWorkService = {
         )),
       db.select({ count: sql<number>`count(*)::int` })
         .from(tasks)
-        .innerJoin(taskAssignees, eq(tasks.id, taskAssignees.taskId))
         .where(and(
-          eq(taskAssignees.userId, userId),
+          myTaskCondition(userId),
           isNull(tasks.completedAt),
-          sql`${tasks.dueDate} <= ${endOfWeekStr()}`,
           sql`${tasks.dueDate} > ${today}`,
+          sql`${tasks.dueDate} <= ${endOfWeek}`,
           wf,
         )),
       db.select({ count: sql<number>`count(*)::int` })
         .from(taskWaiting)
         .innerJoin(tasks, eq(taskWaiting.taskId, tasks.id))
-        .innerJoin(taskAssignees, eq(tasks.id, taskAssignees.taskId))
         .where(and(
-          eq(taskAssignees.userId, userId),
+          myTaskCondition(userId),
           eq(taskWaiting.isResolved, false),
           wf,
         )),
@@ -100,12 +99,10 @@ export const MyWorkService = {
     return db
       .select(taskFields)
       .from(tasks)
-      .innerJoin(taskAssignees, eq(tasks.id, taskAssignees.taskId))
       .leftJoin(workspaceStatuses, eq(tasks.statusId, workspaceStatuses.id))
       .leftJoin(workspaces, eq(tasks.workspaceId, workspaces.id))
-      .leftJoin(users, eq(taskAssignees.userId, users.id))
       .where(and(
-        eq(taskAssignees.userId, userId),
+        myTaskCondition(userId),
         isNull(tasks.completedAt),
         eq(tasks.dueDate, todayStr()),
         workspaceFilter(workspaceId),
@@ -117,12 +114,10 @@ export const MyWorkService = {
     return db
       .select(taskFields)
       .from(tasks)
-      .innerJoin(taskAssignees, eq(tasks.id, taskAssignees.taskId))
       .leftJoin(workspaceStatuses, eq(tasks.statusId, workspaceStatuses.id))
       .leftJoin(workspaces, eq(tasks.workspaceId, workspaces.id))
-      .leftJoin(users, eq(taskAssignees.userId, users.id))
       .where(and(
-        eq(taskAssignees.userId, userId),
+        myTaskCondition(userId),
         isNull(tasks.completedAt),
         sql`${tasks.dueDate} < ${todayStr()}`,
         sql`${tasks.dueDate} IS NOT NULL`,
@@ -137,12 +132,10 @@ export const MyWorkService = {
     return db
       .select(taskFields)
       .from(tasks)
-      .innerJoin(taskAssignees, eq(tasks.id, taskAssignees.taskId))
       .leftJoin(workspaceStatuses, eq(tasks.statusId, workspaceStatuses.id))
       .leftJoin(workspaces, eq(tasks.workspaceId, workspaces.id))
-      .leftJoin(users, eq(taskAssignees.userId, users.id))
       .where(and(
-        eq(taskAssignees.userId, userId),
+        myTaskCondition(userId),
         isNull(tasks.completedAt),
         sql`${tasks.dueDate} > ${today}`,
         sql`${tasks.dueDate} <= ${endOfWeek}`,
@@ -164,10 +157,9 @@ export const MyWorkService = {
       })
       .from(taskWaiting)
       .innerJoin(tasks, eq(taskWaiting.taskId, tasks.id))
-      .innerJoin(taskAssignees, eq(tasks.id, taskAssignees.taskId))
       .leftJoin(workspaces, eq(tasks.workspaceId, workspaces.id))
       .where(and(
-        eq(taskAssignees.userId, userId),
+        myTaskCondition(userId),
         eq(taskWaiting.isResolved, false),
         workspaceFilter(workspaceId),
       ))
