@@ -159,27 +159,25 @@ const summaryCards = computed(() => [
         <template #actions>
           <NButton quaternary circle @click="fetchData">
             <template #icon>
-              <NIcon><RefreshOutline /></NIcon>
+              <NIcon>
+                <RefreshOutline />
+              </NIcon>
             </template>
           </NButton>
           <NButton type="primary" @click="handleCreate">
             <template #icon>
-              <NIcon><AddCircleOutline /></NIcon>
+              <NIcon>
+                <AddCircleOutline />
+              </NIcon>
             </template>
-            สร้างงาน
+            สร้างงานใหม่
           </NButton>
         </template>
       </PageHeader>
 
       <!-- Summary Cards -->
       <div class="summary-cards">
-        <NCard
-          v-for="card in summaryCards"
-          :key="card.key"
-          class="summary-card"
-          :bordered="false"
-          size="small"
-        >
+        <NCard v-for="card in summaryCards" :key="card.key" class="summary-card" :bordered="false" size="small">
           <div class="summary-card-inner">
             <NIcon :size="20" :color="card.color" class="summary-icon">
               <component :is="card.icon" />
@@ -197,30 +195,24 @@ const summaryCards = computed(() => [
         <template #header>
           <div class="section-header">
             <div class="section-header-left">
-              <NIcon :size="20" color="var(--color-primary)"><TodayOutline /></NIcon>
+              <NIcon :size="20" color="var(--color-primary)">
+                <TodayOutline />
+              </NIcon>
               <NText class="section-title">วันนี้</NText>
               <NTag :bordered="false" size="small" type="info">{{ todayTasks.length }}</NTag>
             </div>
           </div>
         </template>
         <div class="task-list">
-          <div
-            v-for="task in todayTasks"
-            :key="task.id"
-            class="task-row"
-            :class="{ 'task-row--updating': updatingTaskId === task.id }"
-          >
+          <div v-for="task in todayTasks" :key="task.id" class="task-row"
+            :class="{ 'task-row--updating': updatingTaskId === task.id }">
             <div class="task-main" @click="handleTaskClick(task.id)">
-              <NButton
-                quaternary
-                circle
-                size="small"
-                class="complete-btn"
-                :loading="updatingTaskId === task.id"
-                @click.stop="handleComplete(task)"
-              >
+              <NButton quaternary circle size="small" class="complete-btn" :loading="updatingTaskId === task.id"
+                @click.stop="handleComplete(task)">
                 <template #icon>
-                  <NIcon><CheckmarkCircleOutline /></NIcon>
+                  <NIcon>
+                    <CheckmarkCircleOutline />
+                  </NIcon>
                 </template>
               </NButton>
               <div class="task-info">
@@ -231,13 +223,8 @@ const summaryCards = computed(() => [
               </div>
             </div>
             <div class="task-meta">
-              <NDropdown
-                v-if="task.statusName"
-                trigger="click"
-                :options="statusOptions(task)"
-                @select="(key: string) => handleStatusChange(task, key)"
-                @click.stop
-              >
+              <NDropdown v-if="task.statusName" trigger="click" :options="statusOptions(task)"
+                @select="(key: string) => handleStatusChange(task, key)" @click.stop>
                 <StatusBadge :name="task.statusName" :color="task.statusColor" />
               </NDropdown>
               <PriorityBadge :priority="task.priority" />
@@ -252,30 +239,24 @@ const summaryCards = computed(() => [
         <template #header>
           <div class="section-header">
             <div class="section-header-left">
-              <NIcon :size="20" color="var(--color-danger)"><AlertCircleOutline /></NIcon>
+              <NIcon :size="20" color="var(--color-danger)">
+                <AlertCircleOutline />
+              </NIcon>
               <NText class="section-title" style="color: var(--color-danger)">เลยกำหนด</NText>
               <NTag :bordered="false" size="small" type="error">{{ overdueTasks.length }}</NTag>
             </div>
           </div>
         </template>
         <div class="task-list">
-          <div
-            v-for="task in overdueTasks"
-            :key="task.id"
-            class="task-row"
-            :class="{ 'task-row--updating': updatingTaskId === task.id }"
-          >
+          <div v-for="task in overdueTasks" :key="task.id" class="task-row"
+            :class="{ 'task-row--updating': updatingTaskId === task.id }">
             <div class="task-main" @click="handleTaskClick(task.id)">
-              <NButton
-                quaternary
-                circle
-                size="small"
-                class="complete-btn"
-                :loading="updatingTaskId === task.id"
-                @click.stop="handleComplete(task)"
-              >
+              <NButton quaternary circle size="small" class="complete-btn" :loading="updatingTaskId === task.id"
+                @click.stop="handleComplete(task)">
                 <template #icon>
-                  <NIcon><CheckmarkCircleOutline /></NIcon>
+                  <NIcon>
+                    <CheckmarkCircleOutline />
+                  </NIcon>
                 </template>
               </NButton>
               <div class="task-info">
@@ -289,13 +270,8 @@ const summaryCards = computed(() => [
               </div>
             </div>
             <div class="task-meta">
-              <NDropdown
-                v-if="task.statusName"
-                trigger="click"
-                :options="statusOptions(task)"
-                @select="(key: string) => handleStatusChange(task, key)"
-                @click.stop
-              >
+              <NDropdown v-if="task.statusName" trigger="click" :options="statusOptions(task)"
+                @select="(key: string) => handleStatusChange(task, key)" @click.stop>
                 <StatusBadge :name="task.statusName" :color="task.statusColor" />
               </NDropdown>
               <PriorityBadge :priority="task.priority" />
@@ -310,36 +286,32 @@ const summaryCards = computed(() => [
         <template #header>
           <div class="section-header">
             <div class="section-header-left">
-              <NIcon :size="20" color="var(--color-text-secondary)"><HourglassOutline /></NIcon>
+              <NIcon :size="20" color="var(--color-text-secondary)">
+                <HourglassOutline />
+              </NIcon>
               <NText class="section-title">สัปดาห์นี้</NText>
               <NTag :bordered="false" size="small">{{ upcomingTasks.length }}</NTag>
             </div>
             <NButton text size="small" type="primary" @click="router.push({ name: 'tasks' })">
               ดูทั้งหมด
               <template #icon>
-                <NIcon><ChevronForwardOutline /></NIcon>
+                <NIcon>
+                  <ChevronForwardOutline />
+                </NIcon>
               </template>
             </NButton>
           </div>
         </template>
         <div class="task-list">
-          <div
-            v-for="task in upcomingTasks"
-            :key="task.id"
-            class="task-row"
-            :class="{ 'task-row--updating': updatingTaskId === task.id }"
-          >
+          <div v-for="task in upcomingTasks" :key="task.id" class="task-row"
+            :class="{ 'task-row--updating': updatingTaskId === task.id }">
             <div class="task-main" @click="handleTaskClick(task.id)">
-              <NButton
-                quaternary
-                circle
-                size="small"
-                class="complete-btn"
-                :loading="updatingTaskId === task.id"
-                @click.stop="handleComplete(task)"
-              >
+              <NButton quaternary circle size="small" class="complete-btn" :loading="updatingTaskId === task.id"
+                @click.stop="handleComplete(task)">
                 <template #icon>
-                  <NIcon><CheckmarkCircleOutline /></NIcon>
+                  <NIcon>
+                    <CheckmarkCircleOutline />
+                  </NIcon>
                 </template>
               </NButton>
               <div class="task-info">
@@ -351,13 +323,8 @@ const summaryCards = computed(() => [
               </div>
             </div>
             <div class="task-meta">
-              <NDropdown
-                v-if="task.statusName"
-                trigger="click"
-                :options="statusOptions(task)"
-                @select="(key: string) => handleStatusChange(task, key)"
-                @click.stop
-              >
+              <NDropdown v-if="task.statusName" trigger="click" :options="statusOptions(task)"
+                @select="(key: string) => handleStatusChange(task, key)" @click.stop>
                 <StatusBadge :name="task.statusName" :color="task.statusColor" />
               </NDropdown>
               <PriorityBadge :priority="task.priority" />
@@ -372,19 +339,16 @@ const summaryCards = computed(() => [
         <template #header>
           <div class="section-header">
             <div class="section-header-left">
-              <NIcon :size="20" color="var(--color-warning)"><HourglassOutline /></NIcon>
+              <NIcon :size="20" color="var(--color-warning)">
+                <HourglassOutline />
+              </NIcon>
               <NText class="section-title" style="color: var(--color-warning)">รอหน่วยงานอื่น</NText>
               <NTag :bordered="false" size="small" type="warning">{{ waitingTasks.length }}</NTag>
             </div>
           </div>
         </template>
         <div class="task-list">
-          <div
-            v-for="task in waitingTasks"
-            :key="task.taskId"
-            class="task-row"
-            @click="handleTaskClick(task.taskId)"
-          >
+          <div v-for="task in waitingTasks" :key="task.taskId" class="task-row" @click="handleTaskClick(task.taskId)">
             <div class="task-main">
               <div class="task-info">
                 <div class="task-title">{{ task.taskTitle }}</div>

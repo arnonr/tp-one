@@ -62,8 +62,8 @@ const detailTaskId = ref<string | null>(null)
 const expandedRowKeys = ref<string[]>([])
 
 // Sort state
-const sortBy = ref<string | null>(null)
-const sortOrder = ref<'asc' | 'desc' | false>(false)
+const sortBy = ref<string | null>('startDate')
+const sortOrder = ref<'asc' | 'desc' | false>('desc')
 
 // Advanced filter toggle
 const showAdvancedFilters = ref(false)
@@ -128,7 +128,7 @@ async function fetchTasks() {
       dueDateFrom: formatDateParam(dueDateFromFilter.value),
       dueDateTo: formatDateParam(dueDateToFilter.value),
       sortBy: sortBy.value || undefined,
-      sortOrder: sortOrder.value || undefined,
+      sortOrder: sortOrder.value === 'ascend' ? 'asc' : sortOrder.value === 'descend' ? 'desc' : undefined,
       page: page.value,
       pageSize: pageSize.value,
     })
@@ -391,9 +391,13 @@ function onResize() {
 }
 
 function handleSorterChange(sorter: any) {
-  if (!sorter || sorter.order === false) {
+  if (!sorter) {
     sortBy.value = null
     sortOrder.value = false
+  } else if (sorter.order === false) {
+    // 3rd click would reset — toggle back to ascend instead
+    sortBy.value = sorter.columnKey
+    sortOrder.value = 'ascend'
   } else {
     sortBy.value = sorter.columnKey
     sortOrder.value = sorter.order
@@ -404,8 +408,6 @@ function handleSorterChange(sorter: any) {
 
 const activeAdvancedCount = computed(() => {
   let count = 0
-  if (projectFilter.value) count++
-  if (statusFilter.value) count++
   if (priorityFilter.value) count++
   if (startDateFromFilter.value || startDateToFilter.value) count++
   if (dueDateFromFilter.value || dueDateToFilter.value) count++
@@ -500,12 +502,14 @@ onUnmounted(() => {
       <!-- Filters -->
       <NCard class="filter-card" :bordered="false">
         <div class="filter-basic">
-          <NInput v-model:value="searchFilter" placeholder="ค้นหางาน..." size="small" class="filter-search" clearable
-            @keyup.enter="fetchTasks" />
           <NSelect v-model:value="fiscalYearFilter" :options="fyOptions" placeholder="ปีงบประมาณ" size="small"
             class="filter-fy" clearable />
-          <NSelect v-model:value="workspaceFilter" :options="workspaceOptions" placeholder="พื้นที่งาน" size="small"
-            class="filter-select" clearable @update:value="handleWorkspaceChange" />
+          <NInput v-model:value="searchFilter" placeholder="ค้นหางาน..." size="small" class="filter-search" clearable
+            @keyup.enter="fetchTasks" />
+          <NSelect v-model:value="projectFilter" :options="projectOptions" placeholder="โครงการ" size="small"
+            class="filter-select-wide" clearable />
+          <NSelect v-model:value="statusFilter" :options="statusOptions" placeholder="สถานะ" size="small"
+            class="filter-select" clearable />
           <NButton size="small" :type="showAdvancedFilters ? 'primary' : 'default'" secondary
             @click="showAdvancedFilters = !showAdvancedFilters">
             <template #icon>
@@ -536,10 +540,6 @@ onUnmounted(() => {
         <transition name="filter-slide">
           <div v-if="showAdvancedFilters" class="filter-advanced">
             <div class="filter-dropdowns">
-              <NSelect v-model:value="projectFilter" :options="projectOptions" placeholder="โครงการ" size="small"
-                class="filter-select-wide" clearable />
-              <NSelect v-model:value="statusFilter" :options="statusOptions" placeholder="สถานะ" size="small"
-                class="filter-select" clearable />
               <NSelect v-model:value="priorityFilter" :options="priorityOptions" placeholder="ความสำคัญ" size="small"
                 class="filter-select" clearable />
             </div>
@@ -605,7 +605,8 @@ onUnmounted(() => {
           <div class="task-card__footer">
             <div class="task-card__dates">
               <span v-if="task.dueDate" class="task-card__date">
-                กำหนด: <ThaiDate :date="task.dueDate" format="short" />
+                กำหนด:
+                <ThaiDate :date="task.dueDate" format="short" />
               </span>
               <span v-if="task.subtaskCount" class="task-card__subtasks" @click.stop="toggleExpand(task.id)">
                 {{ task.completedSubtaskCount || 0 }}/{{ task.subtaskCount }} งานย่อย
@@ -914,7 +915,7 @@ onUnmounted(() => {
   font-weight: 600;
   border: 2px solid #fff;
 
-  & + & {
+  &+& {
     margin-left: -6px;
   }
 }
