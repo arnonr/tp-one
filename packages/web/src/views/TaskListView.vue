@@ -12,15 +12,18 @@ import {
   NPagination,
   NTag,
   NAvatar,
+  NDropdown,
   useMessage,
 } from 'naive-ui'
 import {
   AddCircleOutline,
-  FilterOutline,
   GridOutline,
   ListOutline,
   CalendarOutline,
   RefreshOutline,
+  FunnelOutline,
+  ChevronDownOutline,
+  ChevronUpOutline,
 } from '@vicons/ionicons5'
 import { useRouter } from 'vue-router'
 import PageHeader from '@/components/common/PageHeader.vue'
@@ -55,6 +58,13 @@ const editingTaskId = ref<string | undefined>(undefined)
 const showDetail = ref(false)
 const detailTaskId = ref<string | null>(null)
 const expandedRowKeys = ref<string[]>([])
+
+// Sort state
+const sortBy = ref<string | null>(null)
+const sortOrder = ref<'asc' | 'desc' | false>(false)
+
+// Advanced filter toggle
+const showAdvancedFilters = ref(false)
 
 // Filter state
 const workspaceFilter = ref<string | null>(wsStore.currentWorkspaceId)
@@ -115,6 +125,8 @@ async function fetchTasks() {
       startDateTo: formatDateParam(startDateToFilter.value),
       dueDateFrom: formatDateParam(dueDateFromFilter.value),
       dueDateTo: formatDateParam(dueDateToFilter.value),
+      sortBy: sortBy.value || undefined,
+      sortOrder: sortOrder.value || undefined,
       page: page.value,
       pageSize: pageSize.value,
     })
@@ -123,12 +135,6 @@ async function fetchTasks() {
   } catch {
     message.error('โหลดรายการงานไม่สำเร็จ')
   }
-}
-
-async function loadWorkspaces() {
-  try {
-    workspaces.value = await workspaceService.list()
-  } catch { /* ignore */ }
 }
 
 async function loadProjects(workspaceId?: string) {
@@ -176,6 +182,35 @@ function handleWorkspaceChange(val: string | null) {
   }
 }
 
+function toggleExpand(rowId: string) {
+  const idx = expandedRowKeys.value.indexOf(rowId)
+  if (idx === -1) {
+    expandedRowKeys.value.push(rowId)
+  } else {
+    expandedRowKeys.value.splice(idx, 1)
+  }
+}
+
+async function handleStatusChange(taskId: string, statusId: string, workspaceId: string) {
+  const task = tasks.value.find(t => t.id === taskId)
+  if (!task) return
+  const prev = { statusId: task.statusId, statusName: task.statusName, statusColor: task.statusColor }
+  const wsStatuses = taskStore.workspaceStatuses[workspaceId] || []
+  const newStatus = wsStatuses.find((s: any) => s.id === statusId)
+  if (newStatus) {
+    task.statusId = statusId
+    task.statusName = newStatus.name
+    task.statusColor = newStatus.color
+  }
+  try {
+    await taskStore.updateTask(taskId, { statusId })
+    message.success('เปลี่ยนสถานะสำเร็จ')
+  } catch {
+    Object.assign(task, prev)
+    message.error('เปลี่ยนสถานะไม่สำเร็จ')
+  }
+}
+
 const columns = [
   {
     type: 'expand' as const,
@@ -186,6 +221,7 @@ const columns = [
   {
     title: 'งาน',
     key: 'title',
+    sorter: true,
     render(row: any) {
       return h('div', { style: 'min-width: 200px' }, [
         h('div', { style: 'font-weight: 500' }, row.title),
@@ -205,6 +241,11 @@ const columns = [
         'div',
         {
           class: ['subtask-badge', allDone ? 'subtask-badge--done' : done > 0 ? 'subtask-badge--partial' : 'subtask-badge--none'],
+          style: 'cursor: pointer',
+          onClick: (e: MouseEvent) => {
+            e.stopPropagation()
+            toggleExpand(row.id)
+          },
         },
         `${done}/${total}`,
       )
@@ -214,6 +255,7 @@ const columns = [
     title: 'ความสำคัญ',
     key: 'priority',
     width: 110,
+    sorter: true,
     render(row: any) {
       return h(PriorityBadge, { priority: row.priority })
     },
@@ -231,7 +273,22 @@ const columns = [
     key: 'status',
     width: 140,
     render(row: any) {
-      return h(StatusBadge, { name: row.statusName || '—', color: row.statusColor })
+      const wsStatuses = taskStore.workspaceStatuses[row.workspaceId] || []
+      const options = wsStatuses.map((s: any) => ({ key: s.id, label: s.name }))
+      if (!options.length) {
+        return h(StatusBadge, { name: row.statusName || '—', color: row.statusColor })
+      }
+      return h('div', { onClick: (e: MouseEvent) => e.stopPropagation() }, [
+        h(NDropdown, {
+          options,
+          trigger: 'click',
+          onSelect: (key: string) => handleStatusChange(row.id, key, row.workspaceId),
+        }, {
+          default: () => h('div', { style: 'cursor: pointer; display: inline-flex' }, [
+            h(StatusBadge, { name: row.statusName || '—', color: row.statusColor }),
+          ]),
+        }),
+      ])
     },
   },
   {
@@ -246,6 +303,7 @@ const columns = [
     title: 'วันเริ่มต้น',
     key: 'startDate',
     width: 130,
+    sorter: true,
     render(row: any) {
       if (!row.startDate) return '—'
       return h(ThaiDate, { date: row.startDate, format: 'short' })
@@ -255,6 +313,7 @@ const columns = [
     title: 'กำหนดส่ง',
     key: 'dueDate',
     width: 130,
+    sorter: true,
     render(row: any) {
       if (!row.dueDate) return '—'
       return h(ThaiDate, { date: row.dueDate, format: 'short' })
@@ -316,6 +375,28 @@ function resetFilters() {
   loadAllStatuses()
 }
 
+function handleSorterChange(sorter: any) {
+  if (!sorter || sorter.order === false) {
+    sortBy.value = null
+    sortOrder.value = false
+  } else {
+    sortBy.value = sorter.columnKey
+    sortOrder.value = sorter.order
+  }
+  page.value = 1
+  fetchTasks()
+}
+
+const activeAdvancedCount = computed(() => {
+  let count = 0
+  if (projectFilter.value) count++
+  if (statusFilter.value) count++
+  if (priorityFilter.value) count++
+  if (startDateFromFilter.value || startDateToFilter.value) count++
+  if (dueDateFromFilter.value || dueDateToFilter.value) count++
+  return count
+})
+
 watch(() => wsStore.currentWorkspaceId, (id) => {
   workspaceFilter.value = id
   projectFilter.value = null
@@ -337,9 +418,9 @@ onMounted(async () => {
   workspaces.value = wsStore.workspaces
   const wsId = wsStore.currentWorkspaceId
   if (wsId) {
-    await Promise.all([loadProjects(wsId), loadStatusesForWorkspace(wsId), fetchTasks()])
+    await Promise.all([loadProjects(wsId), loadStatusesForWorkspace(wsId), fetchTasks(), taskStore.fetchAllStatuses()])
   } else {
-    await Promise.all([loadProjects(), loadAllStatuses(), fetchTasks()])
+    await Promise.all([loadProjects(), loadAllStatuses(), fetchTasks(), taskStore.fetchAllStatuses()])
   }
 })
 </script>
@@ -390,67 +471,84 @@ onMounted(async () => {
 
       <!-- Filters -->
       <NCard class="filter-card" :bordered="false">
-        <div class="filter-header">
-          <div class="filter-title">
-            <NIcon :size="15">
-              <FilterOutline />
-            </NIcon>
-            ตัวกรอง
-          </div>
-          <NButton size="small" secondary @click="resetFilters">
-            <template #icon>
-              <NIcon>
-                <RefreshOutline />
-              </NIcon>
-            </template>
-            ล้างตัวกรอง
-          </NButton>
-        </div>
-
-        <div class="filter-dropdowns">
+        <div class="filter-basic">
           <NInput v-model:value="searchFilter" placeholder="ค้นหางาน..." size="small" class="filter-search" clearable
             @keyup.enter="fetchTasks" />
           <NSelect v-model:value="fiscalYearFilter" :options="fyOptions" placeholder="ปีงบประมาณ" size="small"
             class="filter-fy" clearable />
           <NSelect v-model:value="workspaceFilter" :options="workspaceOptions" placeholder="พื้นที่งาน" size="small"
             class="filter-select" clearable @update:value="handleWorkspaceChange" />
-          <NSelect v-model:value="projectFilter" :options="projectOptions" placeholder="โครงการ" size="small"
-            class="filter-select" clearable />
-          <NSelect v-model:value="statusFilter" :options="statusOptions" placeholder="สถานะ" size="small"
-            class="filter-select" clearable />
-          <NSelect v-model:value="priorityFilter" :options="priorityOptions" placeholder="ความสำคัญ" size="small"
-            class="filter-select" clearable />
+          <NButton size="small" :type="showAdvancedFilters ? 'primary' : 'default'" secondary
+            @click="showAdvancedFilters = !showAdvancedFilters">
+            <template #icon>
+              <NIcon :size="14">
+                <FunnelOutline />
+              </NIcon>
+            </template>
+            ตัวกรองเพิ่มเติม
+            <NTag v-if="activeAdvancedCount > 0" size="small" round :bordered="false" type="primary"
+              style="margin-left: 4px; line-height: 18px; min-width: 18px; text-align: center; padding: 0 4px">
+              {{ activeAdvancedCount }}
+            </NTag>
+            <NIcon :size="14" style="margin-left: 2px">
+              <ChevronDownOutline v-if="!showAdvancedFilters" />
+              <ChevronUpOutline v-else />
+            </NIcon>
+          </NButton>
+          <NButton size="small" quaternary @click="resetFilters">
+            <template #icon>
+              <NIcon>
+                <RefreshOutline />
+              </NIcon>
+            </template>
+            ล้าง
+          </NButton>
         </div>
 
-        <div class="filter-dates">
-          <div class="date-range-group">
-            <span class="date-label">วันเริ่มต้น</span>
-            <div class="filter-date">
-              <ThaiDatePicker v-model:value="startDateFromFilter" placeholder="จาก" />
+        <transition name="filter-slide">
+          <div v-if="showAdvancedFilters" class="filter-advanced">
+            <div class="filter-dropdowns">
+              <NSelect v-model:value="projectFilter" :options="projectOptions" placeholder="โครงการ" size="small"
+                class="filter-select-wide" clearable />
+              <NSelect v-model:value="statusFilter" :options="statusOptions" placeholder="สถานะ" size="small"
+                class="filter-select" clearable />
+              <NSelect v-model:value="priorityFilter" :options="priorityOptions" placeholder="ความสำคัญ" size="small"
+                class="filter-select" clearable />
             </div>
-            <span class="date-sep">—</span>
-            <div class="filter-date">
-              <ThaiDatePicker v-model:value="startDateToFilter" placeholder="ถึง" />
+
+            <div class="filter-dates">
+              <div class="date-range-group">
+                <span class="date-label">วันเริ่มต้น</span>
+                <div class="filter-date">
+                  <ThaiDatePicker v-model:value="startDateFromFilter" placeholder="จาก" />
+                </div>
+                <span class="date-sep">—</span>
+                <div class="filter-date">
+                  <ThaiDatePicker v-model:value="startDateToFilter" placeholder="ถึง" />
+                </div>
+              </div>
+              <div class="date-range-divider" />
+              <div class="date-range-group">
+                <span class="date-label">กำหนดส่ง</span>
+                <div class="filter-date">
+                  <ThaiDatePicker v-model:value="dueDateFromFilter" placeholder="จาก" />
+                </div>
+                <span class="date-sep">—</span>
+                <div class="filter-date">
+                  <ThaiDatePicker v-model:value="dueDateToFilter" placeholder="ถึง" />
+                </div>
+              </div>
             </div>
           </div>
-          <div class="date-range-divider" />
-          <div class="date-range-group">
-            <span class="date-label">กำหนดส่ง</span>
-            <div class="filter-date">
-              <ThaiDatePicker v-model:value="dueDateFromFilter" placeholder="จาก" />
-            </div>
-            <span class="date-sep">—</span>
-            <div class="filter-date">
-              <ThaiDatePicker v-model:value="dueDateToFilter" placeholder="ถึง" />
-            </div>
-          </div>
-        </div>
+        </transition>
       </NCard>
 
       <!-- Task Table -->
       <NCard class="table-card" :bordered="false">
         <NDataTable :columns="columns" :data="tasks" :bordered="false" :single-line="false"
-          :row-key="(row: any) => row.id" v-model:expanded-row-keys="expandedRowKeys" :row-props="(row: any) => ({
+          :row-key="(row: any) => row.id" v-model:expanded-row-keys="expandedRowKeys" :remote-sort="true"
+          :sort-by="sortBy ? { columnKey: sortBy, order: sortOrder || false } : undefined"
+          @update:sorter="handleSorterChange" :row-props="(row: any) => ({
             style: 'cursor: pointer',
             onClick: (e: MouseEvent) => {
               const target = e.target as HTMLElement
@@ -484,23 +582,7 @@ onMounted(async () => {
   box-shadow: var(--shadow-xs);
 }
 
-.filter-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: var(--space-sm);
-}
-
-.filter-title {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 13px;
-  font-weight: 500;
-  color: var(--color-text-secondary);
-}
-
-.filter-dropdowns {
+.filter-basic {
   display: flex;
   align-items: center;
   gap: var(--space-sm);
@@ -510,7 +592,7 @@ onMounted(async () => {
 .filter-search {
   flex: 1;
   min-width: 160px;
-  max-width: 240px;
+  max-width: 280px;
 }
 
 .filter-fy {
@@ -523,14 +605,30 @@ onMounted(async () => {
   flex-shrink: 0;
 }
 
+.filter-select-wide {
+  width: 260px;
+  flex-shrink: 0;
+}
+
+.filter-advanced {
+  margin-top: var(--space-sm);
+  padding-top: var(--space-sm);
+  border-top: 1px solid var(--color-border);
+}
+
+.filter-dropdowns {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  flex-wrap: wrap;
+}
+
 .filter-dates {
   display: flex;
   align-items: center;
   gap: var(--space-sm);
   flex-wrap: wrap;
   margin-top: var(--space-sm);
-  padding-top: var(--space-sm);
-  border-top: 1px solid var(--color-border);
 }
 
 .date-range-group {
@@ -563,6 +661,26 @@ onMounted(async () => {
 .filter-date {
   width: 160px;
   flex-shrink: 0;
+}
+
+.filter-slide-enter-active,
+.filter-slide-leave-active {
+  transition: all 0.2s ease;
+  overflow: hidden;
+}
+
+.filter-slide-enter-from,
+.filter-slide-leave-to {
+  opacity: 0;
+  max-height: 0;
+  margin-top: 0;
+  padding-top: 0;
+}
+
+.filter-slide-enter-to,
+.filter-slide-leave-from {
+  opacity: 1;
+  max-height: 200px;
 }
 
 .table-card {

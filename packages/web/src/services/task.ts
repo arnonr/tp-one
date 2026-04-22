@@ -12,6 +12,8 @@ export interface TaskListParams {
   startDateTo?: string
   dueDateFrom?: string
   dueDateTo?: string
+  sortBy?: string
+  sortOrder?: 'asc' | 'desc'
   page?: number
   pageSize?: number
 }
@@ -30,6 +32,8 @@ export const taskService = {
     if (params.startDateTo) query.set('startDateTo', params.startDateTo)
     if (params.dueDateFrom) query.set('dueDateFrom', params.dueDateFrom)
     if (params.dueDateTo) query.set('dueDateTo', params.dueDateTo)
+    if (params.sortBy) query.set('sortBy', params.sortBy)
+    if (params.sortOrder) query.set('sortOrder', params.sortOrder)
     if (params.page) query.set('page', String(params.page))
     if (params.pageSize) query.set('pageSize', String(params.pageSize))
     const { data } = await api.get(`/tasks?${query.toString()}`)

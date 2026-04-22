@@ -44,6 +44,8 @@ export interface TaskFilter {
   startDateTo?: string;
   dueDateFrom?: string;
   dueDateTo?: string;
+  sortBy?: string;
+  sortOrder?: 'asc' | 'desc';
   page?: number;
   pageSize?: number;
 }

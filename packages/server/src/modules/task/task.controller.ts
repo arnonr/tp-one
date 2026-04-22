@@ -15,6 +15,8 @@ export const TaskController = {
       startDateTo: query.startDateTo,
       dueDateFrom: query.dueDateFrom,
       dueDateTo: query.dueDateTo,
+      sortBy: query.sortBy,
+      sortOrder: query.sortOrder,
       page: query.page ? Number(query.page) : 1,
       pageSize: query.pageSize ? Number(query.pageSize) : 20,
     });

@@ -1,6 +1,6 @@
 import { db } from '../../config/database';
 import { tasks, taskAssignees, taskWatchers, tags, taskTags, comments, attachments, workspaceStatuses, workspaces, users, projects } from '../../db/schema';
-import { eq, and, or, ilike, sql, desc, asc, count, isNull, gte, lte, inArray } from 'drizzle-orm';
+import { eq, and, or, ilike, sql, desc, asc, count, isNull, gte, lte, inArray, type SQL } from 'drizzle-orm';
 import { NotFoundError, ForbiddenError, ValidationError } from '../../shared/errors';
 import { getWorkspacePermission } from '../../middleware/rbac.middleware';
 import type { GlobalRole } from '../../shared/constants';
@@ -52,6 +52,19 @@ export const TaskService = {
 
     const whereClause = and(...conditions);
 
+    // Dynamic sorting
+    const sortableColumns: Record<string, any> = {
+      title: tasks.title,
+      priority: tasks.priority,
+      startDate: tasks.startDate,
+      dueDate: tasks.dueDate,
+      createdAt: tasks.createdAt,
+      updatedAt: tasks.updatedAt,
+      fiscalYear: tasks.fiscalYear,
+    };
+    const sortCol = sortableColumns[filters.sortBy || ''] || tasks.createdAt;
+    const sortDir = filters.sortOrder === 'asc' ? asc(sortCol) : desc(sortCol);
+
     // Base query without assignee join
     const selectFields = {
       id: tasks.id,
@@ -89,7 +102,7 @@ export const TaskService = {
         .leftJoin(workspaces, eq(tasks.workspaceId, workspaces.id))
         .leftJoin(projects, eq(tasks.projectId, projects.id))
         .where(and(whereClause, eq(taskAssignees.userId, filters.assigneeId!)))
-        .orderBy(desc(tasks.createdAt))
+        .orderBy(sortDir)
         .limit(pageSize)
         .offset(offset);
     } else {
@@ -100,7 +113,7 @@ export const TaskService = {
         .leftJoin(workspaces, eq(tasks.workspaceId, workspaces.id))
         .leftJoin(projects, eq(tasks.projectId, projects.id))
         .where(whereClause)
-        .orderBy(desc(tasks.createdAt))
+        .orderBy(sortDir)
         .limit(pageSize)
         .offset(offset);
     }
