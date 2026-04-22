@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { ref, computed, onMounted, watch } from 'vue'
-import { NScrollbar, NButton, NIcon, NSpin, useMessage, NEmpty } from 'naive-ui'
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
+import { NScrollbar, NButton, NIcon, NSpin, useMessage, NEmpty, NDropdown } from 'naive-ui'
 import { AddCircleOutline } from '@vicons/ionicons5'
 import TaskCard from './TaskCard.vue'
 import TaskForm from './TaskForm.vue'
@@ -28,6 +28,7 @@ const tasksByStatus = ref<Record<string, any[]>>({})
 const showTaskForm = ref(false)
 const formWorkspaceId = ref<string | undefined>(undefined)
 const formStatusId = ref<string | undefined>(undefined)
+const isMobile = ref(window.innerWidth < 768)
 
 async function fetchBoard() {
   loading.value = true
@@ -98,6 +99,44 @@ function handleDragStart(event: DragEvent, taskId: string) {
   event.dataTransfer?.setData('taskId', taskId)
 }
 
+async function handleMobileStatusChange(taskId: string, newStatusId: string, currentStatusId: string) {
+  if (newStatusId === currentStatusId) return
+
+  const taskList = tasksByStatus.value[currentStatusId]
+  const task = taskList?.find(t => t.id === taskId)
+  if (!task) return
+
+  // Optimistic update
+  const prevList = [...(taskList || [])]
+  tasksByStatus.value[currentStatusId] = prevList.filter(t => t.id !== taskId)
+  task.statusId = newStatusId
+  if (!tasksByStatus.value[newStatusId]) tasksByStatus.value[newStatusId] = []
+  tasksByStatus.value[newStatusId].push(task)
+
+  try {
+    await taskService.update(taskId, { statusId: newStatusId })
+    message.success('เปลี่ยนสถานะสำเร็จ')
+  } catch {
+    // Rollback
+    tasksByStatus.value[newStatusId] = tasksByStatus.value[newStatusId].filter(t => t.id !== taskId)
+    tasksByStatus.value[currentStatusId] = prevList
+    task.statusId = currentStatusId
+    message.error('เปลี่ยนสถานะไม่สำเร็จ')
+  }
+}
+
+function getStatusOptionsForTask(task: any, wsId: string) {
+  const statuses = workspaceStatuses.value[wsId] || []
+  return statuses
+    .filter(s => s.id !== task.statusId)
+    .map(s => ({ label: s.name, key: s.id }))
+}
+
+function getStatusLabel(statusId: string, wsId: string) {
+  const statuses = workspaceStatuses.value[wsId] || []
+  return statuses.find(s => s.id === statusId)?.name || '—'
+}
+
 function openCreateForm(workspaceId: string, statusId?: string) {
   formWorkspaceId.value = workspaceId
   formStatusId.value = statusId
@@ -110,7 +149,13 @@ function onFormCreated() {
   emit('created')
 }
 
+function onResize() {
+  isMobile.value = window.innerWidth < 768
+}
+
 onMounted(fetchBoard)
+onMounted(() => window.addEventListener('resize', onResize))
+onUnmounted(() => window.removeEventListener('resize', onResize))
 
 watch(() => wsStore.currentWorkspaceId, fetchBoard)
 </script>
@@ -127,7 +172,9 @@ watch(() => wsStore.currentWorkspaceId, fetchBoard)
             <span class="workspace-dot" :style="{ backgroundColor: ws.color || '#94a3b8' }" />
             <span class="workspace-name">{{ ws.name }}</span>
           </div>
-          <NScrollbar x-scrollable>
+
+          <!-- Desktop: Horizontal Kanban -->
+          <NScrollbar v-if="!isMobile" x-scrollable>
             <div class="board-columns">
               <div
                 v-for="status in (workspaceStatuses[ws.id] || [])"
@@ -182,6 +229,66 @@ watch(() => wsStore.currentWorkspaceId, fetchBoard)
               </div>
             </div>
           </NScrollbar>
+
+          <!-- Mobile: Vertical Stacked Layout -->
+          <div v-else class="mobile-board">
+            <div
+              v-for="status in (workspaceStatuses[ws.id] || [])"
+              :key="status.id"
+              class="mobile-status-group"
+            >
+              <div class="mobile-status-header">
+                <div class="mobile-status-label">
+                  <span class="column-dot" :style="{ backgroundColor: status.color || '#94a3b8' }" />
+                  <span class="mobile-status-name">{{ status.name }}</span>
+                  <span class="column-count">{{ (tasksByStatus[status.id] || []).length }}</span>
+                </div>
+                <NButton
+                  text
+                  size="tiny"
+                  @click="openCreateForm(ws.id, status.id)"
+                >
+                  <template #icon>
+                    <NIcon :size="16"><AddCircleOutline /></NIcon>
+                  </template>
+                </NButton>
+              </div>
+
+              <div v-if="!tasksByStatus[status.id]?.length" class="empty-column">
+                <span>ยังไม่มีงาน</span>
+              </div>
+
+              <div
+                v-for="task in tasksByStatus[status.id] || []"
+                :key="task.id"
+                class="mobile-task-wrapper"
+              >
+                <TaskCard
+                  :id="task.id"
+                  :title="task.title"
+                  :priority="task.priority"
+                  :status-name="status.name"
+                  :status-color="status.color"
+                  :workspace-name="ws.name"
+                  :assignees="task.assignees"
+                  :due-date="task.dueDate"
+                  :description="task.description"
+                  @click="emit('taskClick', task.id)"
+                />
+                <div class="mobile-status-action" @click.stop>
+                  <NDropdown
+                    :options="getStatusOptionsForTask(task, ws.id)"
+                    trigger="click"
+                    @select="(key: string) => handleMobileStatusChange(task.id, key, status.id)"
+                  >
+                    <NButton size="tiny" secondary>
+                      ย้ายสถานะ
+                    </NButton>
+                  </NDropdown>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       </template>
     </div>
@@ -229,6 +336,7 @@ watch(() => wsStore.currentWorkspaceId, fetchBoard)
   color: var(--color-text);
 }
 
+/* ─── Desktop Kanban ─── */
 .board-columns {
   display: flex;
   gap: 16px;
@@ -309,5 +417,60 @@ watch(() => wsStore.currentWorkspaceId, fetchBoard)
 
 .column-footer .n-button {
   width: 100%;
+}
+
+/* ─── Mobile Board ─── */
+.mobile-board {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.mobile-status-group {
+  background: var(--color-surface-variant);
+  border-radius: var(--radius-lg);
+  padding: 12px;
+}
+
+.mobile-status-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.mobile-status-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 600;
+  font-size: 0.875rem;
+}
+
+.mobile-status-name {
+  flex: 1;
+}
+
+.mobile-task-wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 8px;
+}
+
+.mobile-task-wrapper:last-child {
+  margin-bottom: 0;
+}
+
+.mobile-status-action {
+  display: flex;
+  justify-content: flex-end;
+  padding: 0 4px;
+}
+
+@media (min-width: 768px) {
+  .mobile-board {
+    display: none;
+  }
 }
 </style>

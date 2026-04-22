@@ -1,0 +1,71 @@
+- generic [ref=e7]:
+  - banner [ref=e8]:
+    - button [ref=e9] [cursor=pointer]:
+      - img [ref=e10]:
+        - img [ref=e11]
+    - heading "บอร์ดงาน" [level=1]
+    - generic [ref=e14] [cursor=pointer]:
+      - generic "ทุกพื้นที่ทำงาน" [ref=e15]:
+        - generic [ref=e16]: ทุกพื้นที่ทำงาน
+      - img "loading" [ref=e17]:
+        - img [ref=e20]
+        - img [ref=e27]
+    - generic [ref=e30]:
+      - img [ref=e32] [cursor=pointer]:
+        - img [ref=e33]
+      - superscript [ref=e36]:
+        - generic [ref=e39]:
+          - generic [ref=e40]: "3"
+          - generic [ref=e42]: "3"
+          - generic [ref=e43]: "3"
+  - main [ref=e44]:
+    - generic [ref=e45]:
+      - generic [ref=e46]:
+        - generic:
+          - generic:
+            - heading "บอร์ดงาน" [level=1]
+            - paragraph: ลากเพื่อเปลี่ยนสถานะงาน
+        - generic [ref=e48]:
+          - group [ref=e49]:
+            - button "รายการ" [ref=e50] [cursor=pointer]:
+              - img [ref=e52]:
+                - img [ref=e53]
+              - generic [ref=e57]: รายการ
+            - button "กระดาน" [ref=e58] [cursor=pointer]:
+              - img [ref=e60]:
+                - img [ref=e61]
+              - generic [ref=e66]: กระดาน
+            - button "ปฏิทิน" [ref=e67] [cursor=pointer]:
+              - img [ref=e69]:
+                - img [ref=e70]
+              - generic [ref=e81]: ปฏิทิน
+          - button "สร้างงาน" [ref=e82] [cursor=pointer]:
+            - img [ref=e84]:
+              - img [ref=e85]
+            - generic [ref=e87]: สร้างงาน
+      - generic [ref=e88]:
+        - generic:
+          - generic:
+            - generic:
+              - generic:
+                - generic: ที่ปรึกษา/วิจัย
+            - generic:
+              - generic:
+                - generic: อบรม/สัมนา
+            - generic:
+              - generic:
+                - generic: บ่มเพาะ/Incubation
+            - generic:
+              - generic:
+                - generic: ฝ่ายเช่าพื้นที่ (อัปเดต)
+            - generic:
+              - generic:
+                - generic: ฝ่ายการตลาด
+            - generic:
+              - generic:
+                - generic: งานทั่วไป อุทยาน
+            - generic:
+              - generic:
+                - generic: งานส่วนตัว
+        - img "loading" [ref=e90]:
+          - img [ref=e93]
