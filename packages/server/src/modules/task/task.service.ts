@@ -286,12 +286,18 @@ export const TaskService = {
     estimatedHours?: string;
     startDate?: string;
     dueDate?: string;
+    completedAt?: string | null;
     sortOrder?: number;
   }) {
     const existing = await this.getById(taskId);
 
     const { assigneeIds, ...updateData }: any = { ...data, updatedAt: new Date() };
     if (data.statusId) updateData.priority = data.priority as any;
+
+    // Convert timestamp strings to Date objects for Drizzle
+    if (updateData.completedAt !== undefined) {
+      updateData.completedAt = updateData.completedAt ? new Date(updateData.completedAt) : null;
+    }
 
     // If status changed to completed-like, set completedAt
     if (data.statusId && data.statusId !== existing.statusId) {
