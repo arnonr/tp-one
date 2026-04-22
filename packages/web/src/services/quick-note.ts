@@ -24,47 +24,47 @@ export interface UpdateNoteParams {
 }
 
 async function getNotes(): Promise<QuickNote[]> {
-  const { data } = await api.get("/api/quick-notes/");
+  const { data } = await api.get("/quick-notes/");
   return data.data;
 }
 
 async function getArchivedNotes(): Promise<QuickNote[]> {
-  const { data } = await api.get("/api/quick-notes/archived");
+  const { data } = await api.get("/quick-notes/archived");
   return data.data;
 }
 
 async function getNoteById(id: string): Promise<QuickNote | null> {
-  const { data } = await api.get(`/api/quick-notes/${id}`);
+  const { data } = await api.get(`/quick-notes/${id}`);
   return data.success ? data.data : null;
 }
 
 async function createNote(params: CreateNoteParams): Promise<QuickNote> {
-  const { data } = await api.post("/api/quick-notes/", params);
+  const { data } = await api.post("/quick-notes/", params);
   return data.data;
 }
 
 async function updateNote(id: string, params: UpdateNoteParams): Promise<QuickNote> {
-  const { data } = await api.patch(`/api/quick-notes/${id}`, params);
+  const { data } = await api.patch(`/quick-notes/${id}`, params);
   return data.data;
 }
 
 async function deleteNote(id: string): Promise<boolean> {
-  const { data } = await api.delete(`/api/quick-notes/${id}`);
+  const { data } = await api.delete(`/quick-notes/${id}`);
   return data.success;
 }
 
 async function togglePin(id: string): Promise<QuickNote> {
-  const { data } = await api.patch(`/api/quick-notes/${id}/toggle-pin`);
+  const { data } = await api.patch(`/quick-notes/${id}/toggle-pin`);
   return data.data;
 }
 
 async function archiveNote(id: string): Promise<QuickNote> {
-  const { data } = await api.patch(`/api/quick-notes/${id}/archive`);
+  const { data } = await api.patch(`/quick-notes/${id}/archive`);
   return data.data;
 }
 
 async function unarchiveNote(id: string): Promise<QuickNote> {
-  const { data } = await api.patch(`/api/quick-notes/${id}/unarchive`);
+  const { data } = await api.patch(`/quick-notes/${id}/unarchive`);
   return data.data;
 }
 

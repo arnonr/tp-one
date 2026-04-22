@@ -429,6 +429,9 @@ watch(() => wsStore.currentWorkspaceId, (id) => {
 
 watch([workspaceFilter, projectFilter, statusFilter, priorityFilter, fiscalYearFilter, page], fetchTasks, { deep: true })
 watch([startDateFromFilter, startDateToFilter, dueDateFromFilter, dueDateToFilter], fetchTasks, { deep: true })
+watch(() => taskStore.tasks, (newTasks) => {
+  tasks.value = newTasks
+}, { immediate: false })
 
 onMounted(async () => {
   window.addEventListener('resize', onResize)

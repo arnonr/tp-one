@@ -39,6 +39,7 @@ import { useAuthStore } from "../../stores/auth";
 import WorkspaceSelector from "./WorkspaceSelector.vue";
 import { useWorkspaceStore } from "@/stores/workspace";
 import { useQuickNoteStore } from "@/stores/quick-note";
+import { useTaskStore } from "@/stores/task";
 
 const router = useRouter();
 const route = useRoute();
@@ -46,6 +47,7 @@ const authStore = useAuthStore();
 const wsStore = useWorkspaceStore();
 const notifStore = useNotificationStore();
 const noteStore = useQuickNoteStore();
+const taskStore = useTaskStore();
 const searchQuery = ref("");
 const isMobile = ref(false);
 const mobileOpen = ref(false);

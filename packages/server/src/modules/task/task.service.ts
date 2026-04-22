@@ -3,8 +3,19 @@ import { tasks, taskAssignees, taskWatchers, tags, taskTags, comments, attachmen
 import { eq, and, or, ilike, sql, desc, asc, count, isNull, gte, lte, inArray, type SQL } from 'drizzle-orm';
 import { NotFoundError, ForbiddenError, ValidationError } from '../../shared/errors';
 import { getWorkspacePermission } from '../../middleware/rbac.middleware';
+import { getFiscalYear } from '../../shared/thai.utils';
 import type { GlobalRole } from '../../shared/constants';
 import type { TaskFilter } from '../../shared/types';
+
+async function getDefaultStatusId(workspaceId: string): Promise<string> {
+  const [status] = await db
+    .select({ id: workspaceStatuses.id })
+    .from(workspaceStatuses)
+    .where(eq(workspaceStatuses.workspaceId, workspaceId))
+    .orderBy(workspaceStatuses.sortOrder)
+    .limit(1);
+  return status?.id ?? '';
+}
 
 export const TaskService = {
   // --- Task CRUD ---
@@ -252,6 +263,13 @@ export const TaskService = {
     tagIds?: string[];
   }) {
     const { assigneeIds, tagIds, ...taskData } = data;
+
+    // Resolve defaults: fiscalYear and statusId
+    const [fiscalYearToUse, statusIdToUse] = await Promise.all([
+      taskData.fiscalYear ? Promise.resolve(taskData.fiscalYear) : Promise.resolve(getFiscalYear(new Date())),
+      taskData.statusId ? Promise.resolve(taskData.statusId) : getDefaultStatusId(taskData.workspaceId),
+    ]);
+
     const [task] = await db
       .insert(tasks)
       .values({
@@ -259,10 +277,10 @@ export const TaskService = {
         description: taskData.description,
         workspaceId: taskData.workspaceId,
         projectId: taskData.projectId,
-        statusId: taskData.statusId,
+        statusId: statusIdToUse,
         priority: (taskData.priority || 'normal') as any,
         reporterId: taskData.reporterId,
-        fiscalYear: taskData.fiscalYear,
+        fiscalYear: fiscalYearToUse,
         budget: taskData.budget,
         estimatedHours: taskData.estimatedHours,
         startDate: taskData.startDate,
@@ -271,14 +289,19 @@ export const TaskService = {
       })
       .returning();
 
-    // Auto-add reporter as watcher
+    // Auto-add reporter as watcher and assignee
     await db.insert(taskWatchers).values({ taskId: task.id, userId: data.reporterId });
+    await db.insert(taskAssignees).values({ taskId: task.id, userId: data.reporterId });
 
     // Add assignees
     if (assigneeIds?.length) {
-      await db.insert(taskAssignees).values(
-        assigneeIds.map((userId) => ({ taskId: task.id, userId }))
-      );
+      // Avoid duplicate if reporter is also in assigneeIds
+      const uniqueAssignees = assigneeIds.filter(id => id !== data.reporterId);
+      if (uniqueAssignees.length) {
+        await db.insert(taskAssignees).values(
+          uniqueAssignees.map((userId) => ({ taskId: task.id, userId }))
+        );
+      }
     }
 
     // Add tags if provided

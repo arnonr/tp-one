@@ -17,17 +17,23 @@ import {
   AddOutline,
   DocumentTextOutline,
   EllipsisHorizontalOutline,
+  CreateOutline,
 } from "@vicons/ionicons5";
 import { useQuickNoteStore } from "@/stores/quick-note";
 import { useWorkspaceStore } from "@/stores/workspace";
+import { useTaskStore } from "@/stores/task";
+import { type QuickNote } from "@/services/quick-note";
+import ConvertNoteToTask from "./ConvertNoteToTask.vue";
 
 const noteStore = useQuickNoteStore();
 const wsStore = useWorkspaceStore();
+const taskStore = useTaskStore();
 
 const newNoteContent = ref("");
 const isSubmitting = ref(false);
 const noteInputRef = ref<HTMLTextAreaElement | null>(null);
-const showColorPicker = ref<string | null>(null);
+const selectedColor = ref<string | undefined>(undefined);
+const convertingNote = ref<QuickNote | null>(null);
 
 const noteColors = [
   { label: "เทา", value: "#6b7280" },
@@ -53,11 +59,20 @@ async function handleAddNote() {
   if (!newNoteContent.value.trim() || isSubmitting.value) return;
   isSubmitting.value = true;
   try {
-    await noteStore.addNote({ content: newNoteContent.value.trim() });
+    await noteStore.addNote({ content: newNoteContent.value.trim(), color: selectedColor.value });
     newNoteContent.value = "";
+    selectedColor.value = undefined;
   } finally {
     isSubmitting.value = false;
   }
+}
+
+function selectColor(color: string) {
+  selectedColor.value = selectedColor.value === color ? undefined : color;
+}
+
+function handleConvertToTask(note: QuickNote) {
+  convertingNote.value = note;
 }
 
 function handleKeydown(e: KeyboardEvent) {
@@ -160,9 +175,10 @@ function formatTime(dateStr: string): string {
                 v-for="c in noteColors"
                 :key="c.value"
                 class="color-dot"
-                :class="{ active: false }"
+                :class="{ active: selectedColor === c.value }"
                 :style="{ backgroundColor: c.value }"
                 :title="c.label"
+                @click="selectColor(c.value)"
               />
             </div>
             <NButton
@@ -229,6 +245,11 @@ function formatTime(dateStr: string): string {
                         <ArchiveOutline />
                       </NIcon>
                     </button>
+                    <button class="note-action-btn" title="แปลงเป็นงาน" @click="handleConvertToTask(note)">
+                      <NIcon :size="14">
+                        <CreateOutline />
+                      </NIcon>
+                    </button>
                     <button class="note-action-btn note-action-btn--danger" title="ลบ" @click="noteStore.deleteNote(note.id)">
                       <NIcon :size="14">
                         <TrashOutline />
@@ -262,6 +283,11 @@ function formatTime(dateStr: string): string {
                     <button class="note-action-btn" title="เก็บไว้" @click="noteStore.archiveNote(note.id)">
                       <NIcon :size="14">
                         <ArchiveOutline />
+                      </NIcon>
+                    </button>
+                    <button class="note-action-btn" title="แปลงเป็นงาน" @click="handleConvertToTask(note)">
+                      <NIcon :size="14">
+                        <CreateOutline />
                       </NIcon>
                     </button>
                     <button class="note-action-btn note-action-btn--danger" title="ลบ" @click="noteStore.deleteNote(note.id)">
@@ -304,6 +330,15 @@ function formatTime(dateStr: string): string {
         </div>
       </aside>
     </Transition>
+
+    <!-- Convert Note to Task Dialog -->
+    <ConvertNoteToTask
+      v-if="convertingNote"
+      :note="convertingNote"
+      @close="convertingNote = null"
+      @converted="convertingNote = null"
+      @task-created="taskStore.fetchTasks()"
+    />
   </Teleport>
 </template>
 
