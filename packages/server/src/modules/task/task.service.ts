@@ -130,11 +130,33 @@ export const TaskService = {
       }
     }
 
+    // Batch-load subtask counts
+    const subtaskCountByTask: Record<string, { total: number; done: number }> = {};
+    if (taskIds.length > 0) {
+      const subtaskRows = await db
+        .select({
+          parentId: tasks.parentId,
+          total: count(),
+          done: sql<number>`cast(count(case when ${tasks.completedAt} is not null then 1 end) as int)`,
+        })
+        .from(tasks)
+        .where(inArray(tasks.parentId, taskIds))
+        .groupBy(tasks.parentId);
+
+      for (const row of subtaskRows) {
+        if (row.parentId) {
+          subtaskCountByTask[row.parentId] = { total: Number(row.total), done: Number(row.done) };
+        }
+      }
+    }
+
     const total = totalResult[0]?.total || 0;
     return {
       data: data.map((t) => ({
         ...t,
         assignees: assigneesByTask[t.id] || [],
+        subtaskCount: subtaskCountByTask[t.id]?.total || 0,
+        completedSubtaskCount: subtaskCountByTask[t.id]?.done || 0,
       })),
       total,
       page,
