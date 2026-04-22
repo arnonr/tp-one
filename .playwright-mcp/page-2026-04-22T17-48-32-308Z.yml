@@ -1,0 +1,363 @@
+- generic [ref=e1]:
+  - generic [ref=e5]:
+    - complementary [ref=e6]:
+      - generic [ref=e7]:
+        - generic [ref=e8]: TP
+        - generic [ref=e9]:
+          - generic [ref=e10]: TP-One
+          - generic [ref=e11]: อุทยานเทคโนโลยี
+      - generic [ref=e12]: เมนูหลัก
+      - menu [ref=e15]:
+        - menuitem "งานของฉัน" [ref=e16]:
+          - img [ref=e17] [cursor=pointer]:
+            - img [ref=e18]
+          - text: งานของฉัน
+        - menuitem "แดชบอร์ด" [ref=e21]:
+          - img [ref=e22] [cursor=pointer]:
+            - img [ref=e23]
+          - text: แดชบอร์ด
+        - menuitem "พื้นที่ทำงาน" [ref=e28]:
+          - img [ref=e29] [cursor=pointer]:
+            - img [ref=e30]
+          - text: พื้นที่ทำงาน
+        - menuitem "งานทั้งหมด" [ref=e35]:
+          - img [ref=e36] [cursor=pointer]:
+            - img [ref=e37]
+          - text: งานทั้งหมด
+        - menuitem "โครงการ" [ref=e40]:
+          - img [ref=e41] [cursor=pointer]:
+            - img [ref=e42]
+          - text: โครงการ
+        - menuitem "แผนปฏิบัติการ" [ref=e44]:
+          - img [ref=e45] [cursor=pointer]:
+            - img [ref=e46]
+          - text: แผนปฏิบัติการ
+        - menuitem "รายงาน" [ref=e52]:
+          - img [ref=e53] [cursor=pointer]:
+            - img [ref=e54]
+          - text: รายงาน
+      - generic [ref=e57] [cursor=pointer]:
+        - generic [ref=e59]: ผ
+        - generic [ref=e60]:
+          - generic [ref=e61]: ผู้ดูแลระบบ
+          - generic [ref=e62]: ผู้ดูแลระบบ
+        - img [ref=e63]:
+          - img [ref=e64]
+      - button [ref=e66] [cursor=pointer]:
+        - img [ref=e67]:
+          - img [ref=e68]
+    - generic [ref=e71]:
+      - banner [ref=e72]:
+        - heading "All Tasks" [level=1] [ref=e280]
+        - generic [ref=e76] [cursor=pointer]:
+          - generic "ทุกพื้นที่ทำงาน" [ref=e77]:
+            - generic [ref=e78]: ทุกพื้นที่ทำงาน
+          - img "loading" [ref=e79]:
+            - img [ref=e89]
+        - generic [ref=e91]:
+          - generic [ref=e93]:
+            - img [ref=e95]:
+              - img [ref=e96]
+            - generic [ref=e99]:
+              - textbox "ค้นหา..." [ref=e100]
+              - generic:
+                - generic: ค้นหา...
+          - generic [ref=e103]:
+            - img [ref=e105] [cursor=pointer]:
+              - img [ref=e106]
+            - superscript [ref=e109]:
+              - generic [ref=e112]:
+                - generic [ref=e113]: "3"
+                - generic [ref=e115]: "3"
+                - generic [ref=e116]: "3"
+      - main [ref=e117]:
+        - generic [ref=e283]:
+          - generic [ref=e284]:
+            - generic [ref=e287]:
+              - heading "รายการงาน" [level=1] [ref=e288]
+              - paragraph [ref=e289]: 5 งาน
+            - generic [ref=e290]:
+              - group [ref=e291]:
+                - button "รายการ" [ref=e292] [cursor=pointer]:
+                  - img [ref=e294]:
+                    - img [ref=e295]
+                  - generic [ref=e299]: รายการ
+                - button "กระดาน" [ref=e300] [cursor=pointer]:
+                  - img [ref=e302]:
+                    - img [ref=e303]
+                  - generic [ref=e308]: กระดาน
+                - button "ปฏิทิน" [ref=e309] [cursor=pointer]:
+                  - img [ref=e311]:
+                    - img [ref=e312]
+                  - generic [ref=e323]: ปฏิทิน
+              - button "สร้างงานใหม่" [ref=e324] [cursor=pointer]:
+                - img [ref=e326]:
+                  - img [ref=e327]
+                - generic [ref=e329]: สร้างงานใหม่
+          - generic [ref=e331]:
+            - generic [ref=e334]:
+              - textbox "ค้นหางาน..." [ref=e335]
+              - generic:
+                - generic: ค้นหางาน...
+            - generic [ref=e340] [cursor=pointer]:
+              - generic "ปีงบ 2569" [ref=e341]:
+                - generic [ref=e342]: ปีงบ 2569
+              - img "loading" [ref=e343]:
+                - img [ref=e348]
+            - generic [ref=e352] [cursor=pointer]:
+              - generic:
+                - generic: พื้นที่งาน
+              - img "loading" [ref=e353]:
+                - img [ref=e358]
+            - button "ตัวกรองเพิ่มเติม" [ref=e360] [cursor=pointer]:
+              - img [ref=e362]:
+                - img [ref=e363]
+              - generic [ref=e365]:
+                - text: ตัวกรองเพิ่มเติม
+                - img [ref=e366]:
+                  - img [ref=e367]
+            - button "ล้าง" [ref=e369] [cursor=pointer]:
+              - img [ref=e371]:
+                - img [ref=e372]
+              - generic [ref=e375]: ล้าง
+          - table [ref=e380]:
+            - rowgroup [ref=e392]:
+              - row "งาน งานย่อย ความสำคัญ พื้นที่งาน สถานะ โครงการ วันเริ่มต้น กำหนดส่ง ผู้รับผิดชอบ" [ref=e393]:
+                - columnheader [ref=e394]
+                - columnheader "งาน" [ref=e395] [cursor=pointer]:
+                  - generic [ref=e396]:
+                    - generic [ref=e397]: งาน
+                    - img [ref=e400]
+                - columnheader "งานย่อย" [ref=e404]:
+                  - generic [ref=e406]: งานย่อย
+                - columnheader "ความสำคัญ" [ref=e407] [cursor=pointer]:
+                  - generic [ref=e408]:
+                    - generic [ref=e409]: ความสำคัญ
+                    - img [ref=e412]
+                - columnheader "พื้นที่งาน" [ref=e416]:
+                  - generic [ref=e418]: พื้นที่งาน
+                - columnheader "สถานะ" [ref=e419] [cursor=pointer]:
+                  - generic [ref=e420]:
+                    - generic [ref=e421]: สถานะ
+                    - img [ref=e424]
+                - columnheader "โครงการ" [ref=e428]:
+                  - generic [ref=e430]: โครงการ
+                - columnheader "วันเริ่มต้น" [ref=e431] [cursor=pointer]:
+                  - generic [ref=e432]:
+                    - generic [ref=e433]: วันเริ่มต้น
+                    - img [ref=e436]
+                - columnheader "กำหนดส่ง" [ref=e440] [cursor=pointer]:
+                  - generic [ref=e441]:
+                    - generic [ref=e442]: กำหนดส่ง
+                    - img [ref=e445]
+                - columnheader "ผู้รับผิดชอบ" [ref=e449]:
+                  - generic [ref=e451]: ผู้รับผิดชอบ
+            - rowgroup [ref=e452]:
+              - row "ddd — ปกติ ฝ่ายการตลาด ตรวจสอบ — 22 เม.ย. 2569 24 เม.ย. 2569 ผู" [ref=e453] [cursor=pointer]:
+                - cell [ref=e454]
+                - cell "ddd" [ref=e455]:
+                  - generic [ref=e457]: ddd
+                - cell "—" [ref=e458]
+                - cell "ปกติ" [ref=e459]:
+                  - generic [ref=e460]:
+                    - img [ref=e462]:
+                      - img [ref=e463]
+                    - generic [ref=e465]: ปกติ
+                - cell "ฝ่ายการตลาด" [ref=e466]:
+                  - generic [ref=e468]: ฝ่ายการตลาด
+                - cell "ตรวจสอบ" [ref=e469]:
+                  - generic [ref=e472]: ตรวจสอบ
+                - cell "—" [ref=e473]
+                - cell "22 เม.ย. 2569" [ref=e474]
+                - cell "24 เม.ย. 2569" [ref=e475]
+                - cell "ผู" [ref=e476]:
+                  - generic [ref=e479]: ผู
+              - row "ืนืน — ปกติ ฝ่ายการตลาด รับแจ้ง — 24 เม.ย. 2569 24 เม.ย. 2569 เจ" [ref=e480] [cursor=pointer]:
+                - cell [ref=e481]
+                - cell "ืนืน" [ref=e482]:
+                  - generic [ref=e484]: ืนืน
+                - cell "—" [ref=e485]
+                - cell "ปกติ" [ref=e486]:
+                  - generic [ref=e487]:
+                    - img [ref=e489]:
+                      - img [ref=e490]
+                    - generic [ref=e492]: ปกติ
+                - cell "ฝ่ายการตลาด" [ref=e493]:
+                  - generic [ref=e495]: ฝ่ายการตลาด
+                - cell "รับแจ้ง" [ref=e496]:
+                  - generic [ref=e499]: รับแจ้ง
+                - cell "—" [ref=e500]
+                - cell "24 เม.ย. 2569" [ref=e501]
+                - cell "24 เม.ย. 2569" [ref=e502]
+                - cell "เจ" [ref=e503]:
+                  - generic [ref=e506]: เจ
+              - row "กกก — ปกติ ฝ่ายการตลาด รับแจ้ง — 26 เม.ย. 2569 28 เม.ย. 2569 ผู" [ref=e507] [cursor=pointer]:
+                - cell [ref=e508]
+                - cell "กกก" [ref=e509]:
+                  - generic [ref=e511]: กกก
+                - cell "—" [ref=e512]
+                - cell "ปกติ" [ref=e513]:
+                  - generic [ref=e514]:
+                    - img [ref=e516]:
+                      - img [ref=e517]
+                    - generic [ref=e519]: ปกติ
+                - cell "ฝ่ายการตลาด" [ref=e520]:
+                  - generic [ref=e522]: ฝ่ายการตลาด
+                - cell "รับแจ้ง" [ref=e523]:
+                  - generic [ref=e526]: รับแจ้ง
+                - cell "—" [ref=e527]
+                - cell "26 เม.ย. 2569" [ref=e528]
+                - cell "28 เม.ย. 2569" [ref=e529]
+                - cell "ผู" [ref=e530]:
+                  - generic [ref=e533]: ผู
+              - row "กกกก 0/1 ปกติ ฝ่ายการตลาด รับแจ้ง — 22 เม.ย. 2569 22 เม.ย. 2569 ผู" [ref=e534] [cursor=pointer]:
+                - cell [ref=e535]:
+                  - img [ref=e538]
+                - cell "กกกก" [ref=e540]:
+                  - generic [ref=e542]: กกกก
+                - cell "0/1" [ref=e543]:
+                  - generic [ref=e544]: 0/1
+                - cell "ปกติ" [ref=e545]:
+                  - generic [ref=e546]:
+                    - img [ref=e548]:
+                      - img [ref=e549]
+                    - generic [ref=e551]: ปกติ
+                - cell "ฝ่ายการตลาด" [ref=e552]:
+                  - generic [ref=e554]: ฝ่ายการตลาด
+                - cell "รับแจ้ง" [ref=e555]:
+                  - generic [ref=e558]: รับแจ้ง
+                - cell "—" [ref=e559]
+                - cell "22 เม.ย. 2569" [ref=e560]
+                - cell "22 เม.ย. 2569" [ref=e561]
+                - cell "ผู" [ref=e562]:
+                  - generic [ref=e565]: ผู
+              - row "ทดสอบ 0/3 ปกติ งานทั่วไป อุทยาน เสร็จสิ้น — 20 เม.ย. 2569 22 เม.ย. 2569 ผู เจ" [ref=e566] [cursor=pointer]:
+                - cell [ref=e567]:
+                  - img [ref=e570]
+                - cell "ทดสอบ" [ref=e572]:
+                  - generic [ref=e574]: ทดสอบ
+                - cell "0/3" [ref=e575]:
+                  - generic [ref=e576]: 0/3
+                - cell "ปกติ" [ref=e577]:
+                  - generic [ref=e578]:
+                    - img [ref=e580]:
+                      - img [ref=e581]
+                    - generic [ref=e583]: ปกติ
+                - cell "งานทั่วไป อุทยาน" [ref=e584]:
+                  - generic [ref=e586]: งานทั่วไป อุทยาน
+                - cell "เสร็จสิ้น" [ref=e587]:
+                  - generic [ref=e590]: เสร็จสิ้น
+                - cell "—" [ref=e591]
+                - cell "20 เม.ย. 2569" [ref=e592]
+                - cell "22 เม.ย. 2569" [ref=e593]
+                - cell "ผู เจ" [ref=e594]:
+                  - generic [ref=e595]:
+                    - generic [ref=e597]: ผู
+                    - generic [ref=e599]: เจ
+          - generic [ref=e601]:
+            - img [ref=e604]
+            - generic [ref=e606] [cursor=pointer]: "1"
+            - img [ref=e609]
+  - dialog [ref=e612]:
+    - heading "กกกก" [level=1] [ref=e613]
+    - button "close" [active] [ref=e614] [cursor=pointer]:
+      - img [ref=e616]
+    - generic [ref=e621]:
+      - button "คัดลอก" [ref=e622] [cursor=pointer]:
+        - img [ref=e624]:
+          - img [ref=e625]
+        - generic [ref=e628]: คัดลอก
+      - button "แก้ไข" [ref=e629] [cursor=pointer]:
+        - img [ref=e631]:
+          - img [ref=e632]
+        - generic [ref=e636]: แก้ไข
+      - button "ลบ" [ref=e637] [cursor=pointer]:
+        - img [ref=e639]:
+          - img [ref=e640]
+        - generic [ref=e645]: ลบ
+      - table [ref=e648]:
+        - rowgroup [ref=e649]:
+          - row "ความสำคัญ ปกติ" [ref=e650]:
+            - rowheader "ความสำคัญ" [ref=e651]
+            - cell "ปกติ" [ref=e652]:
+              - generic [ref=e653]:
+                - img [ref=e655]:
+                  - img [ref=e656]
+                - generic [ref=e658]: ปกติ
+          - row "สถานะ รับแจ้ง" [ref=e659]:
+            - rowheader "สถานะ" [ref=e660]
+            - cell "รับแจ้ง" [ref=e661]:
+              - generic [ref=e662]: รับแจ้ง
+          - row "พื้นที่งาน ฝ่ายการตลาด" [ref=e663]:
+            - rowheader "พื้นที่งาน" [ref=e664]
+            - cell "ฝ่ายการตลาด" [ref=e665]
+          - row "ผู้รับผิดชอบ ผู้ดูแลระบบ," [ref=e666]:
+            - rowheader "ผู้รับผิดชอบ" [ref=e667]
+            - cell "ผู้ดูแลระบบ," [ref=e668]
+          - row "ผู้แจ้ง ผู้ดูแลระบบ" [ref=e669]:
+            - rowheader "ผู้แจ้ง" [ref=e670]
+            - cell "ผู้ดูแลระบบ" [ref=e671]
+          - row "ปีงบประมาณ 2569" [ref=e672]:
+            - rowheader "ปีงบประมาณ" [ref=e673]
+            - cell "2569" [ref=e674]
+          - row "งบประมาณ ฿1,000" [ref=e675]:
+            - rowheader "งบประมาณ" [ref=e676]
+            - cell "฿1,000" [ref=e677]
+          - row "เวลาที่ประเมิน 1.00 ชม." [ref=e678]:
+            - rowheader "เวลาที่ประเมิน" [ref=e679]
+            - cell "1.00 ชม." [ref=e680]
+          - row "วันเริ่มต้น 22 เม.ย. 2569" [ref=e681]:
+            - rowheader "วันเริ่มต้น" [ref=e682]
+            - cell "22 เม.ย. 2569" [ref=e683]
+          - row "กำหนดส่ง 22 เม.ย. 2569เมื่อวาน" [ref=e684]:
+            - rowheader "กำหนดส่ง" [ref=e685]
+            - cell "22 เม.ย. 2569เมื่อวาน" [ref=e686]
+          - row "สร้างเมื่อ 22 เม.ย. 2569เมื่อวาน" [ref=e687]:
+            - rowheader "สร้างเมื่อ" [ref=e688]
+            - cell "22 เม.ย. 2569เมื่อวาน" [ref=e689]
+          - row "แก้ไขล่าสุด 22 เม.ย. 2569เมื่อวาน" [ref=e690]:
+            - rowheader "แก้ไขล่าสุด" [ref=e691]
+            - cell "22 เม.ย. 2569เมื่อวาน" [ref=e692]
+      - generic [ref=e693]:
+        - heading "รายละเอียด" [level=4] [ref=e694]
+        - paragraph [ref=e695]: กกก
+      - generic [ref=e696]:
+        - generic [ref=e697]:
+          - heading "รอหน่วยงานอื่น" [level=4] [ref=e698]:
+            - img [ref=e699]:
+              - img [ref=e700]
+            - text: รอหน่วยงานอื่น
+          - button "เพิ่มรายการรอ" [ref=e703] [cursor=pointer]:
+            - img [ref=e705]:
+              - img [ref=e706]
+            - generic [ref=e707]: เพิ่มรายการรอ
+        - paragraph [ref=e710]: ไม่มีรายการรอ
+      - generic [ref=e711]:
+        - heading "งานย่อย (1)" [level=4] [ref=e712]
+        - generic [ref=e714]:
+          - checkbox [ref=e715] [cursor=pointer]:
+            - img [ref=e719]
+          - generic [ref=e722]: ddd
+          - button [ref=e723] [cursor=pointer]:
+            - img [ref=e725]:
+              - img [ref=e726]
+        - generic [ref=e731]:
+          - generic [ref=e734]:
+            - textbox "เพิ่มงานย่อย..." [ref=e735]
+            - generic:
+              - generic: เพิ่มงานย่อย...
+          - button "เพิ่ม" [disabled] [ref=e736]:
+            - img [ref=e738]:
+              - img [ref=e739]
+            - generic [ref=e740]: เพิ่ม
+      - generic [ref=e741]:
+        - heading "ความคิดเห็น (0)" [level=4] [ref=e742]
+        - generic [ref=e743]:
+          - generic [ref=e745]:
+            - textbox "เขียนความคิดเห็น..." [ref=e746]
+            - generic: เขียนความคิดเห็น...
+          - button "ส่ง" [disabled] [ref=e747]:
+            - img [ref=e749]:
+              - img [ref=e750]
+            - generic [ref=e752]: ส่ง
+        - paragraph [ref=e753]: ยังไม่มีความคิดเห็น

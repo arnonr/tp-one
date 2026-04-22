@@ -1,0 +1,174 @@
+- generic [ref=e5]:
+  - complementary [ref=e6]:
+    - generic [ref=e7]:
+      - generic [ref=e8]: TP
+      - generic [ref=e9]:
+        - generic [ref=e10]: TP-One
+        - generic [ref=e11]: อุทยานเทคโนโลยี
+    - generic [ref=e12]: เมนูหลัก
+    - menu [ref=e15]:
+      - menuitem "งานของฉัน" [ref=e16]:
+        - img [ref=e17] [cursor=pointer]:
+          - img [ref=e18]
+        - text: งานของฉัน
+      - menuitem "แดชบอร์ด" [ref=e21]:
+        - img [ref=e22] [cursor=pointer]:
+          - img [ref=e23]
+        - text: แดชบอร์ด
+      - menuitem "พื้นที่ทำงาน" [ref=e28]:
+        - img [ref=e29] [cursor=pointer]:
+          - img [ref=e30]
+        - text: พื้นที่ทำงาน
+      - menuitem "งานทั้งหมด" [ref=e35]:
+        - img [ref=e36] [cursor=pointer]:
+          - img [ref=e37]
+        - text: งานทั้งหมด
+      - menuitem "โครงการ" [ref=e40]:
+        - img [ref=e41] [cursor=pointer]:
+          - img [ref=e42]
+        - text: โครงการ
+      - menuitem "แผนปฏิบัติการ" [ref=e44]:
+        - img [ref=e45] [cursor=pointer]:
+          - img [ref=e46]
+        - text: แผนปฏิบัติการ
+      - menuitem "รายงาน" [ref=e52]:
+        - img [ref=e53] [cursor=pointer]:
+          - img [ref=e54]
+        - text: รายงาน
+    - generic [ref=e57] [cursor=pointer]:
+      - generic [ref=e59]: ผ
+      - generic [ref=e60]:
+        - generic [ref=e61]: ผู้ดูแลระบบ
+        - generic [ref=e62]: ผู้ดูแลระบบ
+      - img [ref=e63]:
+        - img [ref=e64]
+    - button [ref=e66] [cursor=pointer]:
+      - img [ref=e67]:
+        - img [ref=e68]
+  - generic [ref=e71]:
+    - banner [ref=e72]:
+      - heading "งานของฉัน" [level=1] [ref=e73]
+      - generic [ref=e76] [cursor=pointer]:
+        - generic "ทุกพื้นที่ทำงาน" [ref=e77]:
+          - generic [ref=e78]: ทุกพื้นที่ทำงาน
+        - img "loading" [ref=e79]:
+          - img [ref=e84]
+      - generic [ref=e86]:
+        - generic [ref=e88]:
+          - img [ref=e90]:
+            - img [ref=e91]
+          - generic [ref=e94]:
+            - textbox "ค้นหา..." [ref=e95]
+            - generic:
+              - generic: ค้นหา...
+        - generic [ref=e98]:
+          - img [ref=e100] [cursor=pointer]:
+            - img [ref=e101]
+          - superscript [ref=e104]:
+            - generic [ref=e107]:
+              - generic [ref=e108]: "3"
+              - generic [ref=e110]: "3"
+              - generic [ref=e111]: "3"
+    - main [ref=e112]:
+      - generic [ref=e115]:
+        - generic [ref=e116]:
+          - generic [ref=e119]:
+            - heading "งานของฉัน" [level=1] [ref=e120]
+            - paragraph [ref=e121]: ภาพรวมงานที่มอบหมายให้คุณ
+          - generic [ref=e122]:
+            - button [ref=e123] [cursor=pointer]:
+              - img [ref=e125]:
+                - img [ref=e126]
+            - button "สร้างงาน" [ref=e129] [cursor=pointer]:
+              - img [ref=e131]:
+                - img [ref=e132]
+              - generic [ref=e134]: สร้างงาน
+        - generic [ref=e135]:
+          - generic [ref=e137]:
+            - img [ref=e138]:
+              - img [ref=e139]
+            - generic [ref=e142]:
+              - generic [ref=e143]: "0"
+              - generic [ref=e144]: วันนี้
+          - generic [ref=e146]:
+            - img [ref=e147]:
+              - img [ref=e148]
+            - generic [ref=e152]:
+              - generic [ref=e153]: "1"
+              - generic [ref=e154]: เลยกำหนด
+          - generic [ref=e156]:
+            - img [ref=e157]:
+              - img [ref=e158]
+            - generic [ref=e161]:
+              - generic [ref=e162]: "1"
+              - generic [ref=e163]: สัปดาห์นี้
+          - generic [ref=e165]:
+            - img [ref=e166]:
+              - img [ref=e167]
+            - generic [ref=e170]:
+              - generic [ref=e171]: "0"
+              - generic [ref=e172]: รอหน่วยงานอื่น
+        - generic [ref=e173]:
+          - heading "วันนี้ 0" [ref=e174]:
+            - heading "วันนี้ 0" [ref=e175]:
+              - generic [ref=e177]:
+                - img [ref=e178]:
+                  - img [ref=e179]
+                - generic [ref=e182]: วันนี้
+                - generic [ref=e184]: "0"
+          - generic [ref=e186]:
+            - img [ref=e189]
+            - generic [ref=e192]: ไม่มีงานที่ต้องทำวันนี้
+        - generic [ref=e193]:
+          - heading "เลยกำหนด 1" [ref=e194]:
+            - heading "เลยกำหนด 1" [ref=e195]:
+              - generic [ref=e197]:
+                - img [ref=e198]:
+                  - img [ref=e199]
+                - generic [ref=e203]: เลยกำหนด
+                - generic [ref=e205]: "1"
+          - generic [ref=e207] [cursor=pointer]:
+            - generic [ref=e208]:
+              - button [ref=e209]:
+                - img [ref=e211]:
+                  - img [ref=e212]
+              - generic [ref=e215]:
+                - generic [ref=e216]: กกกก
+                - generic [ref=e217]:
+                  - generic [ref=e218]: ฝ่ายการตลาด
+                  - generic [ref=e219]: เมื่อวาน
+            - generic [ref=e220]:
+              - generic [ref=e221]: รับแจ้ง
+              - generic [ref=e222]:
+                - img [ref=e224]:
+                  - img [ref=e225]
+                - generic [ref=e227]: ปกติ
+        - generic [ref=e228]:
+          - heading "สัปดาห์นี้ 1 ดูทั้งหมด" [ref=e229]:
+            - heading "สัปดาห์นี้ 1 ดูทั้งหมด" [ref=e230]:
+              - generic [ref=e231]:
+                - generic [ref=e232]:
+                  - img [ref=e233]:
+                    - img [ref=e234]
+                  - generic [ref=e237]: สัปดาห์นี้
+                  - generic [ref=e239]: "1"
+                - button "ดูทั้งหมด" [ref=e240] [cursor=pointer]:
+                  - img [ref=e242]:
+                    - img [ref=e243]
+                  - generic [ref=e245]: ดูทั้งหมด
+          - generic [ref=e247] [cursor=pointer]:
+            - generic [ref=e248]:
+              - button [ref=e249]:
+                - img [ref=e251]:
+                  - img [ref=e252]
+              - generic [ref=e255]:
+                - generic [ref=e256]: ddd
+                - generic [ref=e257]:
+                  - generic [ref=e258]: ฝ่ายการตลาด
+                  - generic [ref=e259]: 24 เม.ย. 2569
+            - generic [ref=e260]:
+              - generic [ref=e261]: ตรวจสอบ
+              - generic [ref=e262]:
+                - img [ref=e264]:
+                  - img [ref=e265]
+                - generic [ref=e267]: ปกติ

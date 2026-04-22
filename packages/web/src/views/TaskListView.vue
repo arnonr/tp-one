@@ -25,7 +25,7 @@ import {
   ChevronDownOutline,
   ChevronUpOutline,
 } from '@vicons/ionicons5'
-import { useRouter } from 'vue-router'
+import { useRouter, useRoute } from 'vue-router'
 import PageHeader from '@/components/common/PageHeader.vue'
 import StatusBadge from '@/components/common/StatusBadge.vue'
 import PriorityBadge from '@/components/common/PriorityBadge.vue'
@@ -42,6 +42,7 @@ import { getFiscalYear } from '@/utils/thai'
 import type { Workspace, WorkspaceStatus } from '@/types'
 
 const router = useRouter()
+const route = useRoute()
 const message = useMessage()
 const taskStore = useTaskStore()
 const wsStore = useWorkspaceStore()
@@ -436,6 +437,14 @@ onMounted(async () => {
     await Promise.all([loadProjects(wsId), loadStatusesForWorkspace(wsId), fetchTasks(), taskStore.fetchAllStatuses()])
   } else {
     await Promise.all([loadProjects(), loadAllStatuses(), fetchTasks(), taskStore.fetchAllStatuses()])
+  }
+
+  if (route.query.create) {
+    openCreateForm()
+    router.replace({ query: {} })
+  } else if (route.query.detail) {
+    openDetail(route.query.detail as string)
+    router.replace({ query: {} })
   }
 })
 

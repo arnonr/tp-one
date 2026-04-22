@@ -137,11 +137,11 @@ onMounted(fetchData)
 watch(() => wsStore.currentWorkspaceId, fetchData)
 
 function handleTaskClick(taskId: string) {
-  router.push({ name: 'task-detail', params: { id: taskId } })
+  router.push({ name: 'tasks', query: { detail: taskId } })
 }
 
 function handleCreate() {
-  router.push({ name: 'tasks' })
+  router.push({ name: 'tasks', query: { create: '1' } })
 }
 
 const summaryCards = computed(() => [
