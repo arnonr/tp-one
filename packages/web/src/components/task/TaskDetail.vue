@@ -1,12 +1,14 @@
 <script setup lang="ts">
-import { ref, computed, watch, onMounted } from 'vue'
+import { ref, computed, watch } from 'vue'
 import {
   NDrawer, NDrawerContent, NDescriptions, NDescriptionsItem, NButton,
   NSpace, NIcon, NInput, NPopconfirm, NSpin, NTag, NCheckbox,
+  NDatePicker, NDivider,
   useMessage, useDialog,
 } from 'naive-ui'
 import {
   CreateOutline, TrashOutline, CopyOutline, SendOutline, AddOutline,
+  TimeOutline, CheckmarkCircleOutline, ChatbubbleOutline,
 } from '@vicons/ionicons5'
 import PriorityBadge from '@/components/common/PriorityBadge.vue'
 import StatusBadge from '@/components/common/StatusBadge.vue'
@@ -14,6 +16,8 @@ import ThaiDate from '@/components/common/ThaiDate.vue'
 import { useTaskStore } from '@/stores/task'
 import { useClipboard } from '@/composables/useClipboard'
 import { relativeTime } from '@/utils/thai'
+import { taskService } from '@/services/task'
+import type { WaitingItem, FollowUpItem } from '@/services/task'
 import type { TaskPriority } from '@/types'
 
 const props = defineProps<{
@@ -36,6 +40,83 @@ const commentText = ref('')
 const newSubtaskTitle = ref('')
 const addingSubtask = ref(false)
 
+// Waiting for others
+const waitingList = ref<WaitingItem[]>([])
+const loadingWaiting = ref(false)
+const showAddWaiting = ref(false)
+const addingWaiting = ref(false)
+const newWaiting = ref({ waitingFor: '', contactPerson: '', contactInfo: '' })
+const newWaitingDateTs = ref<number | null>(null)
+const followUpNotes = ref<Record<string, string>>({})
+const addingFollowUp = ref<Record<string, boolean>>({})
+
+const activeWaiting = computed(() => waitingList.value.filter(w => !w.isResolved))
+const resolvedWaiting = computed(() => waitingList.value.filter(w => w.isResolved))
+
+async function fetchWaiting(taskId: string) {
+  loadingWaiting.value = true
+  try {
+    waitingList.value = await taskService.getWaiting(taskId)
+  } finally {
+    loadingWaiting.value = false
+  }
+}
+
+async function handleAddWaiting() {
+  if (!props.taskId || !newWaiting.value.waitingFor.trim()) return
+  addingWaiting.value = true
+  try {
+    const expectedDate = newWaitingDateTs.value
+      ? new Date(newWaitingDateTs.value).toISOString().split('T')[0]
+      : undefined
+    const item = await taskService.setWaiting(props.taskId, {
+      waitingFor: newWaiting.value.waitingFor.trim(),
+      contactPerson: newWaiting.value.contactPerson.trim() || undefined,
+      contactInfo: newWaiting.value.contactInfo.trim() || undefined,
+      expectedDate,
+    })
+    waitingList.value.push(item)
+    newWaiting.value = { waitingFor: '', contactPerson: '', contactInfo: '' }
+    newWaitingDateTs.value = null
+    showAddWaiting.value = false
+    message.success('เพิ่มรายการรอสำเร็จ')
+  } catch {
+    message.error('เพิ่มรายการรอไม่สำเร็จ')
+  } finally {
+    addingWaiting.value = false
+  }
+}
+
+async function handleResolveWaiting(waitingId: string) {
+  if (!props.taskId) return
+  try {
+    await taskService.resolveWaiting(props.taskId, waitingId)
+    const idx = waitingList.value.findIndex(w => w.id === waitingId)
+    if (idx !== -1) {
+      waitingList.value[idx].isResolved = true
+      waitingList.value[idx].resolvedAt = new Date().toISOString()
+    }
+    message.success('บันทึกว่าได้รับแล้ว')
+  } catch {
+    message.error('อัปเดตไม่สำเร็จ')
+  }
+}
+
+async function handleAddFollowUp(waitingId: string) {
+  if (!props.taskId || !followUpNotes.value[waitingId]?.trim()) return
+  addingFollowUp.value[waitingId] = true
+  try {
+    const followUp = await taskService.addFollowUp(props.taskId, waitingId, followUpNotes.value[waitingId].trim())
+    const item = waitingList.value.find(w => w.id === waitingId)
+    if (item) item.followUps.push(followUp)
+    followUpNotes.value[waitingId] = ''
+  } catch {
+    message.error('บันทึก follow-up ไม่สำเร็จ')
+  } finally {
+    addingFollowUp.value[waitingId] = false
+  }
+}
+
 const loading = computed(() => taskStore.loading)
 const task = computed(() => taskStore.currentTask)
 const subtasks = computed(() => taskStore.subtasks)
@@ -51,15 +132,20 @@ const priorityLabels: Record<TaskPriority, string> = {
 watch(() => props.taskId, async (id) => {
   if (id && props.show) {
     await taskStore.fetchTaskById(id)
+    await fetchWaiting(id)
   }
 })
 
 watch(() => props.show, async (show) => {
   if (show && props.taskId) {
     await taskStore.fetchTaskById(props.taskId)
+    await fetchWaiting(props.taskId)
   }
   if (!show) {
     taskStore.clearCurrent()
+    waitingList.value = []
+    showAddWaiting.value = false
+    newWaitingDateTs.value = null
   }
 })
 
@@ -268,6 +354,144 @@ function handleClose() {
             </NSpace>
           </div>
 
+          <!-- Waiting for Others -->
+          <div class="detail-section">
+            <div class="section-header">
+              <h4 class="section-title">
+                <NIcon :size="15" class="section-icon warning-icon"><TimeOutline /></NIcon>
+                รอหน่วยงานอื่น
+                <NTag v-if="activeWaiting.length" type="warning" size="tiny" round :bordered="false" style="margin-left:6px">
+                  {{ activeWaiting.length }}
+                </NTag>
+              </h4>
+              <NButton size="tiny" quaternary @click="showAddWaiting = !showAddWaiting">
+                <template #icon><NIcon><AddOutline /></NIcon></template>
+                เพิ่มรายการรอ
+              </NButton>
+            </div>
+
+            <NSpin :show="loadingWaiting">
+              <div v-if="activeWaiting.length" class="waiting-list">
+                <div v-for="item in activeWaiting" :key="item.id" class="waiting-item">
+                  <div class="waiting-main">
+                    <div class="waiting-who">
+                      <NIcon :size="13" class="warning-icon"><TimeOutline /></NIcon>
+                      <span class="waiting-name">{{ item.waitingFor }}</span>
+                    </div>
+                    <div class="waiting-meta">
+                      <span v-if="item.contactPerson" class="meta-chip">{{ item.contactPerson }}</span>
+                      <span v-if="item.expectedDate" class="meta-chip">
+                        คาดว่าได้รับ: <ThaiDate :date="item.expectedDate" format="short" />
+                      </span>
+                      <span class="meta-chip muted">รอมา: {{ relativeTime(item.createdAt) }}</span>
+                    </div>
+                    <div class="waiting-actions">
+                      <NButton size="tiny" type="success" ghost @click="handleResolveWaiting(item.id)">
+                        <template #icon><NIcon :size="12"><CheckmarkCircleOutline /></NIcon></template>
+                        ได้รับแล้ว
+                      </NButton>
+                    </div>
+                  </div>
+                  <div v-if="item.followUps.length" class="follow-up-list">
+                    <div v-for="fu in item.followUps" :key="fu.id" class="follow-up-entry">
+                      <NIcon :size="11" class="fu-icon"><ChatbubbleOutline /></NIcon>
+                      <span class="fu-note">{{ fu.note }}</span>
+                      <span class="fu-time">{{ relativeTime(fu.createdAt) }}</span>
+                    </div>
+                  </div>
+                  <div class="follow-up-row">
+                    <NInput
+                      v-model:value="followUpNotes[item.id]"
+                      size="tiny"
+                      placeholder="บันทึก follow-up..."
+                      @keyup.enter="handleAddFollowUp(item.id)"
+                    />
+                    <NButton
+                      size="tiny"
+                      quaternary
+                      :loading="addingFollowUp[item.id]"
+                      :disabled="!followUpNotes[item.id]?.trim()"
+                      @click="handleAddFollowUp(item.id)"
+                    >
+                      <template #icon><NIcon :size="12"><ChatbubbleOutline /></NIcon></template>
+                    </NButton>
+                  </div>
+                </div>
+              </div>
+              <p v-else-if="!showAddWaiting && !resolvedWaiting.length" class="empty-hint">ไม่มีรายการรอ</p>
+            </NSpin>
+
+            <!-- Resolved history -->
+            <div v-if="resolvedWaiting.length" class="waiting-history">
+              <div class="history-label">ได้รับแล้ว ({{ resolvedWaiting.length }})</div>
+              <div v-for="item in resolvedWaiting" :key="item.id" class="waiting-item waiting-item--resolved">
+                <div class="waiting-main">
+                  <div class="waiting-who">
+                    <NIcon :size="13" class="resolved-icon"><CheckmarkCircleOutline /></NIcon>
+                    <span class="waiting-name resolved-name">{{ item.waitingFor }}</span>
+                  </div>
+                  <div class="waiting-meta">
+                    <span v-if="item.contactPerson" class="meta-chip">{{ item.contactPerson }}</span>
+                    <span class="meta-chip muted">
+                      ได้รับ: {{ relativeTime(item.resolvedAt!) }}
+                    </span>
+                  </div>
+                </div>
+                <div v-if="item.followUps.length" class="follow-up-list">
+                  <div v-for="fu in item.followUps" :key="fu.id" class="follow-up-entry">
+                    <NIcon :size="11" class="fu-icon"><ChatbubbleOutline /></NIcon>
+                    <span class="fu-note">{{ fu.note }}</span>
+                    <span class="fu-time">{{ relativeTime(fu.createdAt) }}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div v-if="showAddWaiting" class="waiting-form">
+              <NDivider style="margin: 8px 0" />
+              <NInput
+                v-model:value="newWaiting.waitingFor"
+                size="small"
+                placeholder="รอจากหน่วยงาน / บุคคล *"
+                style="margin-bottom:6px"
+              />
+              <NSpace :size="6" style="margin-bottom:6px">
+                <NInput
+                  v-model:value="newWaiting.contactPerson"
+                  size="small"
+                  placeholder="ผู้ติดต่อ"
+                  style="flex:1"
+                />
+                <NInput
+                  v-model:value="newWaiting.contactInfo"
+                  size="small"
+                  placeholder="เบอร์โทร / อีเมล"
+                  style="flex:1"
+                />
+              </NSpace>
+              <NDatePicker
+                v-model:value="newWaitingDateTs"
+                type="date"
+                size="small"
+                placeholder="วันที่คาดว่าจะได้รับ"
+                clearable
+                style="width:100%; margin-bottom:8px"
+              />
+              <NSpace justify="end" :size="6">
+                <NButton size="small" @click="showAddWaiting = false">ยกเลิก</NButton>
+                <NButton
+                  size="small"
+                  type="warning"
+                  :loading="addingWaiting"
+                  :disabled="!newWaiting.waitingFor.trim()"
+                  @click="handleAddWaiting"
+                >
+                  เพิ่มรายการรอ
+                </NButton>
+              </NSpace>
+            </div>
+          </div>
+
           <!-- Subtasks -->
           <div class="detail-section">
             <h4 class="section-title">งานย่อย ({{ subtasks.length }})</h4>
@@ -466,5 +690,162 @@ function handleClose() {
 .empty-hint {
   font-size: 0.8rem;
   color: var(--color-text-tertiary);
+}
+
+.section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--space-sm);
+}
+
+.section-header .section-title {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin-bottom: 0;
+}
+
+.section-icon {
+  flex-shrink: 0;
+}
+
+.warning-icon {
+  color: var(--n-color-warning, #f0a020);
+}
+
+.waiting-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.waiting-item {
+  padding: 10px 12px;
+  border-radius: var(--radius-md);
+  border: 1px solid #fde9c0;
+  background: #fffbf0;
+}
+
+.waiting-main {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.waiting-who {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.waiting-name {
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+.waiting-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 2px;
+}
+
+.meta-chip {
+  font-size: 0.75rem;
+  color: var(--color-text-secondary);
+  background: rgba(0, 0, 0, 0.04);
+  padding: 1px 6px;
+  border-radius: 4px;
+}
+
+.meta-chip.muted {
+  color: var(--color-text-tertiary);
+}
+
+.waiting-actions {
+  margin-top: 6px;
+}
+
+.follow-up-list {
+  margin-top: 6px;
+  padding-top: 6px;
+  border-top: 1px dashed #fde9c0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.follow-up-entry {
+  display: flex;
+  align-items: baseline;
+  gap: 5px;
+  font-size: 0.78rem;
+  line-height: 1.4;
+}
+
+.fu-icon {
+  color: var(--color-text-tertiary);
+  flex-shrink: 0;
+}
+
+.fu-note {
+  flex: 1;
+  color: var(--color-text-secondary);
+}
+
+.fu-time {
+  color: var(--color-text-tertiary);
+  font-size: 0.7rem;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.follow-up-row {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+  margin-top: 6px;
+  padding-top: 6px;
+  border-top: 1px dashed #fde9c0;
+}
+
+.follow-up-row :deep(.n-input) {
+  flex: 1;
+}
+
+.waiting-history {
+  margin-top: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.history-label {
+  font-size: 0.72rem;
+  color: var(--color-text-tertiary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 4px 0 2px;
+}
+
+.waiting-item--resolved {
+  background: #f8faf8;
+  border-color: #c8e6c9;
+  opacity: 0.85;
+}
+
+.resolved-icon {
+  color: #4caf50;
+}
+
+.resolved-name {
+  text-decoration: line-through;
+  color: var(--color-text-tertiary);
+  font-weight: 400;
+}
+
+.waiting-form {
+  padding-top: 4px;
 }
 </style>

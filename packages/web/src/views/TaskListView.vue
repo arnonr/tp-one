@@ -32,6 +32,7 @@ import TaskForm from '@/components/task/TaskForm.vue'
 import TaskDetail from '@/components/task/TaskDetail.vue'
 import SubtaskExpandRow from '@/components/task/SubtaskExpandRow.vue'
 import { useTaskStore } from '@/stores/task'
+import { useWorkspaceStore } from '@/stores/workspace'
 import { workspaceService } from '@/services/workspace'
 import { projectService } from '@/services/project'
 import { getFiscalYear } from '@/utils/thai'
@@ -40,6 +41,7 @@ import type { Workspace, WorkspaceStatus } from '@/types'
 const router = useRouter()
 const message = useMessage()
 const taskStore = useTaskStore()
+const wsStore = useWorkspaceStore()
 
 const currentFY = getFiscalYear()
 const activeTab = ref('list')
@@ -55,7 +57,7 @@ const detailTaskId = ref<string | null>(null)
 const expandedRowKeys = ref<string[]>([])
 
 // Filter state
-const workspaceFilter = ref<string | null>(null)
+const workspaceFilter = ref<string | null>(wsStore.currentWorkspaceId)
 const projectFilter = ref<string | null>(null)
 const statusFilter = ref<string | null>(null)
 const priorityFilter = ref<string | null>(null)
@@ -70,14 +72,6 @@ const dueDateToFilter = ref<number | null>(null)
 const workspaces = ref<Workspace[]>([])
 const projectOptions = ref<{ label: string; value: string }[]>([])
 const statusOptions = ref<{ label: string; value: string }[]>([])
-
-const WORKSPACE_TYPE_LABELS: Record<string, { label: string; color?: string }> = {
-  rental: { label: 'เช่าพื้นที่', color: '#2080f0' },
-  consulting: { label: 'ที่ปรึกษา/วิจัย', color: '#18a058' },
-  training: { label: 'อบรม/สัมนา', color: '#f0a020' },
-  incubation: { label: 'บ่มเพาะ', color: '#8a2be2' },
-  general: { label: 'ทั่วไป', color: '#909399' },
-}
 
 const workspaceOptions = computed(() =>
   workspaces.value.map(w => ({
@@ -226,11 +220,10 @@ const columns = [
   },
   {
     title: 'พื้นที่งาน',
-    key: 'workspaceType',
+    key: 'workspaceName',
     width: 150,
     render(row: any) {
-      const info = WORKSPACE_TYPE_LABELS[row.workspaceType] || WORKSPACE_TYPE_LABELS.general
-      return h(NTag, { size: 'small', bordered: false, type: 'info' }, { default: () => info.label })
+      return h(NTag, { size: 'small', bordered: false, type: 'info' }, { default: () => row.workspaceName || '—' })
     },
   },
   {
@@ -323,12 +316,31 @@ function resetFilters() {
   loadAllStatuses()
 }
 
+watch(() => wsStore.currentWorkspaceId, (id) => {
+  workspaceFilter.value = id
+  projectFilter.value = null
+  statusFilter.value = null
+  if (id) {
+    loadProjects(id)
+    loadStatusesForWorkspace(id)
+  } else {
+    loadProjects()
+    loadAllStatuses()
+  }
+})
+
 watch([workspaceFilter, projectFilter, statusFilter, priorityFilter, fiscalYearFilter, page], fetchTasks, { deep: true })
 watch([startDateFromFilter, startDateToFilter, dueDateFromFilter, dueDateToFilter], fetchTasks, { deep: true })
 
 onMounted(async () => {
-  await loadWorkspaces()
-  await Promise.all([loadProjects(), loadAllStatuses(), fetchTasks()])
+  if (!wsStore.workspaces.length) await wsStore.fetchWorkspaces()
+  workspaces.value = wsStore.workspaces
+  const wsId = wsStore.currentWorkspaceId
+  if (wsId) {
+    await Promise.all([loadProjects(wsId), loadStatusesForWorkspace(wsId), fetchTasks()])
+  } else {
+    await Promise.all([loadProjects(), loadAllStatuses(), fetchTasks()])
+  }
 })
 </script>
 

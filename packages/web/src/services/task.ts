@@ -102,4 +102,44 @@ export const taskService = {
   async deleteSubtask(id: string) {
     await api.delete(`/tasks/${id}`)
   },
+
+  async getWaiting(taskId: string) {
+    const { data } = await api.get(`/tasks/${taskId}/waiting`)
+    return data.data as WaitingItem[]
+  },
+
+  async setWaiting(taskId: string, body: { waitingFor: string; contactPerson?: string; contactInfo?: string; expectedDate?: string }) {
+    const { data } = await api.post(`/tasks/${taskId}/waiting`, body)
+    return data.data as WaitingItem
+  },
+
+  async resolveWaiting(taskId: string, waitingId: string) {
+    const { data } = await api.post(`/tasks/${taskId}/waiting/${waitingId}/resolve`)
+    return data
+  },
+
+  async addFollowUp(taskId: string, waitingId: string, note: string) {
+    const { data } = await api.post(`/tasks/${taskId}/waiting/${waitingId}/follow-up`, { note })
+    return data.data as FollowUpItem
+  },
+}
+
+export interface FollowUpItem {
+  id: string
+  waitingId: string
+  note: string | null
+  createdAt: string
+}
+
+export interface WaitingItem {
+  id: string
+  taskId: string
+  waitingFor: string
+  contactPerson: string | null
+  contactInfo: string | null
+  expectedDate: string | null
+  isResolved: boolean
+  resolvedAt: string | null
+  createdAt: string
+  followUps: FollowUpItem[]
 }

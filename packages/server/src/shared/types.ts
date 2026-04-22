@@ -40,6 +40,10 @@ export interface TaskFilter {
   priority?: TaskPriority;
   search?: string;
   fiscalYear?: number;
+  startDateFrom?: string;
+  startDateTo?: string;
+  dueDateFrom?: string;
+  dueDateTo?: string;
   page?: number;
   pageSize?: number;
 }

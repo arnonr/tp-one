@@ -14,7 +14,6 @@ import {
   NTabs,
   NTabPane,
   NTag,
-  NPopconfirm,
   NEmpty,
   NSpin,
   useMessage,
@@ -22,7 +21,9 @@ import {
 } from 'naive-ui'
 import { h } from 'vue'
 import { workspaceService } from '@/services/workspace'
+import { userService } from '@/services/user'
 import { useAuthStore } from '@/stores/auth'
+import ActionButtons from '@/components/common/ActionButtons.vue'
 import type { Workspace, WorkspaceType, WorkspaceMemberRole } from '@/types'
 import type { WorkspaceMember, WorkspaceStatus } from '@/services/workspace'
 
@@ -82,6 +83,9 @@ const statusForm = ref({ name: '', color: '#10B981', sortOrder: '0', isDefault: 
 // Member form
 const showMemberModal = ref(false)
 const memberForm = ref({ userId: '', role: 'viewer' as WorkspaceMemberRole })
+const userSearchOptions = ref<{ label: string; value: string }[]>([])
+const userSearchLoading = ref(false)
+let searchTimer: ReturnType<typeof setTimeout> | null = null
 
 async function fetchWorkspaces() {
   loading.value = true
@@ -186,9 +190,28 @@ async function handleDeleteStatus(statusId: string) {
   }
 }
 
+function handleUserSearch(query: string) {
+  if (searchTimer) clearTimeout(searchTimer)
+  if (!query.trim()) { userSearchOptions.value = []; return }
+  searchTimer = setTimeout(async () => {
+    userSearchLoading.value = true
+    try {
+      const results = await userService.search(query)
+      userSearchOptions.value = results.map(u => ({
+        label: `${u.name} (${u.email})`,
+        value: u.id,
+      }))
+    } finally {
+      userSearchLoading.value = false
+    }
+  }, 300)
+}
+
 // Member CRUD
 function openMemberModal() {
   memberForm.value = { userId: '', role: 'viewer' }
+  userSearchOptions.value = []
+  userSearchLoading.value = false
   showMemberModal.value = true
 }
 
@@ -240,17 +263,13 @@ const workspaceColumns: DataTableColumns<Workspace> = [
   {
     title: '',
     key: 'actions',
-    width: 160,
+    width: 100,
     align: 'right',
     render(row) {
-      return h(NSpace, { size: 4, align: 'center' }, {
-        default: () => [
-          h(NButton, { size: 'small', quaternary: true, onClick: () => openEditModal(row) }, { default: () => 'แก้ไข' }),
-          h(NPopconfirm, { onPositiveClick: () => handleDelete(row) }, {
-            trigger: () => h(NButton, { size: 'small', quaternary: true, type: 'error' }, { default: () => 'ลบ' }),
-            default: () => `ลบ "${row.name}"?`,
-          }),
-        ],
+      return h(ActionButtons, {
+        deleteMessage: `ลบ "${row.name}"?`,
+        onEdit: () => openEditModal(row),
+        onDelete: () => handleDelete(row),
       })
     },
   },
@@ -265,10 +284,12 @@ const statusColumns: DataTableColumns<WorkspaceStatus> = [
     ])
   }},
   { title: 'ลำดับ', key: 'sortOrder', width: 80 },
-  { title: '', key: 'actions', width: 80, align: 'right', render(row) {
-    return h(NPopconfirm, { onPositiveClick: () => handleDeleteStatus(row.id) }, {
-      trigger: () => h(NButton, { size: 'tiny', quaternary: true, type: 'error' }, { default: () => 'ลบ' }),
-      default: () => `ลบสถานะ "${row.name}"?`,
+  { title: '', key: 'actions', width: 60, align: 'right', render(row) {
+    return h(ActionButtons, {
+      size: 'tiny',
+      showEdit: false,
+      deleteMessage: `ลบสถานะ "${row.name}"?`,
+      onDelete: () => handleDeleteStatus(row.id),
     })
   }},
 ]
@@ -279,11 +300,13 @@ const memberColumns: DataTableColumns<WorkspaceMember> = [
   { title: 'บทบาท', key: 'role', width: 120, render(row) {
     return h(NTag, { size: 'small', type: ROLE_COLORS[row.role] as any, bordered: false }, { default: () => ROLE_LABELS[row.role] })
   }},
-  { title: '', key: 'actions', width: 80, align: 'right', render(row) {
+  { title: '', key: 'actions', width: 60, align: 'right', render(row) {
     if (row.role === 'owner') return null
-    return h(NPopconfirm, { onPositiveClick: () => handleRemoveMember(row.userId) }, {
-      trigger: () => h(NButton, { size: 'tiny', quaternary: true, type: 'error' }, { default: () => 'ลบ' }),
-      default: () => 'ลบสมาชิกคนนี้?',
+    return h(ActionButtons, {
+      size: 'tiny',
+      showEdit: false,
+      deleteMessage: 'ลบสมาชิกคนนี้?',
+      onDelete: () => handleRemoveMember(row.userId),
     })
   }},
 ]
@@ -360,7 +383,18 @@ onMounted(fetchWorkspaces)
   <!-- Add Member Modal -->
   <NModal v-model:show="showMemberModal" preset="dialog" title="เพิ่มสมาชิก" positive-text="เพิ่ม" negative-text="ยกเลิก" @positive-click="handleAddMember">
     <NForm label-placement="left" label-width="70">
-      <NFormItem label="User ID"><NInput v-model:value="memberForm.userId" placeholder="UUID ของผู้ใช้" /></NFormItem>
+      <NFormItem label="ผู้ใช้">
+        <NSelect
+          v-model:value="memberForm.userId"
+          filterable
+          remote
+          :loading="userSearchLoading"
+          :options="userSearchOptions"
+          placeholder="พิมพ์ชื่อหรืออีเมลเพื่อค้นหา"
+          clearable
+          @search="handleUserSearch"
+        />
+      </NFormItem>
       <NFormItem label="บทบาท">
         <NSelect v-model:value="memberForm.role" :options="[
           { label: 'เจ้าของ', value: 'owner' },

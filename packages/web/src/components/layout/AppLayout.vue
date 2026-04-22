@@ -33,10 +33,13 @@ import {
 } from "@vicons/ionicons5";
 import LoginView from "../../views/LoginView.vue";
 import { useAuthStore } from "../../stores/auth";
+import WorkspaceSelector from "./WorkspaceSelector.vue";
+import { useWorkspaceStore } from "@/stores/workspace";
 
 const router = useRouter();
 const route = useRoute();
 const authStore = useAuthStore();
+const wsStore = useWorkspaceStore();
 const searchQuery = ref("");
 const isMobile = ref(false);
 const mobileOpen = ref(false);
@@ -197,6 +200,7 @@ onMounted(async () => {
       authStore.logout();
     }
   }
+  await wsStore.fetchWorkspaces();
 });
 </script>
 
@@ -262,6 +266,7 @@ onMounted(async () => {
             </NIcon>
           </button>
           <h1 class="header-title">{{ currentPageTitle }}</h1>
+          <WorkspaceSelector />
           <div class="header-right">
             <NInput v-if="!isMobile" v-model:value="searchQuery" placeholder="ค้นหา..." clearable class="search-input">
               <template #prefix>

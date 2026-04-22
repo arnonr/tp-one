@@ -1,54 +1,74 @@
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
-import { NScrollbar, NButton, NIcon, NSpin, useMessage } from 'naive-ui'
+import { ref, computed, onMounted, watch } from 'vue'
+import { NScrollbar, NButton, NIcon, NSpin, useMessage, NEmpty } from 'naive-ui'
 import { AddCircleOutline } from '@vicons/ionicons5'
 import TaskCard from './TaskCard.vue'
-import PriorityBadge from '@/components/common/PriorityBadge.vue'
-import { taskService, type TaskListParams } from '@/services/task'
+import TaskForm from './TaskForm.vue'
+import { taskService } from '@/services/task'
 import { workspaceService } from '@/services/workspace'
+import { useWorkspaceStore } from '@/stores/workspace'
 
 const props = defineProps<{
   workspaceId?: string
+  gridMode?: boolean
 }>()
 
 const emit = defineEmits<{
   taskClick: [id: string]
+  created: []
+  updated: []
 }>()
 
 const message = useMessage()
+const wsStore = useWorkspaceStore()
 const loading = ref(false)
-const statuses = ref<any[]>([])
+const workspaces = ref<any[]>([])
+const workspaceStatuses = ref<Record<string, any[]>>({})
 const tasksByStatus = ref<Record<string, any[]>>({})
+const showTaskForm = ref(false)
+const formWorkspaceId = ref<string | undefined>(undefined)
+const formStatusId = ref<string | undefined>(undefined)
 
 async function fetchBoard() {
   loading.value = true
   try {
-    // Get statuses for workspace
+    let wsList: any[]
     if (props.workspaceId) {
-      statuses.value = await workspaceService.getStatuses(props.workspaceId)
+      wsList = [await workspaceService.getById(props.workspaceId)]
+    } else if (wsStore.isAllWorkspaces) {
+      wsList = wsStore.workspaces.length ? wsStore.workspaces : await workspaceService.list()
+    } else if (wsStore.currentWorkspaceId) {
+      const found = wsStore.workspaces.find(ws => ws.id === wsStore.currentWorkspaceId)
+      wsList = found ? [found] : [await workspaceService.getById(wsStore.currentWorkspaceId)]
     } else {
-      // Load all workspaces and their statuses
-      const wsList = await workspaceService.list()
-      const allStatuses: any[] = []
-      for (const ws of wsList) {
-        const wsStatuses = await workspaceService.getStatuses(ws.id)
-        allStatuses.push(...wsStatuses)
-      }
-      statuses.value = allStatuses
+      wsList = wsStore.workspaces.length ? wsStore.workspaces : await workspaceService.list()
     }
 
-    // Get tasks
-    const result = await taskService.list({
-      workspaceId: props.workspaceId,
-      pageSize: 100,
-    })
+    workspaces.value = wsList
 
-    // Group tasks by statusId
+    const allTasks: any[] = []
+    const allStatuses: Record<string, any[]> = {}
+
+    for (const ws of wsList) {
+      const statuses = await workspaceService.getStatuses(ws.id)
+      allStatuses[ws.id] = statuses
+
+      const result = await taskService.list({
+        workspaceId: ws.id,
+        pageSize: 200,
+      })
+      allTasks.push(...(result.data || []))
+    }
+
+    workspaceStatuses.value = allStatuses
+
     const grouped: Record<string, any[]> = {}
-    for (const status of statuses.value) {
-      grouped[status.id] = []
+    for (const ws of wsList) {
+      for (const status of allStatuses[ws.id] || []) {
+        grouped[status.id] = []
+      }
     }
-    for (const task of result.data || []) {
+    for (const task of allTasks) {
       const statusId = task.statusId || 'unassigned'
       if (!grouped[statusId]) grouped[statusId] = []
       grouped[statusId].push(task)
@@ -67,7 +87,6 @@ async function handleDragEnd(event: DragEvent, targetStatusId: string) {
 
   try {
     await taskService.update(taskId, { statusId: targetStatusId })
-    // Refresh board
     await fetchBoard()
     message.success('อัปเดตสถานะสำเร็จ')
   } catch {
@@ -79,54 +98,102 @@ function handleDragStart(event: DragEvent, taskId: string) {
   event.dataTransfer?.setData('taskId', taskId)
 }
 
+function openCreateForm(workspaceId: string, statusId?: string) {
+  formWorkspaceId.value = workspaceId
+  formStatusId.value = statusId
+  showTaskForm.value = true
+}
+
+function onFormCreated() {
+  showTaskForm.value = false
+  fetchBoard()
+  emit('created')
+}
+
 onMounted(fetchBoard)
+
+watch(() => wsStore.currentWorkspaceId, fetchBoard)
 </script>
 
 <template>
   <NSpin :show="loading">
     <div class="kanban-board">
-      <NScrollbar x-scrollable>
-        <div class="board-columns">
-          <div
-            v-for="status in statuses"
-            :key="status.id"
-            class="board-column"
-            @dragover.prevent
-            @drop="handleDragEnd($event, status.id)"
-          >
-            <div class="column-header">
-              <span class="column-dot" :style="{ backgroundColor: status.color || '#94a3b8' }" />
-              <span class="column-title">{{ status.name }}</span>
-              <span class="column-count">{{ (tasksByStatus[status.id] || []).length }}</span>
-            </div>
-            <NScrollbar class="column-body">
-              <div class="column-cards">
-                <div
-                  v-for="task in tasksByStatus[status.id] || []"
-                  :key="task.id"
-                  draggable="true"
-                  @dragstart="handleDragStart($event, task.id)"
-                >
-                  <TaskCard
-                    :id="task.id"
-                    :title="task.title"
-                    :priority="task.priority"
-                    :status-name="task.statusName"
-                    :status-color="task.statusColor"
-                    :workspace-name="task.workspaceName"
-                    :assignees="task.assignees"
-                    :due-date="task.dueDate"
-                    :description="task.description"
-                    @click="emit('taskClick', task.id)"
-                  />
+      <div v-if="!loading && workspaces.length === 0" class="empty-state">
+        <NEmpty description="ยังไม่มีพื้นที่ทำงาน" />
+      </div>
+      <template v-else>
+        <div v-for="ws in workspaces" :key="ws.id" class="workspace-section">
+          <div class="workspace-header">
+            <span class="workspace-dot" :style="{ backgroundColor: ws.color || '#94a3b8' }" />
+            <span class="workspace-name">{{ ws.name }}</span>
+          </div>
+          <NScrollbar x-scrollable>
+            <div class="board-columns">
+              <div
+                v-for="status in (workspaceStatuses[ws.id] || [])"
+                :key="status.id"
+                class="board-column"
+                @dragover.prevent
+                @drop="handleDragEnd($event, status.id)"
+              >
+                <div class="column-header">
+                  <span class="column-dot" :style="{ backgroundColor: status.color || '#94a3b8' }" />
+                  <span class="column-title">{{ status.name }}</span>
+                  <span class="column-count">{{ (tasksByStatus[status.id] || []).length }}</span>
+                </div>
+                <NScrollbar class="column-body">
+                  <div class="column-cards">
+                    <div
+                      v-for="task in tasksByStatus[status.id] || []"
+                      :key="task.id"
+                      draggable="true"
+                      @dragstart="handleDragStart($event, task.id)"
+                    >
+                      <TaskCard
+                        :id="task.id"
+                        :title="task.title"
+                        :priority="task.priority"
+                        :status-name="status.name"
+                        :status-color="status.color"
+                        :workspace-name="ws.name"
+                        :assignees="task.assignees"
+                        :due-date="task.dueDate"
+                        :description="task.description"
+                        @click="emit('taskClick', task.id)"
+                      />
+                    </div>
+                    <div v-if="!tasksByStatus[status.id]?.length" class="empty-column">
+                      <span>ยังไม่มีงาน</span>
+                    </div>
+                  </div>
+                </NScrollbar>
+                <div class="column-footer">
+                  <NButton
+                    text
+                    size="small"
+                    @click="openCreateForm(ws.id, status.id)"
+                  >
+                    <template #icon>
+                      <NIcon><AddCircleOutline /></NIcon>
+                    </template>
+                    เพิ่มงาน
+                  </NButton>
                 </div>
               </div>
-            </NScrollbar>
-          </div>
+            </div>
+          </NScrollbar>
         </div>
-      </NScrollbar>
+      </template>
     </div>
   </NSpin>
+
+  <TaskForm
+    v-model:show="showTaskForm"
+    :workspace-id="formWorkspaceId"
+    :default-status-id="formStatusId"
+    @created="onFormCreated"
+    @updated="fetchBoard(); emit('updated')"
+  />
 </template>
 
 <style scoped>
@@ -134,22 +201,50 @@ onMounted(fetchBoard)
   min-height: 400px;
 }
 
+.empty-state {
+  padding: 48px;
+  text-align: center;
+}
+
+.workspace-section {
+  margin-bottom: 24px;
+}
+
+.workspace-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 4px 12px;
+}
+
+.workspace-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+}
+
+.workspace-name {
+  font-weight: 600;
+  font-size: 1rem;
+  color: var(--color-text);
+}
+
 .board-columns {
   display: flex;
   gap: 16px;
   padding-bottom: 16px;
-  min-height: 500px;
+  min-height: 400px;
 }
 
 .board-column {
-  min-width: 300px;
-  max-width: 320px;
+  min-width: 280px;
+  max-width: 300px;
   flex-shrink: 0;
   background: var(--color-surface-variant);
   border-radius: var(--radius-lg);
   display: flex;
   flex-direction: column;
-  max-height: calc(100vh - 240px);
+  max-height: calc(100vh - 320px);
 }
 
 .column-header {
@@ -198,5 +293,21 @@ onMounted(fetchBoard)
 
 .column-cards > div:active {
   cursor: grabbing;
+}
+
+.empty-column {
+  padding: 16px;
+  text-align: center;
+  color: var(--color-text-secondary);
+  font-size: 0.8rem;
+}
+
+.column-footer {
+  padding: 8px 12px 12px;
+  border-top: 1px solid var(--color-border);
+}
+
+.column-footer .n-button {
+  width: 100%;
 }
 </style>

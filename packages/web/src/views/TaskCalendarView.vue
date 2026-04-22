@@ -1,103 +1,243 @@
 <script setup lang="ts">
-import { ref, computed } from "vue";
-import { NCard, NText, NIcon, NButton, NSpin } from "naive-ui";
-import { ChevronBackOutline, ChevronForwardOutline, AddCircleOutline } from "@vicons/ionicons5";
-import { useThaiDate } from "@/composables/useThaiDate";
+import { ref, computed, watch, onMounted } from 'vue'
+import {
+  NCard,
+  NText,
+  NIcon,
+  NButton,
+  NButtonGroup,
+  NSelect,
+  NSpin,
+  useMessage,
+} from 'naive-ui'
+import {
+  ChevronBackOutline,
+  ChevronForwardOutline,
+  AddCircleOutline,
+  GridOutline,
+  ListOutline,
+  CalendarOutline,
+  TodayOutline,
+} from '@vicons/ionicons5'
+import { useRouter } from 'vue-router'
+import PageHeader from '@/components/common/PageHeader.vue'
+import TaskForm from '@/components/task/TaskForm.vue'
+import TaskDetail from '@/components/task/TaskDetail.vue'
+import { useTaskStore } from '@/stores/task'
+import { useWorkspaceStore } from '@/stores/workspace'
+import type { Task, Workspace } from '@/types'
 
-const loading = ref(false);
-const currentDate = ref(new Date());
+const router = useRouter()
+const message = useMessage()
+const taskStore = useTaskStore()
+const wsStore = useWorkspaceStore()
 
-const { formatMonth } = useThaiDate();
-const monthLabel = computed(() => formatMonth(currentDate.value.toISOString()));
+const currentDate = ref(new Date())
+const tasks = ref<Task[]>([])
+const loading = ref(false)
 
-const THAI_DAYS = ["จ.", "อ.", "พ.", "พฤ.", "ศ.", "ส.", "อา."];
-const DAYS_IN_WEEK = 7;
+const showTaskForm = ref(false)
+const editingTaskId = ref<string | undefined>(undefined)
+const defaultStartDate = ref<number | undefined>(undefined)
+const defaultDueDate = ref<number | undefined>(undefined)
+const showDetail = ref(false)
+const detailTaskId = ref<string | null>(null)
 
-interface CalendarTask {
-  id: string
-  title: string
-  priority: string
+// Filter state
+const workspaceFilter = ref<string | null>(null)
+const workspaces = ref<Workspace[]>([])
+
+const workspaceOptions = computed(() =>
+  [{ label: 'ทุกพื้นที่งาน', value: '' }, ...workspaces.value.map(w => ({ label: w.name, value: w.id }))]
+)
+
+const THAI_DAYS = ['จ.', 'อ.', 'พ.', 'พฤ.', 'ศ.', 'ส.', 'อา.']
+const DAYS_IN_WEEK = 7
+
+function toLocalDateStr(date: Date): string {
+  const y = date.getFullYear()
+  const m = String(date.getMonth() + 1).padStart(2, '0')
+  const d = String(date.getDate()).padStart(2, '0')
+  return `${y}-${m}-${d}`
 }
 
-const taskMap: Record<string, CalendarTask[]> = {
-  "2026-04-21": [{ id: "1", title: "จัดเตรียมเอกสารสัญญาเช่า", priority: "urgent" }],
-  "2026-04-22": [{ id: "2", title: "อัปเดตแผนปฏิบัติการ", priority: "high" }],
-  "2026-04-25": [{ id: "3", title: "ติดตามผลการอบรม", priority: "normal" }],
-  "2026-04-28": [{ id: "4", title: "ส่งรายงาน Q2", priority: "high" }],
-  "2026-04-30": [{ id: "5", title: "ประเมินผลบ่มเพาะฯ", priority: "normal" }],
-};
-
 const PRIORITY_COLORS: Record<string, string> = {
-  urgent: "var(--color-priority-urgent)",
-  high: "var(--color-priority-high)",
-  normal: "var(--color-priority-normal)",
-  low: "var(--color-priority-low)",
-};
+  urgent: '#cf1322',
+  high: '#d46b08',
+  normal: '#1890ff',
+  low: '#8c8c8c',
+}
+
+const PRIORITY_LABELS: Record<string, string> = {
+  urgent: 'เร่งด่วน',
+  high: 'สูง',
+  normal: 'ปกติ',
+  low: 'ต่ำ',
+}
+
+const monthLabel = computed(() => {
+  const d = currentDate.value
+  const months = ['มกราคม', 'กุมภาพันธ์', 'มีนาคม', 'เมษายน', 'พฤษภาคม', 'มิถุนายน', 'กรกฎาคม', 'สิงหาคม', 'กันยายน', 'ตุลาคม', 'พฤศจิกายน', 'ธันวาคม']
+  return `${months[d.getMonth()]} ${d.getFullYear() + 543}`
+})
+
+// Map tasks by dueDate string (YYYY-MM-DD)
+const taskMap = computed(() => {
+  const map: Record<string, Task[]> = {}
+  for (const task of tasks.value) {
+    if (!task.dueDate) continue
+    const dateStr = task.dueDate.split('T')[0]
+    if (!map[dateStr]) map[dateStr] = []
+    map[dateStr].push(task)
+  }
+  return map
+})
 
 function getCalendarDays() {
-  const year = currentDate.value.getFullYear();
-  const month = currentDate.value.getMonth();
-  const firstDay = new Date(year, month, 1);
-  const lastDay = new Date(year, month + 1, 0);
-  const startDow = (firstDay.getDay() + 6) % 7;
-  const days: { date: number, dateStr: string, isCurrentMonth: boolean, isToday: boolean, tasks: CalendarTask[] }[] = [];
+  const year = currentDate.value.getFullYear()
+  const month = currentDate.value.getMonth()
+  const firstDay = new Date(year, month, 1)
+  const lastDay = new Date(year, month + 1, 0)
+  const startDow = (firstDay.getDay() + 6) % 7
+  const days: { date: number; dateStr: string; isCurrentMonth: boolean; isToday: boolean; tasks: Task[] }[] = []
 
-  const today = new Date();
+  const today = new Date()
   for (let i = startDow - 1; i >= 0; i--) {
-    const d = new Date(year, month, -i);
-    days.push({ date: d.getDate(), dateStr: d.toISOString().split("T")[0], isCurrentMonth: false, isToday: false, tasks: [] });
+    const d = new Date(year, month, -i)
+    const dateStr = toLocalDateStr(d)
+    days.push({ date: d.getDate(), dateStr, isCurrentMonth: false, isToday: false, tasks: [] })
   }
   for (let d = 1; d <= lastDay.getDate(); d++) {
-    const date = new Date(year, month, d);
-    const dateStr = date.toISOString().split("T")[0];
+    const date = new Date(year, month, d)
+    const dateStr = toLocalDateStr(date)
     days.push({
       date: d,
       dateStr,
       isCurrentMonth: true,
       isToday: today.getFullYear() === year && today.getMonth() === month && today.getDate() === d,
-      tasks: taskMap[dateStr] || [],
-    });
+      tasks: taskMap.value[dateStr] || [],
+    })
   }
-  const remaining = DAYS_IN_WEEK - (days.length % DAYS_IN_WEEK);
+  const remaining = DAYS_IN_WEEK - (days.length % DAYS_IN_WEEK)
   if (remaining < DAYS_IN_WEEK) {
     for (let d = 1; d <= remaining; d++) {
-      const date = new Date(year, month + 1, d);
-      days.push({ date: d, dateStr: date.toISOString().split("T")[0], isCurrentMonth: false, isToday: false, tasks: [] });
+      const date = new Date(year, month + 1, d)
+      const dateStr = toLocalDateStr(date)
+      days.push({ date: d, dateStr, isCurrentMonth: false, isToday: false, tasks: [] })
     }
   }
-  return days;
+  return days
 }
 
-const calendarDays = computed(() => getCalendarDays());
+const calendarDays = computed(() => getCalendarDays())
 
 function prevMonth() {
-  const d = new Date(currentDate.value);
-  d.setMonth(d.getMonth() - 1);
-  currentDate.value = d;
+  const d = new Date(currentDate.value)
+  d.setMonth(d.getMonth() - 1)
+  currentDate.value = d
 }
 
 function nextMonth() {
-  const d = new Date(currentDate.value);
-  d.setMonth(d.getMonth() + 1);
-  currentDate.value = d;
+  const d = new Date(currentDate.value)
+  d.setMonth(d.getMonth() + 1)
+  currentDate.value = d
 }
+
+function goToday() {
+  currentDate.value = new Date()
+}
+
+async function fetchCalendarTasks() {
+  loading.value = true
+  try {
+    const year = currentDate.value.getFullYear()
+    const month = currentDate.value.getMonth()
+    const firstDay = toLocalDateStr(new Date(year, month, 1))
+    const lastDay = toLocalDateStr(new Date(year, month + 1, 0))
+
+    await taskStore.fetchTasks({
+      workspaceId: workspaceFilter.value || undefined,
+      dueDateFrom: firstDay,
+      dueDateTo: lastDay,
+      pageSize: 200,
+    })
+    tasks.value = taskStore.tasks
+  } catch {
+    message.error('โหลดข้อมูลปฏิทินไม่สำเร็จ')
+  } finally {
+    loading.value = false
+  }
+}
+
+function openCreateForm() {
+  editingTaskId.value = undefined
+  defaultStartDate.value = undefined
+  defaultDueDate.value = undefined
+  showTaskForm.value = true
+}
+
+function openCreateFormOnDate(dateStr: string) {
+  editingTaskId.value = undefined
+  const ts = new Date(dateStr + 'T00:00:00').getTime()
+  defaultStartDate.value = ts
+  defaultDueDate.value = ts
+  showTaskForm.value = true
+}
+
+function openDetail(taskId: string) {
+  detailTaskId.value = taskId
+  showDetail.value = true
+}
+
+function handleWorkspaceChange(val: string | null) {
+  workspaceFilter.value = val || null
+  fetchCalendarTasks()
+}
+
+watch(currentDate, fetchCalendarTasks)
+
+onMounted(async () => {
+  if (!wsStore.workspaces.length) await wsStore.fetchWorkspaces()
+  workspaces.value = wsStore.workspaces
+  workspaceFilter.value = wsStore.currentWorkspaceId
+  await fetchCalendarTasks()
+})
 </script>
 
 <template>
   <NSpin :show="loading">
     <div class="calendar-page">
-      <div class="page-header">
-        <div>
-          <h1 class="page-title">ปฏิทินงาน</h1>
-          <NText depth="3" class="page-subtitle">ดูงานตามวันที่</NText>
-        </div>
-        <NButton type="primary">
-          <template #icon>
-            <NIcon><AddCircleOutline /></NIcon>
-          </template>
-          สร้างงาน
-        </NButton>
-      </div>
+      <PageHeader title="ปฏิทินงาน" subtitle="ดูงานตามวันครบกำหนด">
+        <template #actions>
+          <NButtonGroup>
+            <NButton size="small" @click="router.push('/tasks')">
+              <template #icon><NIcon :size="15"><ListOutline /></NIcon></template>
+              รายการ
+            </NButton>
+            <NButton size="small" @click="router.push('/tasks/board')">
+              <template #icon><NIcon :size="15"><GridOutline /></NIcon></template>
+              กระดาน
+            </NButton>
+            <NButton size="small" type="primary">
+              <template #icon><NIcon :size="15"><CalendarOutline /></NIcon></template>
+              ปฏิทิน
+            </NButton>
+          </NButtonGroup>
+          <NSelect
+            v-model:value="workspaceFilter"
+            :options="workspaceOptions"
+            size="small"
+            class="workspace-filter"
+            @update:value="handleWorkspaceChange"
+          />
+          <NButton type="primary" @click="openCreateForm">
+            <template #icon>
+              <NIcon><AddCircleOutline /></NIcon>
+            </template>
+            สร้างงาน
+          </NButton>
+        </template>
+      </PageHeader>
 
       <NCard class="calendar-card" :bordered="false">
         <div class="calendar-nav">
@@ -107,6 +247,10 @@ function nextMonth() {
           <NText class="calendar-month">{{ monthLabel }}</NText>
           <NButton quaternary circle @click="nextMonth">
             <template #icon><NIcon><ChevronForwardOutline /></NIcon></template>
+          </NButton>
+          <NButton size="small" secondary @click="goToday" class="today-btn">
+            <template #icon><NIcon :size="14"><TodayOutline /></NIcon></template>
+            วันนี้
           </NButton>
         </div>
 
@@ -121,7 +265,9 @@ function nextMonth() {
             :class="{
               'calendar-day--other': !day.isCurrentMonth,
               'calendar-day--today': day.isToday,
+              'calendar-day--clickable': day.isCurrentMonth,
             }"
+            @click="day.isCurrentMonth && !day.tasks.length && openCreateFormOnDate(day.dateStr)"
           >
             <span class="day-number" :class="{ 'day-number--today': day.isToday }">{{ day.date }}</span>
             <div class="day-tasks">
@@ -129,7 +275,9 @@ function nextMonth() {
                 v-for="task in day.tasks"
                 :key="task.id"
                 class="day-task"
-                :style="{ borderLeftColor: PRIORITY_COLORS[task.priority] }"
+                :style="{ borderLeftColor: PRIORITY_COLORS[task.priority] || PRIORITY_COLORS.normal }"
+                :title="`${task.title} (${PRIORITY_LABELS[task.priority] || task.priority})`"
+                @click="openDetail(task.id)"
               >
                 {{ task.title }}
               </div>
@@ -139,6 +287,15 @@ function nextMonth() {
       </NCard>
     </div>
   </NSpin>
+
+  <TaskForm v-model:show="showTaskForm" :task-id="editingTaskId" :default-start-date="defaultStartDate" :default-due-date="defaultDueDate" @created="fetchCalendarTasks" @updated="fetchCalendarTasks" />
+
+  <TaskDetail
+    v-model:show="showDetail"
+    :task-id="detailTaskId"
+    @edit="(id) => { editingTaskId = id; showTaskForm = true }"
+    @deleted="fetchCalendarTasks"
+  />
 </template>
 
 <style scoped>
@@ -148,22 +305,12 @@ function nextMonth() {
   gap: var(--space-lg);
 }
 
-.page-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
+.workspace-filter {
+  width: 180px;
 }
 
-.page-title {
-  font-size: var(--text-hero);
-  font-weight: 700;
-  color: var(--color-text);
-  line-height: var(--leading-tight);
-}
-
-.page-subtitle {
-  font-size: var(--text-sm);
-  margin-top: var(--space-2xs);
+.today-btn {
+  margin-left: var(--space-sm);
 }
 
 .calendar-card {
@@ -182,7 +329,7 @@ function nextMonth() {
 .calendar-month {
   font-size: var(--text-lg);
   font-weight: 600;
-  min-width: 150px;
+  min-width: 180px;
   text-align: center;
 }
 
@@ -218,6 +365,10 @@ function nextMonth() {
 
 .calendar-day--other {
   background: var(--color-surface-variant);
+}
+
+.calendar-day--clickable {
+  cursor: pointer;
 }
 
 .calendar-day--other .day-number {
@@ -263,5 +414,9 @@ function nextMonth() {
   overflow: hidden;
   text-overflow: ellipsis;
   cursor: pointer;
+}
+
+.day-task:hover {
+  filter: brightness(0.95);
 }
 </style>

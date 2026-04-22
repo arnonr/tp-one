@@ -1,4 +1,5 @@
 import { TaskService } from './task.service';
+import { WaitingService } from './waiting.service';
 
 export const TaskController = {
   async list(user: any, query: any) {
@@ -10,6 +11,10 @@ export const TaskController = {
       priority: query.priority,
       search: query.search,
       fiscalYear: query.fiscalYear ? Number(query.fiscalYear) : undefined,
+      startDateFrom: query.startDateFrom,
+      startDateTo: query.startDateTo,
+      dueDateFrom: query.dueDateFrom,
+      dueDateTo: query.dueDateTo,
       page: query.page ? Number(query.page) : 1,
       pageSize: query.pageSize ? Number(query.pageSize) : 20,
     });
@@ -81,5 +86,36 @@ export const TaskController = {
   async batchUpdateStatus(user: any, body: any) {
     await TaskService.batchUpdateStatus(body.updates);
     return { success: true };
+  },
+
+  // Waiting for others
+  async getWaiting(params: any) {
+    const list = await WaitingService.getByTaskId(params.id);
+    return { success: true, data: list };
+  },
+
+  async setWaiting(user: any, params: any, body: any) {
+    const waiting = await WaitingService.setWaiting({
+      taskId: params.id,
+      waitingFor: body.waitingFor,
+      contactPerson: body.contactPerson,
+      contactInfo: body.contactInfo,
+      expectedDate: body.expectedDate,
+    });
+    return { success: true, data: waiting };
+  },
+
+  async resolveWaiting(user: any, params: any) {
+    const result = await WaitingService.resolve(params.waitingId, user.userId);
+    return result;
+  },
+
+  async addFollowUp(user: any, params: any, body: any) {
+    const followUp = await WaitingService.addFollowUp({
+      waitingId: params.waitingId,
+      userId: user.userId,
+      note: body.note,
+    });
+    return { success: true, data: followUp };
   },
 };

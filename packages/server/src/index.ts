@@ -5,8 +5,10 @@ import { redis } from "./config/redis";
 import { authPlugin } from "./modules/auth/auth.plugin";
 import { workspacePlugin } from "./modules/workspace/workspace.plugin";
 import { taskPlugin } from "./modules/task/task.plugin";
+import { projectPlugin } from "./modules/project/project.plugin";
 import { templatePlugin } from "./modules/template/template.plugin";
 import { myWorkPlugin } from "./modules/my-work/my-work.plugin";
+import { usersPlugin } from "./modules/auth/users.plugin";
 import { AppError } from "./shared/errors";
 
 const app = new Elysia()
@@ -21,8 +23,10 @@ const app = new Elysia()
   .use(authPlugin)
   .use(workspacePlugin)
   .use(taskPlugin)
+  .use(projectPlugin)
   .use(templatePlugin)
   .use(myWorkPlugin)
+  .use(usersPlugin)
   .get("/api/health", () => ({ status: "ok", timestamp: new Date().toISOString() }))
   .onError(({ error, set }) => {
     if (error instanceof AppError) {

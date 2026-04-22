@@ -1,7 +1,7 @@
 import { db } from '../../config/database';
-import { tasks, workspaceStatuses, users, workspaces } from '../../db/schema';
+import { tasks, workspaceStatuses, users, workspaces, taskAssignees } from '../../db/schema';
 import { taskWaiting } from '../../db/schema/waiting';
-import { eq, and, lte, gte, isNull, sql, desc } from 'drizzle-orm';
+import { eq, and, isNull, sql, desc } from 'drizzle-orm';
 
 function todayStr() {
   return new Date().toISOString().split('T')[0];
@@ -15,64 +15,49 @@ function endOfWeekStr() {
   return d.toISOString().split('T')[0];
 }
 
-function endOfMonthStr() {
-  const d = new Date();
-  d.setMonth(d.getMonth() + 1, 0);
-  return d.toISOString().split('T')[0];
-}
-
-const taskSelect = {
-  id: tasks.id,
-  title: tasks.title,
-  description: tasks.description,
-  priority: tasks.priority,
-  statusId: tasks.statusId,
-  statusName: workspaceStatuses.name,
-  statusColor: workspaceStatuses.color,
-  workspaceId: tasks.workspaceId,
-  workspaceName: workspaces.name,
-  projectId: tasks.projectId,
-  assigneeId: tasks.assigneeId,
-  assigneeName: users.name,
-  reporterId: tasks.reporterId,
-  startDate: tasks.startDate,
-  dueDate: tasks.dueDate,
-  completedAt: tasks.completedAt,
-  sortOrder: tasks.sortOrder,
-  createdAt: tasks.createdAt,
-  updatedAt: tasks.updatedAt,
-};
-
-const taskJoin = () =>
-  db
-    .select(taskSelect)
-    .from(tasks)
-    .leftJoin(workspaceStatuses, eq(tasks.statusId, workspaceStatuses.id))
-    .leftJoin(workspaces, eq(tasks.workspaceId, workspaces.id))
-    .leftJoin(users, eq(tasks.assigneeId, users.id));
-
 export const MyWorkService = {
   async getSummary(userId: string) {
     const today = todayStr();
 
     const [todayTasks, overdueTasks, weekTasks, waitingTasks] = await Promise.all([
-      // Tasks due today
-      db.select({ count: sql<number>`count(*)::int` }).from(tasks).where(
-        and(eq(tasks.assigneeId, userId), isNull(tasks.completedAt), eq(tasks.dueDate, today)),
-      ),
+      // Tasks due today (assigned to user)
+      db.select({ count: sql<number>`count(*)::int` })
+        .from(tasks)
+        .innerJoin(taskAssignees, eq(tasks.id, taskAssignees.taskId))
+        .where(and(
+          eq(taskAssignees.userId, userId),
+          isNull(tasks.completedAt),
+          eq(tasks.dueDate, today),
+        )),
       // Overdue tasks
-      db.select({ count: sql<number>`count(*)::int` }).from(tasks).where(
-        and(eq(tasks.assigneeId, userId), isNull(tasks.completedAt), sql`${tasks.dueDate} < ${today}`, sql`${tasks.dueDate} IS NOT NULL`),
-      ),
-      // Tasks due this week
-      db.select({ count: sql<number>`count(*)::int` }).from(tasks).where(
-        and(eq(tasks.assigneeId, userId), isNull(tasks.completedAt), sql`${tasks.dueDate} <= ${endOfWeekStr()}`, sql`${tasks.dueDate} >= ${today}`),
-      ),
+      db.select({ count: sql<number>`count(*)::int` })
+        .from(tasks)
+        .innerJoin(taskAssignees, eq(tasks.id, taskAssignees.taskId))
+        .where(and(
+          eq(taskAssignees.userId, userId),
+          isNull(tasks.completedAt),
+          sql`${tasks.dueDate} < ${today}`,
+          sql`${tasks.dueDate} IS NOT NULL`,
+        )),
+      // Tasks due this week (not today, not overdue)
+      db.select({ count: sql<number>`count(*)::int` })
+        .from(tasks)
+        .innerJoin(taskAssignees, eq(tasks.id, taskAssignees.taskId))
+        .where(and(
+          eq(taskAssignees.userId, userId),
+          isNull(tasks.completedAt),
+          sql`${tasks.dueDate} <= ${endOfWeekStr()}`,
+          sql`${tasks.dueDate} > ${today}`,
+        )),
       // Waiting for others
       db.select({ count: sql<number>`count(*)::int` })
         .from(taskWaiting)
         .innerJoin(tasks, eq(taskWaiting.taskId, tasks.id))
-        .where(and(eq(tasks.assigneeId, userId), eq(taskWaiting.isResolved, false))),
+        .innerJoin(taskAssignees, eq(tasks.id, taskAssignees.taskId))
+        .where(and(
+          eq(taskAssignees.userId, userId),
+          eq(taskWaiting.isResolved, false),
+        )),
     ]);
 
     return {
@@ -85,23 +70,115 @@ export const MyWorkService = {
 
   async getToday(userId: string) {
     const today = todayStr();
-    return taskJoin()
-      .where(and(eq(tasks.assigneeId, userId), isNull(tasks.completedAt), eq(tasks.dueDate, today)))
+    return db
+      .select({
+        id: tasks.id,
+        title: tasks.title,
+        description: tasks.description,
+        priority: tasks.priority,
+        statusId: tasks.statusId,
+        statusName: workspaceStatuses.name,
+        statusColor: workspaceStatuses.color,
+        workspaceId: tasks.workspaceId,
+        workspaceName: workspaces.name,
+        projectId: tasks.projectId,
+        assigneeId: taskAssignees.userId,
+        assigneeName: users.name,
+        reporterId: tasks.reporterId,
+        startDate: tasks.startDate,
+        dueDate: tasks.dueDate,
+        completedAt: tasks.completedAt,
+        sortOrder: tasks.sortOrder,
+        createdAt: tasks.createdAt,
+        updatedAt: tasks.updatedAt,
+      })
+      .from(tasks)
+      .innerJoin(taskAssignees, eq(tasks.id, taskAssignees.taskId))
+      .leftJoin(workspaceStatuses, eq(tasks.statusId, workspaceStatuses.id))
+      .leftJoin(workspaces, eq(tasks.workspaceId, workspaces.id))
+      .leftJoin(users, eq(taskAssignees.userId, users.id))
+      .where(and(
+        eq(taskAssignees.userId, userId),
+        isNull(tasks.completedAt),
+        eq(tasks.dueDate, today),
+      ))
       .orderBy(desc(tasks.priority), desc(tasks.createdAt));
   },
 
   async getOverdue(userId: string) {
     const today = todayStr();
-    return taskJoin()
-      .where(and(eq(tasks.assigneeId, userId), isNull(tasks.completedAt), sql`${tasks.dueDate} < ${today}`, sql`${tasks.dueDate} IS NOT NULL`))
+    return db
+      .select({
+        id: tasks.id,
+        title: tasks.title,
+        description: tasks.description,
+        priority: tasks.priority,
+        statusId: tasks.statusId,
+        statusName: workspaceStatuses.name,
+        statusColor: workspaceStatuses.color,
+        workspaceId: tasks.workspaceId,
+        workspaceName: workspaces.name,
+        projectId: tasks.projectId,
+        assigneeId: taskAssignees.userId,
+        assigneeName: users.name,
+        reporterId: tasks.reporterId,
+        startDate: tasks.startDate,
+        dueDate: tasks.dueDate,
+        completedAt: tasks.completedAt,
+        sortOrder: tasks.sortOrder,
+        createdAt: tasks.createdAt,
+        updatedAt: tasks.updatedAt,
+      })
+      .from(tasks)
+      .innerJoin(taskAssignees, eq(tasks.id, taskAssignees.taskId))
+      .leftJoin(workspaceStatuses, eq(tasks.statusId, workspaceStatuses.id))
+      .leftJoin(workspaces, eq(tasks.workspaceId, workspaces.id))
+      .leftJoin(users, eq(taskAssignees.userId, users.id))
+      .where(and(
+        eq(taskAssignees.userId, userId),
+        isNull(tasks.completedAt),
+        sql`${tasks.dueDate} < ${today}`,
+        sql`${tasks.dueDate} IS NOT NULL`,
+      ))
       .orderBy(tasks.dueDate);
   },
 
   async getUpcoming(userId: string) {
     const today = todayStr();
     const endOfWeek = endOfWeekStr();
-    return taskJoin()
-      .where(and(eq(tasks.assigneeId, userId), isNull(tasks.completedAt), sql`${tasks.dueDate} > ${today}`, sql`${tasks.dueDate} <= ${endOfWeek}`))
+    return db
+      .select({
+        id: tasks.id,
+        title: tasks.title,
+        description: tasks.description,
+        priority: tasks.priority,
+        statusId: tasks.statusId,
+        statusName: workspaceStatuses.name,
+        statusColor: workspaceStatuses.color,
+        workspaceId: tasks.workspaceId,
+        workspaceName: workspaces.name,
+        projectId: tasks.projectId,
+        assigneeId: taskAssignees.userId,
+        assigneeName: users.name,
+        reporterId: tasks.reporterId,
+        startDate: tasks.startDate,
+        dueDate: tasks.dueDate,
+        completedAt: tasks.completedAt,
+        sortOrder: tasks.sortOrder,
+        createdAt: tasks.createdAt,
+        updatedAt: tasks.updatedAt,
+      })
+      .from(tasks)
+      .innerJoin(taskAssignees, eq(tasks.id, taskAssignees.taskId))
+      .leftJoin(workspaceStatuses, eq(tasks.statusId, workspaceStatuses.id))
+      .leftJoin(workspaces, eq(tasks.workspaceId, workspaces.id))
+      .leftJoin(users, eq(taskAssignees.userId, users.id))
+      .where(and(
+        eq(taskAssignees.userId, userId),
+        isNull(tasks.completedAt),
+        sql`${tasks.dueDate} > ${today}`,
+        sql`${tasks.dueDate} <= ${endOfWeek}`,
+      ))
       .orderBy(tasks.dueDate);
   },
 
@@ -118,8 +195,12 @@ export const MyWorkService = {
       })
       .from(taskWaiting)
       .innerJoin(tasks, eq(taskWaiting.taskId, tasks.id))
+      .innerJoin(taskAssignees, eq(tasks.id, taskAssignees.taskId))
       .leftJoin(workspaces, eq(tasks.workspaceId, workspaces.id))
-      .where(and(eq(tasks.assigneeId, userId), eq(taskWaiting.isResolved, false)))
+      .where(and(
+        eq(taskAssignees.userId, userId),
+        eq(taskWaiting.isResolved, false),
+      ))
       .orderBy(taskWaiting.expectedDate);
   },
 

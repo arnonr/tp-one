@@ -2,6 +2,7 @@ import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { taskService, type TaskListParams } from '@/services/task'
 import { workspaceService } from '@/services/workspace'
+import { useWorkspaceStore } from './workspace'
 import type { Tag, Task, WorkspaceStatus } from '@/types'
 
 export const useTaskStore = defineStore('task', () => {
@@ -124,9 +125,12 @@ export const useTaskStore = defineStore('task', () => {
   }
 
   async function fetchAllStatuses() {
-    const wsList = await workspaceService.list()
+    const wsStore = useWorkspaceStore()
+    if (!wsStore.workspaces.length) {
+      await wsStore.fetchWorkspaces()
+    }
     const allStatuses: WorkspaceStatus[] = []
-    for (const ws of wsList) {
+    for (const ws of wsStore.workspaces) {
       const wsStatuses = await workspaceService.getStatuses(ws.id)
       workspaceStatuses.value[ws.id] = wsStatuses
       allStatuses.push(...wsStatuses)

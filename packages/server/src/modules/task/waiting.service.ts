@@ -1,7 +1,7 @@
 import { db } from '../../config/database';
 import { taskWaiting, taskFollowUps } from '../../db/schema/waiting';
 import { tasks } from '../../db/schema';
-import { eq, and, isNull } from 'drizzle-orm';
+import { eq, and, inArray } from 'drizzle-orm';
 import { NotFoundError } from '../../shared/errors';
 
 export const WaitingService = {
@@ -26,7 +26,7 @@ export const WaitingService = {
   },
 
   async getByTaskId(taskId: string) {
-    return db
+    const waitingItems = await db
       .select({
         id: taskWaiting.id,
         taskId: taskWaiting.taskId,
@@ -41,6 +41,25 @@ export const WaitingService = {
       .from(taskWaiting)
       .where(eq(taskWaiting.taskId, taskId))
       .orderBy(taskWaiting.createdAt);
+
+    if (!waitingItems.length) return [];
+
+    const waitingIds = waitingItems.map(w => w.id);
+    const followUps = await db
+      .select({
+        id: taskFollowUps.id,
+        waitingId: taskFollowUps.waitingId,
+        note: taskFollowUps.note,
+        createdAt: taskFollowUps.createdAt,
+      })
+      .from(taskFollowUps)
+      .where(inArray(taskFollowUps.waitingId, waitingIds))
+      .orderBy(taskFollowUps.createdAt);
+
+    return waitingItems.map(w => ({
+      ...w,
+      followUps: followUps.filter(f => f.waitingId === w.id),
+    }));
   },
 
   async getActiveByUser(userId: string) {

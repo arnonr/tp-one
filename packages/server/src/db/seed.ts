@@ -1,5 +1,6 @@
 import { db } from '../config/database';
 import { users, workspaces, workspaceStatuses, workspaceMembers } from './schema';
+import { taskTemplates, taskTemplateItems } from './schema/templates';
 import { DEFAULT_WORKSPACE_STATUSES } from '../shared/constants';
 
 async function seed() {
@@ -54,6 +55,63 @@ async function seed() {
     ]);
 
     console.log(`Created workspace: ${ws.name} (${statuses.length} statuses, 2 members)`);
+  }
+
+  // Seed default task templates
+  const defaultTemplates = [
+    {
+      name: 'ขอจัดซื้อ/จัดจ้าง',
+      description: 'แม่แบบงานจัดซื้อจัดจ้างภาครัฐ',
+      isSystem: true,
+      items: [
+        { title: 'จัดทำรายละเอียดความต้องการ (TOR)', priority: 'high', sortOrder: 0 },
+        { title: 'ขอเสนอราคา (RFQ)', priority: 'high', sortOrder: 1 },
+        { title: 'ตรวจรับพัสดุ', priority: 'normal', sortOrder: 2 },
+        { title: 'เบิกจ่าย', priority: 'normal', sortOrder: 3 },
+      ],
+    },
+    {
+      name: 'จัดอบรม/สัมนา',
+      description: 'แม่แบบงานจัดการอบรมหรือสัมนา',
+      isSystem: true,
+      items: [
+        { title: 'เตรียมสถานที่และอุปกรณ์', priority: 'high', sortOrder: 0 },
+        { title: 'ประสานงานวิทยากร', priority: 'high', sortOrder: 1 },
+        { title: 'ส่งหนังสือเชิญ', priority: 'normal', sortOrder: 2 },
+        { title: 'ลงทะเบียนผู้เข้าร่วม', priority: 'normal', sortOrder: 3 },
+        { title: 'ประเมินผลหลังการอบรม', priority: 'low', sortOrder: 4 },
+      ],
+    },
+    {
+      name: 'รับที่ปรึกษา/วิจัย',
+      description: 'แม่แบบงานรับที่ปรึกษาหรือโครงการวิจัย',
+      isSystem: true,
+      items: [
+        { title: 'ลงนามสัญญา', priority: 'high', sortOrder: 0 },
+        { title: 'จัดตั้งคณะทำงาน', priority: 'high', sortOrder: 1 },
+        { title: 'จัดประชุมเปิดโครงการ (Kickoff)', priority: 'normal', sortOrder: 2 },
+        { title: 'ส่งรายงานความก้าวหน้า', priority: 'normal', sortOrder: 3 },
+        { title: 'ส่งรายงานฉบับสมบูรณ์', priority: 'high', sortOrder: 4 },
+        { title: 'ปิดโครงการและส่งมอบงาน', priority: 'high', sortOrder: 5 },
+      ],
+    },
+  ];
+
+  for (const tmpl of defaultTemplates) {
+    const [created] = await db.insert(taskTemplates).values({
+      name: tmpl.name,
+      description: tmpl.description,
+      isSystem: tmpl.isSystem,
+      createdById: admin.id,
+    }).returning();
+
+    await db.insert(taskTemplateItems).values(
+      tmpl.items.map(item => ({
+        templateId: created.id,
+        ...item,
+      })),
+    );
+    console.log(`Created template: ${tmpl.name} (${tmpl.items.length} items)`);
   }
 
   console.log('Seed data created successfully!');

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref } from 'vue'
-import { NButton, NIcon } from 'naive-ui'
-import { AddCircleOutline } from '@vicons/ionicons5'
+import { NButton, NButtonGroup, NIcon } from 'naive-ui'
+import { AddCircleOutline, GridOutline, ListOutline, CalendarOutline } from '@vicons/ionicons5'
 import PageHeader from '@/components/common/PageHeader.vue'
 import TaskKanban from '@/components/task/TaskKanban.vue'
 import TaskForm from '@/components/task/TaskForm.vue'
@@ -30,6 +30,20 @@ function openDetail(taskId: string) {
   <div class="board-page">
     <PageHeader title="บอร์ดงาน" subtitle="ลากเพื่อเปลี่ยนสถานะงาน">
       <template #actions>
+        <NButtonGroup>
+          <NButton size="small" @click="router.push('/tasks')">
+            <template #icon><NIcon :size="15"><ListOutline /></NIcon></template>
+            รายการ
+          </NButton>
+          <NButton size="small" type="primary">
+            <template #icon><NIcon :size="15"><GridOutline /></NIcon></template>
+            กระดาน
+          </NButton>
+          <NButton size="small" @click="router.push('/tasks/calendar')">
+            <template #icon><NIcon :size="15"><CalendarOutline /></NIcon></template>
+            ปฏิทิน
+          </NButton>
+        </NButtonGroup>
         <NButton type="primary" @click="openCreateForm">
           <template #icon>
             <NIcon><AddCircleOutline /></NIcon>

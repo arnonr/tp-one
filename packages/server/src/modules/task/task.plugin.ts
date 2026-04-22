@@ -52,4 +52,18 @@ export const taskPlugin = new Elysia({ prefix: '/api/tasks' })
   // Batch operations
   .post('/batch/status', async ({ user, body }) => TaskController.batchUpdateStatus(user, body), {
     detail: { summary: 'Batch update task statuses (Kanban drag)' },
+  })
+
+  // Waiting for others
+  .get('/:id/waiting', async ({ params }) => TaskController.getWaiting(params), {
+    detail: { summary: 'Get waiting items for task' },
+  })
+  .post('/:id/waiting', async ({ user, params, body }) => TaskController.setWaiting(user, params, body), {
+    detail: { summary: 'Add waiting-for-others item' },
+  })
+  .post('/:id/waiting/:waitingId/resolve', async ({ user, params }) => TaskController.resolveWaiting(user, params), {
+    detail: { summary: 'Mark waiting item as resolved' },
+  })
+  .post('/:id/waiting/:waitingId/follow-up', async ({ user, params, body }) => TaskController.addFollowUp(user, params, body), {
+    detail: { summary: 'Add follow-up note to waiting item' },
   });

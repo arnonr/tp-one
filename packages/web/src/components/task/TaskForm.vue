@@ -6,6 +6,7 @@ import {
 } from 'naive-ui'
 import { CloseOutline, AddOutline } from '@vicons/ionicons5'
 import { useTaskStore } from '@/stores/task'
+import { useWorkspaceStore } from '@/stores/workspace'
 import { taskService } from '@/services/task'
 import { workspaceService } from '@/services/workspace'
 import { getFiscalYear } from '@/utils/thai'
@@ -16,6 +17,9 @@ const props = defineProps<{
   show: boolean
   taskId?: string
   defaultWorkspaceId?: string
+  defaultStatusId?: string
+  defaultStartDate?: number
+  defaultDueDate?: number
 }>()
 
 const emit = defineEmits<{
@@ -26,6 +30,7 @@ const emit = defineEmits<{
 
 const message = useMessage()
 const taskStore = useTaskStore()
+const wsStore = useWorkspaceStore()
 
 const saving = ref(false)
 const loadingTask = ref(false)
@@ -127,8 +132,12 @@ async function loadWorkspaceData(workspaceId: string) {
     workspaceTags.value = fetchedTags
 
     if (statuses.length > 0 && !formValue.value.statusId) {
-      const defaultStatus = statuses.find((s: any) => s.isDefault) || statuses[0]
-      formValue.value.statusId = defaultStatus.id
+      if (props.defaultStatusId && statuses.some((s: any) => s.id === props.defaultStatusId)) {
+        formValue.value.statusId = props.defaultStatusId
+      } else {
+        const defaultStatus = statuses.find((s: any) => s.isDefault) || statuses[0]
+        formValue.value.statusId = defaultStatus.id
+      }
     }
   } catch {
     workspaceStatuses.value = []
@@ -203,7 +212,14 @@ watch(() => props.show, async (show) => {
       await loadTask()
     } else {
       const generalWs = workspaces.value.find((ws: any) => ws.type === 'general')
-      const defaultWsId = props.defaultWorkspaceId || generalWs?.id || null
+      let defaultWsId = props.defaultWorkspaceId || null
+      if (!defaultWsId && !wsStore.isAllWorkspaces && wsStore.currentWorkspaceId) {
+        defaultWsId = wsStore.currentWorkspaceId
+      }
+      if (!defaultWsId) {
+        defaultWsId = generalWs?.id || null
+      }
+      const todayTs = new Date().setHours(0, 0, 0, 0)
       formValue.value = {
         title: '',
         description: '',
@@ -216,8 +232,8 @@ watch(() => props.show, async (show) => {
         fiscalYear: currentFY,
         budget: null,
         estimatedHours: null,
-        startDate: new Date().setHours(0, 0, 0, 0),
-        dueDate: new Date().setHours(0, 0, 0, 0),
+        startDate: props.defaultStartDate ?? todayTs,
+        dueDate: props.defaultDueDate ?? todayTs,
       }
       if (defaultWsId) {
         await loadWorkspaceData(defaultWsId)
@@ -293,7 +309,7 @@ function handleClose() {
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
           <NFormItem label="พื้นที่งาน" path="workspaceId">
             <NSelect v-model:value="formValue.workspaceId" :options="workspaceOptions" placeholder="เลือกพื้นที่งาน"
-              :disabled="isEdit" />
+              :disabled="isEdit || !wsStore.isAllWorkspaces" />
           </NFormItem>
 
           <NFormItem label="สถานะ">
