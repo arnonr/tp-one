@@ -63,7 +63,7 @@ const expandedRowKeys = ref<string[]>([])
 
 // Sort state
 const sortBy = ref<string | null>('startDate')
-const sortOrder = ref<'asc' | 'desc' | false>('desc')
+const sortOrder = ref<'asc' | 'desc' | 'ascend' | 'descend' | false>('desc')
 
 // Advanced filter toggle
 const showAdvancedFilters = ref(false)
