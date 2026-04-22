@@ -8,6 +8,10 @@ export interface TaskListParams {
   priority?: string
   search?: string
   fiscalYear?: number
+  startDateFrom?: string
+  startDateTo?: string
+  dueDateFrom?: string
+  dueDateTo?: string
   page?: number
   pageSize?: number
 }
@@ -22,6 +26,10 @@ export const taskService = {
     if (params.priority) query.set('priority', params.priority)
     if (params.search) query.set('search', params.search)
     if (params.fiscalYear) query.set('fiscalYear', String(params.fiscalYear))
+    if (params.startDateFrom) query.set('startDateFrom', params.startDateFrom)
+    if (params.startDateTo) query.set('startDateTo', params.startDateTo)
+    if (params.dueDateFrom) query.set('dueDateFrom', params.dueDateFrom)
+    if (params.dueDateTo) query.set('dueDateTo', params.dueDateTo)
     if (params.page) query.set('page', String(params.page))
     if (params.pageSize) query.set('pageSize', String(params.pageSize))
     const { data } = await api.get(`/tasks?${query.toString()}`)
@@ -65,5 +73,33 @@ export const taskService = {
   async batchUpdateStatus(updates: Array<{ taskId: string; statusId: string; sortOrder?: number }>) {
     const { data } = await api.post('/tasks/batch/status', { updates })
     return data
+  },
+
+  async getTags(workspaceId: string) {
+    const { data } = await api.get(`/tasks/tags?workspaceId=${workspaceId}`)
+    return data.data as import('@/types').Tag[]
+  },
+
+  async createTag(workspaceId: string, name: string, color?: string) {
+    const { data } = await api.post('/tasks/tags', { workspaceId, name, color })
+    return data.data as import('@/types').Tag
+  },
+
+  async setTaskTags(taskId: string, tagIds: string[]) {
+    await api.put(`/tasks/${taskId}/tags`, { tagIds })
+  },
+
+  async createSubtask(parentId: string, title: string, workspaceId: string) {
+    const { data } = await api.post('/tasks', { parentId, title, workspaceId })
+    return data.data
+  },
+
+  async updateSubtask(id: string, data: Record<string, unknown>) {
+    const { data: res } = await api.patch(`/tasks/${id}`, data)
+    return res.data
+  },
+
+  async deleteSubtask(id: string) {
+    await api.delete(`/tasks/${id}`)
   },
 }

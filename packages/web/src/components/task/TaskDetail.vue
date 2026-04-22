@@ -2,12 +2,11 @@
 import { ref, computed, watch, onMounted } from 'vue'
 import {
   NDrawer, NDrawerContent, NDescriptions, NDescriptionsItem, NButton,
-  NSpace, NIcon, NInput, NAvatar, NDivider, NPopconfirm, NSpin,
+  NSpace, NIcon, NInput, NPopconfirm, NSpin, NTag, NCheckbox,
   useMessage, useDialog,
 } from 'naive-ui'
 import {
-  CreateOutline, TrashOutline, CopyOutline, AddCircleOutline,
-  SendOutline,
+  CreateOutline, TrashOutline, CopyOutline, SendOutline, AddOutline,
 } from '@vicons/ionicons5'
 import PriorityBadge from '@/components/common/PriorityBadge.vue'
 import StatusBadge from '@/components/common/StatusBadge.vue'
@@ -34,6 +33,8 @@ const taskStore = useTaskStore()
 const { copy, formatTaskFull } = useClipboard()
 
 const commentText = ref('')
+const newSubtaskTitle = ref('')
+const addingSubtask = ref(false)
 
 const loading = computed(() => taskStore.loading)
 const task = computed(() => taskStore.currentTask)
@@ -97,6 +98,35 @@ function handleCopy() {
   })
   copy(text)
   message.success('คัดลอกไปยังคลิปบอร์ดแล้ว')
+}
+
+async function handleAddSubtask() {
+  if (!props.taskId || !newSubtaskTitle.value.trim()) return
+  addingSubtask.value = true
+  try {
+    await taskStore.addSubtask(props.taskId, newSubtaskTitle.value.trim())
+    newSubtaskTitle.value = ''
+  } catch {
+    message.error('เพิ่มงานย่อยไม่สำเร็จ')
+  } finally {
+    addingSubtask.value = false
+  }
+}
+
+async function handleToggleSubtask(subtaskId: string, done: boolean) {
+  try {
+    await taskStore.toggleSubtask(subtaskId, done)
+  } catch {
+    message.error('อัปเดตงานย่อยไม่สำเร็จ')
+  }
+}
+
+async function handleDeleteSubtask(subtaskId: string) {
+  try {
+    await taskStore.removeSubtask(subtaskId)
+  } catch {
+    message.error('ลบงานย่อยไม่สำเร็จ')
+  }
 }
 
 async function handleAddComment() {
@@ -222,17 +252,65 @@ function handleClose() {
             <p class="section-content">{{ task.description }}</p>
           </div>
 
+          <!-- Tags -->
+          <div v-if="task.tags?.length" class="detail-section">
+            <h4 class="section-title">แท็ก</h4>
+            <NSpace size="small" wrap>
+              <NTag
+                v-for="tag in task.tags"
+                :key="tag.id"
+                size="small"
+                round
+                :color="tag.color ? { color: tag.color, borderColor: tag.color, textColor: '#fff' } : undefined"
+              >
+                {{ tag.name }}
+              </NTag>
+            </NSpace>
+          </div>
+
           <!-- Subtasks -->
           <div class="detail-section">
             <h4 class="section-title">งานย่อย ({{ subtasks.length }})</h4>
             <div v-if="subtasks.length" class="subtask-list">
               <div v-for="st in subtasks" :key="st.id" class="subtask-item">
-                <StatusBadge v-if="(st as any).statusName" :name="(st as any).statusName"
-                  :color="(st as any).statusColor" />
-                <span class="subtask-title">{{ st.title }}</span>
+                <NCheckbox
+                  :checked="!!(st as any).completedAt"
+                  @update:checked="handleToggleSubtask(st.id, $event)"
+                />
+                <span class="subtask-title" :class="{ 'subtask-done': !!(st as any).completedAt }">
+                  {{ st.title }}
+                </span>
+                <NButton
+                  size="tiny"
+                  quaternary
+                  type="error"
+                  class="subtask-delete"
+                  @click="handleDeleteSubtask(st.id)"
+                >
+                  <template #icon><NIcon><TrashOutline /></NIcon></template>
+                </NButton>
               </div>
             </div>
             <p v-else class="empty-hint">ยังไม่มีงานย่อย</p>
+            <div class="subtask-add">
+              <NInput
+                v-model:value="newSubtaskTitle"
+                size="small"
+                placeholder="เพิ่มงานย่อย..."
+                @keyup.enter="handleAddSubtask"
+              />
+              <NButton
+                size="small"
+                type="primary"
+                ghost
+                :loading="addingSubtask"
+                :disabled="!newSubtaskTitle.trim()"
+                @click="handleAddSubtask"
+              >
+                <template #icon><NIcon><AddOutline /></NIcon></template>
+                เพิ่ม
+              </NButton>
+            </div>
           </div>
 
           <!-- Comments -->
@@ -311,11 +389,33 @@ function handleClose() {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 6px 0;
+  padding: 4px 0;
 }
 
 .subtask-title {
   font-size: 0.875rem;
+  flex: 1;
+}
+
+.subtask-done {
+  text-decoration: line-through;
+  color: var(--color-text-tertiary);
+}
+
+.subtask-delete {
+  opacity: 0;
+  transition: opacity 0.15s ease;
+}
+
+.subtask-item:hover .subtask-delete {
+  opacity: 1;
+}
+
+.subtask-add {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin-top: 8px;
 }
 
 .comment-input {

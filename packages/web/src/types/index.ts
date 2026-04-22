@@ -84,6 +84,14 @@ export interface Task {
   dueDate?: string;
   completedAt?: string;
   sortOrder: number;
+  tags?: Tag[];
+}
+
+export interface Tag {
+  id: string;
+  workspaceId: string;
+  name: string;
+  color?: string;
 }
 
 export interface Comment {

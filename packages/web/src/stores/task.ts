@@ -2,13 +2,14 @@ import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { taskService, type TaskListParams } from '@/services/task'
 import { workspaceService } from '@/services/workspace'
-import type { Task, WorkspaceStatus } from '@/types'
+import type { Tag, Task, WorkspaceStatus } from '@/types'
 
 export const useTaskStore = defineStore('task', () => {
   const tasks = ref<Task[]>([])
   const currentTask = ref<Task | null>(null)
   const subtasks = ref<Task[]>([])
   const comments = ref<any[]>([])
+  const workspaceTags = ref<Tag[]>([])
   const statuses = ref<WorkspaceStatus[]>([])
   const workspaceStatuses = ref<Record<string, WorkspaceStatus[]>>({})
 
@@ -84,6 +85,35 @@ export const useTaskStore = defineStore('task', () => {
     return comment
   }
 
+  async function fetchWorkspaceTags(workspaceId: string) {
+    try {
+      workspaceTags.value = await taskService.getTags(workspaceId)
+    } catch {
+      workspaceTags.value = []
+    }
+  }
+
+  async function addSubtask(parentId: string, title: string) {
+    const task = currentTask.value
+    if (!task) return
+    const subtask = await taskService.createSubtask(parentId, title, task.workspaceId)
+    subtasks.value.push(subtask)
+    return subtask
+  }
+
+  async function toggleSubtask(subtaskId: string, done: boolean) {
+    const completedAt = done ? new Date().toISOString() : null
+    const updated = await taskService.updateSubtask(subtaskId, { completedAt })
+    const idx = subtasks.value.findIndex(s => s.id === subtaskId)
+    if (idx !== -1) subtasks.value[idx] = { ...subtasks.value[idx], ...updated }
+    return updated
+  }
+
+  async function removeSubtask(subtaskId: string) {
+    await taskService.deleteSubtask(subtaskId)
+    subtasks.value = subtasks.value.filter(s => s.id !== subtaskId)
+  }
+
   async function fetchWorkspaceStatuses(workspaceId: string) {
     if (workspaceStatuses.value[workspaceId]) {
       return workspaceStatuses.value[workspaceId]
@@ -112,10 +142,11 @@ export const useTaskStore = defineStore('task', () => {
   }
 
   return {
-    tasks, currentTask, subtasks, comments, statuses, workspaceStatuses,
+    tasks, currentTask, subtasks, comments, workspaceTags, statuses, workspaceStatuses,
     loading, total, page, pageSize, filters,
     fetchTasks, fetchTaskById, createTask, updateTask, deleteTask,
     fetchSubtasks, fetchComments, addComment,
+    fetchWorkspaceTags, addSubtask, toggleSubtask, removeSubtask,
     fetchWorkspaceStatuses, fetchAllStatuses,
     clearCurrent,
   }

@@ -1,15 +1,16 @@
 <script setup lang="ts">
-import { ref, computed, watch, onMounted } from 'vue'
+import { ref, computed, watch } from 'vue'
 import {
-  NModal, NCard, NForm, NFormItem, NInput, NInputNumber, NSelect,
-  NButton, NSpace, NIcon, NSpin, useMessage,
+  NModal, NForm, NFormItem, NInput, NInputNumber, NSelect,
+  NButton, NSpace, NIcon, NSpin, NTag, useMessage,
 } from 'naive-ui'
-import { CloseOutline } from '@vicons/ionicons5'
+import { CloseOutline, AddOutline } from '@vicons/ionicons5'
 import { useTaskStore } from '@/stores/task'
+import { taskService } from '@/services/task'
 import { workspaceService } from '@/services/workspace'
 import { getFiscalYear } from '@/utils/thai'
 import ThaiDatePicker from '@/components/common/ThaiDatePicker.vue'
-import type { TaskPriority } from '@/types'
+import type { Tag, TaskPriority } from '@/types'
 
 const props = defineProps<{
   show: boolean
@@ -32,6 +33,10 @@ const skipWorkspaceWatch = ref(false)
 const workspaces = ref<any[]>([])
 const workspaceStatuses = ref<any[]>([])
 const workspaceMembers = ref<any[]>([])
+const workspaceTags = ref<Tag[]>([])
+const newTagName = ref('')
+const creatingTag = ref(false)
+const showTagInput = ref(false)
 
 const isEdit = computed(() => !!props.taskId)
 
@@ -45,6 +50,7 @@ const formValue = ref({
   statusId: null as string | null,
   priority: 'normal' as TaskPriority,
   assigneeIds: [] as string[],
+  tagIds: [] as string[],
   fiscalYear: currentFY as number,
   budget: null as number | null,
   estimatedHours: null as number | null,
@@ -73,6 +79,10 @@ const workspaceOptions = computed(() =>
 
 const statusOptions = computed(() =>
   workspaceStatuses.value.map(s => ({ label: s.name, value: s.id }))
+)
+
+const tagOptions = computed(() =>
+  workspaceTags.value.map(t => ({ label: t.name, value: t.id }))
 )
 
 const memberOptions = computed(() =>
@@ -107,12 +117,14 @@ async function loadWorkspaces() {
 
 async function loadWorkspaceData(workspaceId: string) {
   try {
-    const [statuses, members] = await Promise.all([
+    const [statuses, members, fetchedTags] = await Promise.all([
       workspaceService.getStatuses(workspaceId),
       workspaceService.getMembers(workspaceId),
+      taskService.getTags(workspaceId),
     ])
     workspaceStatuses.value = statuses
     workspaceMembers.value = members
+    workspaceTags.value = fetchedTags
 
     if (statuses.length > 0 && !formValue.value.statusId) {
       const defaultStatus = statuses.find((s: any) => s.isDefault) || statuses[0]
@@ -121,6 +133,22 @@ async function loadWorkspaceData(workspaceId: string) {
   } catch {
     workspaceStatuses.value = []
     workspaceMembers.value = []
+    workspaceTags.value = []
+  }
+}
+
+async function handleCreateTag() {
+  if (!newTagName.value.trim() || !formValue.value.workspaceId) return
+  creatingTag.value = true
+  try {
+    const tag = await taskService.createTag(formValue.value.workspaceId, newTagName.value.trim())
+    workspaceTags.value.push(tag)
+    formValue.value.tagIds.push(tag.id)
+    newTagName.value = ''
+  } catch {
+    message.error('สร้าง tag ไม่สำเร็จ')
+  } finally {
+    creatingTag.value = false
   }
 }
 
@@ -140,6 +168,7 @@ async function loadTask() {
         statusId: task.statusId || null,
         priority: task.priority || 'normal',
         assigneeIds: (task as any).assignees?.map((a: any) => a.userId) || [],
+        tagIds: task.tags?.map(t => t.id) || [],
         fiscalYear: task.fiscalYear || currentFY,
         budget: task.budget ? Number(task.budget) : null,
         estimatedHours: task.estimatedHours ? Number(task.estimatedHours) : null,
@@ -183,11 +212,12 @@ watch(() => props.show, async (show) => {
         statusId: null,
         priority: 'normal',
         assigneeIds: [],
+        tagIds: [],
         fiscalYear: currentFY,
         budget: null,
         estimatedHours: null,
         startDate: new Date().setHours(0, 0, 0, 0),
-        dueDate: null,
+        dueDate: new Date().setHours(0, 0, 0, 0),
       }
       if (defaultWsId) {
         await loadWorkspaceData(defaultWsId)
@@ -221,10 +251,14 @@ async function handleSubmit() {
     }
 
     if (isEdit.value && props.taskId) {
-      await taskStore.updateTask(props.taskId, body)
+      await Promise.all([
+        taskStore.updateTask(props.taskId, body),
+        taskService.setTaskTags(props.taskId, formValue.value.tagIds),
+      ])
       message.success('อัปเดตงานสำเร็จ')
       emit('updated')
     } else {
+      body.tagIds = formValue.value.tagIds
       await taskStore.createTask(body)
       message.success('สร้างงานสำเร็จ')
       emit('created')
@@ -303,6 +337,43 @@ function handleClose() {
             <ThaiDatePicker v-model:value="formValue.dueDate" placeholder="เลือกวันกำหนดส่ง" />
           </NFormItem>
         </div>
+
+        <NFormItem label="แท็ก">
+          <div style="display: flex; gap: 8px; width: 100%;">
+            <NSelect
+              v-model:value="formValue.tagIds"
+              :options="tagOptions"
+              placeholder="เลือกแท็ก"
+              multiple
+              clearable
+              filterable
+              style="flex: 1"
+            >
+              <template #empty>
+                <span style="font-size: 0.8rem; color: var(--color-text-tertiary)">ยังไม่มีแท็กในพื้นที่งานนี้</span>
+              </template>
+            </NSelect>
+            <NButton
+              size="small"
+              :disabled="!formValue.workspaceId"
+              @click="showTagInput = !showTagInput"
+            >
+              <template #icon><NIcon><AddOutline /></NIcon></template>
+            </NButton>
+          </div>
+          <div v-if="showTagInput" style="display: flex; gap: 8px; margin-top: 8px; width: 100%;">
+            <NInput
+              v-model:value="newTagName"
+              size="small"
+              placeholder="ชื่อแท็กใหม่"
+              style="flex: 1"
+              @keyup.enter="handleCreateTag"
+            />
+            <NButton size="small" type="primary" :loading="creatingTag" :disabled="!newTagName.trim()" @click="handleCreateTag">
+              สร้าง
+            </NButton>
+          </div>
+        </NFormItem>
       </NForm>
     </NSpin>
 

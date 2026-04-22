@@ -2118,6 +2118,41 @@ git commit -m "feat: add task list view with Thai dates, priority badges, and fi
 
 ---
 
+### Task 2.6b: Frontend — Sub-task + Tags UI (ส่วนที่ขาด)
+
+> **ตรวจสอบเมื่อ 2026-04-22:** Backend API พร้อมทั้งหมดแล้ว แต่ Frontend ยังไม่มี UI สำหรับ subtask (สร้าง/แก้ไข/ลบ) และ tags (เลือก/สร้าง/แสดง)
+
+**สิ่งที่ต้องเพิ่ม:**
+
+| ส่วน | รายละเอียด |
+|------|------------|
+| `packages/web/src/services/task.ts` | เพิ่ม `getTags()`, `createTag()`, `setTaskTags()`, `createSubtask()`, `updateSubtask()`, `deleteSubtask()` |
+| `packages/web/src/stores/task.ts` | เพิ่ม state `tags: Tag[]` + actions `fetchTags()`, `addSubtask()`, `toggleSubtask()`, `deleteSubtask()` |
+| `packages/web/src/components/task/TaskForm.vue` | เพิ่ม `NSelect` เลือก tags (multiple, พร้อม option สร้างใหม่) |
+| `packages/web/src/components/task/TaskDetail.vue` | แสดง tag badges, ปุ่ม "เพิ่มงานย่อย" + inline input, checkbox/toggle บน subtask, ปุ่มลบ subtask |
+
+**Files:**
+
+- Modify: `packages/web/src/services/task.ts`
+- Modify: `packages/web/src/stores/task.ts`
+- Modify: `packages/web/src/components/task/TaskForm.vue`
+- Modify: `packages/web/src/components/task/TaskDetail.vue`
+
+- [ ] **Step 1: เพิ่ม tag API calls ใน task.ts service**
+- [ ] **Step 2: เพิ่ม subtask mutate API calls ใน task.ts service**
+- [ ] **Step 3: เพิ่ม tag state + actions ใน task store**
+- [ ] **Step 4: เพิ่ม subtask mutate actions ใน task store**
+- [ ] **Step 5: เพิ่ม tags field ใน TaskForm.vue**
+- [ ] **Step 6: เพิ่ม tag display ใน TaskDetail.vue**
+- [ ] **Step 7: เพิ่ม UI สร้าง/ลบ/toggle subtask ใน TaskDetail.vue**
+- [ ] **Step 8: Commit**
+
+```bash
+git commit -m "feat: add subtask and tags UI to TaskForm and TaskDetail"
+```
+
+---
+
 ### Task 2.7: Frontend — Kanban Board
 
 **Files:**

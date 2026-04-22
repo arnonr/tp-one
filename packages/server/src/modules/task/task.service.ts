@@ -1,6 +1,6 @@
 import { db } from '../../config/database';
 import { tasks, taskAssignees, taskWatchers, tags, taskTags, comments, attachments, workspaceStatuses, workspaces, users, projects } from '../../db/schema';
-import { eq, and, or, ilike, sql, desc, asc, count, isNull, lt, gte, lte, inArray } from 'drizzle-orm';
+import { eq, and, or, ilike, sql, desc, asc, count, isNull, gte, lte, inArray } from 'drizzle-orm';
 import { NotFoundError, ForbiddenError, ValidationError } from '../../shared/errors';
 import { getWorkspacePermission } from '../../middleware/rbac.middleware';
 import type { GlobalRole } from '../../shared/constants';
@@ -30,6 +30,21 @@ export const TaskService = {
     }
     if (filters.fiscalYear) {
       conditions.push(eq(tasks.fiscalYear, filters.fiscalYear));
+    }
+    if (filters.status) {
+      conditions.push(eq(tasks.statusId, filters.status));
+    }
+    if (filters.startDateFrom) {
+      conditions.push(gte(tasks.startDate, filters.startDateFrom));
+    }
+    if (filters.startDateTo) {
+      conditions.push(lte(tasks.startDate, filters.startDateTo));
+    }
+    if (filters.dueDateFrom) {
+      conditions.push(gte(tasks.dueDate, filters.dueDateFrom));
+    }
+    if (filters.dueDateTo) {
+      conditions.push(lte(tasks.dueDate, filters.dueDateTo));
     }
 
     // Only top-level tasks (no parent)
@@ -174,7 +189,13 @@ export const TaskService = {
       .innerJoin(users, eq(taskAssignees.userId, users.id))
       .where(eq(taskAssignees.taskId, taskId));
 
-    return { ...task, reporterName, assignees };
+    const taskTagsList = await db
+      .select({ id: tags.id, name: tags.name, color: tags.color })
+      .from(taskTags)
+      .innerJoin(tags, eq(taskTags.tagId, tags.id))
+      .where(eq(taskTags.taskId, taskId));
+
+    return { ...task, reporterName, assignees, tags: taskTagsList };
   },
 
   async create(data: {
