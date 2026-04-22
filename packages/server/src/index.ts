@@ -3,6 +3,10 @@ import { cors } from "@elysiajs/cors";
 import { database } from "./config/database";
 import { redis } from "./config/redis";
 import { authPlugin } from "./modules/auth/auth.plugin";
+import { workspacePlugin } from "./modules/workspace/workspace.plugin";
+import { taskPlugin } from "./modules/task/task.plugin";
+import { templatePlugin } from "./modules/template/template.plugin";
+import { myWorkPlugin } from "./modules/my-work/my-work.plugin";
 import { AppError } from "./shared/errors";
 
 const app = new Elysia()
@@ -15,6 +19,10 @@ const app = new Elysia()
   .use(database)
   .use(redis)
   .use(authPlugin)
+  .use(workspacePlugin)
+  .use(taskPlugin)
+  .use(templatePlugin)
+  .use(myWorkPlugin)
   .get("/api/health", () => ({ status: "ok", timestamp: new Date().toISOString() }))
   .onError(({ error, set }) => {
     if (error instanceof AppError) {

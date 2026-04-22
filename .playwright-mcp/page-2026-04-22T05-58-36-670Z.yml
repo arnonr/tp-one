@@ -1,0 +1,20 @@
+- generic [ref=e6]:
+  - generic [ref=e7]:
+    - generic [ref=e8]: TP
+    - generic [ref=e9]: TP-One
+    - text: ระบบจัดการงานอุทยานเทคโนโลยี
+  - generic [ref=e10]:
+    - generic [ref=e11]: เข้าสู่ระบบ
+    - generic [ref=e12]: ใช้อีเมลมหาวิทยาลัยเพื่อเข้าสู่ระบบ
+    - alert [ref=e43]:
+      - img [ref=e46]
+      - generic [ref=e51]: เข้าสู่ระบบไม่สำเร็จ กรุณาตรวจสอบอีเมล
+    - generic [ref=e14]:
+      - img [ref=e16]:
+        - img [ref=e17]
+      - textbox "อีเมลมหาวิทยาลัย" [active] [ref=e21]: admin@tp.test
+    - button "เข้าสู่ระบบ" [ref=e22] [cursor=pointer]:
+      - img [ref=e52]:
+        - img [ref=e53]
+      - generic [ref=e28]: เข้าสู่ระบบ
+    - generic [ref=e29]: "โหมดพัฒนา: ใช้อีเมลในระบบเพื่อเข้าสู่ระบบ"

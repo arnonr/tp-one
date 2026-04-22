@@ -1,0 +1,147 @@
+- generic [ref=e31]:
+  - complementary [ref=e32]:
+    - generic [ref=e33]:
+      - generic [ref=e34]: TP
+      - generic [ref=e35]:
+        - generic [ref=e36]: TP-One
+        - generic [ref=e37]: อุทยานเทคโนโลยี
+    - generic [ref=e38]: เมนูหลัก
+    - menu [ref=e41]:
+      - menuitem "งานของฉัน" [ref=e42]:
+        - img [ref=e43] [cursor=pointer]:
+          - img [ref=e44]
+        - text: งานของฉัน
+      - menuitem "แดชบอร์ด" [ref=e47]:
+        - img [ref=e48] [cursor=pointer]:
+          - img [ref=e49]
+        - text: แดชบอร์ด
+      - menuitem "พื้นที่ทำงาน" [ref=e54]:
+        - img [ref=e55] [cursor=pointer]:
+          - img [ref=e56]
+        - text: พื้นที่ทำงาน
+      - menuitem "งานทั้งหมด" [ref=e61]:
+        - img [ref=e62] [cursor=pointer]:
+          - img [ref=e63]
+        - text: งานทั้งหมด
+      - menuitem "โครงการ" [ref=e66]:
+        - img [ref=e67] [cursor=pointer]:
+          - img [ref=e68]
+        - text: โครงการ
+      - menuitem "แผนปฏิบัติการ" [ref=e70]:
+        - img [ref=e71] [cursor=pointer]:
+          - img [ref=e72]
+        - text: แผนปฏิบัติการ
+      - menuitem "รายงาน" [ref=e78]:
+        - img [ref=e79] [cursor=pointer]:
+          - img [ref=e80]
+        - text: รายงาน
+    - generic [ref=e83] [cursor=pointer]:
+      - generic [ref=e85]: ผ
+      - generic [ref=e86]:
+        - generic [ref=e87]: ผู้ดูแลระบบ
+        - generic [ref=e88]: ผู้ดูแลระบบ
+      - img [ref=e89]:
+        - img [ref=e90]
+    - button [ref=e92] [cursor=pointer]:
+      - img [ref=e93]:
+        - img [ref=e94]
+  - generic [ref=e97]:
+    - banner [ref=e98]:
+      - heading "All Tasks" [level=1] [ref=e99]
+      - generic [ref=e100]:
+        - generic [ref=e102]:
+          - img [ref=e104]:
+            - img [ref=e105]
+          - generic [ref=e108]:
+            - textbox "ค้นหา..." [ref=e109]
+            - generic:
+              - generic: ค้นหา...
+        - generic [ref=e112]:
+          - img [ref=e114] [cursor=pointer]:
+            - img [ref=e115]
+          - superscript [ref=e118]:
+            - generic [ref=e121]:
+              - generic [ref=e122]: "3"
+              - generic [ref=e124]: "3"
+              - generic [ref=e125]: "3"
+    - main [ref=e126]:
+      - generic [ref=e129]:
+        - generic [ref=e130]:
+          - generic [ref=e133]:
+            - heading "All Tasks" [level=1] [ref=e134]
+            - paragraph [ref=e135]: 1 tasks
+          - button "New Task" [ref=e137] [cursor=pointer]:
+            - img [ref=e139]:
+              - img [ref=e140]
+            - generic [ref=e142]: New Task
+        - generic [ref=e145]:
+          - generic [ref=e149] [cursor=pointer]:
+            - img [ref=e150]:
+              - img [ref=e151]
+            - text: List
+          - generic [ref=e158] [cursor=pointer]:
+            - img [ref=e159]:
+              - img [ref=e160]
+            - text: Kanban Board
+          - generic [ref=e168] [cursor=pointer]:
+            - img [ref=e169]:
+              - img [ref=e170]
+            - text: Calendar
+        - generic [ref=e183]:
+          - img [ref=e184]:
+            - img [ref=e185]
+          - generic [ref=e188] [cursor=pointer]:
+            - generic "ปีงบ 2569" [ref=e189]:
+              - generic [ref=e190]: ปีงบ 2569
+            - img "loading" [ref=e191]:
+              - img [ref=e196]
+          - generic [ref=e200] [cursor=pointer]:
+            - generic:
+              - generic: ความสำคัญ
+            - img "loading" [ref=e201]:
+              - img [ref=e206]
+          - generic [ref=e210]:
+            - textbox "ค้นหางาน..." [ref=e211]
+            - generic:
+              - generic: ค้นหางาน...
+        - table [ref=e218]:
+          - rowgroup [ref=e228]:
+            - row "งาน ความสำคัญ ประเภทงาน สถานะ โครงการ วันเริ่มต้น กำหนดส่ง ผู้รับผิดชอบ" [ref=e229]:
+              - columnheader "งาน" [ref=e230]:
+                - generic [ref=e232]: งาน
+              - columnheader "ความสำคัญ" [ref=e233]:
+                - generic [ref=e235]: ความสำคัญ
+              - columnheader "ประเภทงาน" [ref=e236]:
+                - generic [ref=e238]: ประเภทงาน
+              - columnheader "สถานะ" [ref=e239]:
+                - generic [ref=e241]: สถานะ
+              - columnheader "โครงการ" [ref=e242]:
+                - generic [ref=e244]: โครงการ
+              - columnheader "วันเริ่มต้น" [ref=e245]:
+                - generic [ref=e247]: วันเริ่มต้น
+              - columnheader "กำหนดส่ง" [ref=e248]:
+                - generic [ref=e250]: กำหนดส่ง
+              - columnheader "ผู้รับผิดชอบ" [ref=e251]:
+                - generic [ref=e253]: ผู้รับผิดชอบ
+          - rowgroup [ref=e254]:
+            - row "TESTdddd เร่งด่วน ทั่วไป กำลังทำ — 21 เม.ย. 2569 7 เม.ย. 2026" [ref=e255] [cursor=pointer]:
+              - cell "TESTdddd" [ref=e256]:
+                - generic [ref=e258]: TESTdddd
+              - cell "เร่งด่วน" [ref=e259]:
+                - generic [ref=e260]:
+                  - img [ref=e262]:
+                    - img [ref=e263]
+                  - generic [ref=e265]: เร่งด่วน
+              - cell "ทั่วไป" [ref=e266]:
+                - generic [ref=e268]: ทั่วไป
+              - cell "กำลังทำ" [ref=e269]:
+                - generic [ref=e270]: กำลังทำ
+              - cell "—" [ref=e271]
+              - cell "21 เม.ย. 2569" [ref=e272]
+              - cell "7 เม.ย. 2026" [ref=e273]
+              - cell [ref=e274]:
+                - group
+        - generic [ref=e276]:
+          - img [ref=e279]
+          - generic [ref=e281] [cursor=pointer]: "1"
+          - img [ref=e284]

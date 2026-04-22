@@ -27,7 +27,7 @@ export async function getProjectPermission(userId: string, projectId: string): P
   const [membership] = await db
     .select({ role: projectMembers.role })
     .from(projectMembers)
-    .where(and(eq(projectMembers.userId, projectId), eq(projectMembers.projectId, projectId)))
+    .where(and(eq(projectMembers.userId, userId), eq(projectMembers.projectId, projectId)))
     .limit(1);
   return membership?.role ?? null;
 }

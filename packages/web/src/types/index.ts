@@ -61,6 +61,11 @@ export interface ProjectMember {
 
 export type TaskPriority = "urgent" | "high" | "normal" | "low";
 
+export interface TaskAssignee {
+  userId: string;
+  name: string;
+}
+
 export interface Task {
   id: string;
   projectId?: string;
@@ -70,8 +75,11 @@ export interface Task {
   description?: string;
   statusId?: string;
   priority: TaskPriority;
-  assigneeId?: string;
+  assignees: TaskAssignee[];
   reporterId: string;
+  fiscalYear?: number;
+  budget?: string;
+  estimatedHours?: string;
   startDate?: string;
   dueDate?: string;
   completedAt?: string;

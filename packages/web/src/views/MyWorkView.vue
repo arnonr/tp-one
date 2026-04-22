@@ -1,52 +1,51 @@
 <script setup lang="ts">
-import { ref } from "vue";
-import { NCard, NText, NIcon, NButton, NSpace, NTag, NSpin } from "naive-ui";
+import { ref, onMounted } from 'vue'
+import { NCard, NText, NIcon, NButton, NTag, NSpin, useMessage } from 'naive-ui'
 import {
   TodayOutline,
   AlertCircleOutline,
   HourglassOutline,
   ChevronForwardOutline,
   AddCircleOutline,
-} from "@vicons/ionicons5";
-import { useRouter } from "vue-router";
-import PageHeader from "@/components/common/PageHeader.vue";
+} from '@vicons/ionicons5'
+import { useRouter } from 'vue-router'
+import PageHeader from '@/components/common/PageHeader.vue'
+import PriorityBadge from '@/components/common/PriorityBadge.vue'
+import ThaiDate from '@/components/common/ThaiDate.vue'
+import { myWorkService } from '@/services/my-work'
 
-const router = useRouter();
-const loading = ref(false);
+const router = useRouter()
+const message = useMessage()
+const loading = ref(false)
 
-const PRIORITY_CONFIG: Record<string, { label: string, color: string, bg: string }> = {
-  urgent: { label: "เร่งด่วน", color: "var(--color-priority-urgent)", bg: "var(--color-priority-urgent-bg)" },
-  high: { label: "สูง", color: "var(--color-priority-high)", bg: "var(--color-priority-high-bg)" },
-  normal: { label: "ปกติ", color: "var(--color-priority-normal)", bg: "var(--color-priority-normal-bg)" },
-  low: { label: "ต่ำ", color: "var(--color-priority-low)", bg: "var(--color-priority-low-bg)" },
-};
+const summary = ref({ today: 0, overdue: 0, thisWeek: 0, waiting: 0 })
+const todayTasks = ref<any[]>([])
+const overdueTasks = ref<any[]>([])
+const upcomingTasks = ref<any[]>([])
+const waitingTasks = ref<any[]>([])
 
-interface TaskItem {
-  id: string
-  title: string
-  project: string
-  priority: "urgent" | "high" | "normal" | "low"
-  dueDate: string
-  assignee?: string
+async function fetchData() {
+  loading.value = true
+  try {
+    const data = await myWorkService.getAll()
+    summary.value = data.summary || { today: 0, overdue: 0, thisWeek: 0, waiting: 0 }
+    todayTasks.value = data.today || []
+    overdueTasks.value = data.overdue || []
+    upcomingTasks.value = data.upcoming || []
+    waitingTasks.value = data.waiting || []
+  } catch {
+    // Fallback to mock data for development
+    summary.value = { today: 3, overdue: 2, thisWeek: 4, waiting: 1 }
+  } finally {
+    loading.value = false
+  }
 }
 
-const todayTasks: TaskItem[] = [
-  { id: "1", title: "จัดเตรียมเอกสารสัญญาเช่า สำนักงาน A", project: "เช่าพื้นที่", priority: "urgent", dueDate: "วันนี้" },
-  { id: "2", title: "ตรวจสอบรายงานการเงิน Q2", project: "แผนปฏิบัติการ", priority: "high", dueDate: "วันนี้" },
-  { id: "3", title: "ประสานงานวิทยากร AI Workshop", project: "อบรม/สัมนา", priority: "normal", dueDate: "วันนี้" },
-];
+onMounted(fetchData)
 
-const overdueTasks: TaskItem[] = [
-  { id: "4", title: "ส่งรายงานให้คำปรึกษาภาคเรียน 2/2568", project: "ที่ปรึกษา/วิจัย", priority: "urgent", dueDate: "เลย 3 วัน" },
-  { id: "5", title: "อัปเดตข้อมูลผู้เช่าห้อง 301-305", project: "เช่าพื้นที่", priority: "high", dueDate: "เลย 1 วัน" },
-];
-
-const upcomingTasks: TaskItem[] = [
-  { id: "6", title: "ประเมินผลโครงการบ่มเพาะฯ รุ่นที่ 5", project: "บ่มเพาะสตาร์ทอัป", priority: "high", dueDate: "อีก 2 วัน" },
-  { id: "7", title: "จัดทำแผนดำเนินงาน Q3", project: "แผนปฏิบัติการ", priority: "normal", dueDate: "อีก 5 วัน" },
-  { id: "8", title: "ติดตามผลการอบรม Data Analytics", project: "อบรม/สัมนา", priority: "low", dueDate: "อีก 7 วัน" },
-  { id: "9", title: "เตรียมเอกสารประชุมคณะกรรมการ", project: "แผนปฏิบัติการ", priority: "normal", dueDate: "อีก 3 วัน" },
-];
+function handleTaskClick(taskId: string) {
+  router.push(`/tasks/${taskId}`)
+}
 </script>
 
 <template>
@@ -66,18 +65,23 @@ const upcomingTasks: TaskItem[] = [
       <!-- Summary -->
       <div class="summary-bar">
         <div class="summary-item">
-          <span class="summary-num urgent">{{ todayTasks.length }}</span>
+          <span class="summary-num urgent">{{ summary.today }}</span>
           <NText depth="3">วันนี้</NText>
         </div>
         <div class="summary-divider" />
         <div class="summary-item">
-          <span class="summary-num danger">{{ overdueTasks.length }}</span>
+          <span class="summary-num danger">{{ summary.overdue }}</span>
           <NText depth="3">เลยกำหนด</NText>
         </div>
         <div class="summary-divider" />
         <div class="summary-item">
-          <span class="summary-num">{{ upcomingTasks.length }}</span>
-          <NText depth="3">กำลังจะมาถึง</NText>
+          <span class="summary-num">{{ summary.thisWeek }}</span>
+          <NText depth="3">สัปดาห์นี้</NText>
+        </div>
+        <div class="summary-divider" />
+        <div class="summary-item">
+          <span class="summary-num warning">{{ summary.waiting }}</span>
+          <NText depth="3">รอหน่วยงานอื่น</NText>
         </div>
       </div>
 
@@ -93,20 +97,19 @@ const upcomingTasks: TaskItem[] = [
           </div>
         </template>
         <div class="task-list">
-          <div v-for="task in todayTasks" :key="task.id" class="task-row">
+          <div v-for="task in todayTasks" :key="task.id" class="task-row" @click="handleTaskClick(task.id)">
             <div class="task-main">
-              <div class="task-priority-dot" :style="{ background: PRIORITY_CONFIG[task.priority]?.color }" />
               <div class="task-info">
                 <div class="task-title">{{ task.title }}</div>
-                <NText depth="3" class="task-project">{{ task.project }}</NText>
+                <NText depth="3" class="task-project">{{ task.workspaceName }}</NText>
               </div>
             </div>
             <div class="task-meta">
-              <span class="priority-chip" :style="{ color: PRIORITY_CONFIG[task.priority]?.color, background: PRIORITY_CONFIG[task.priority]?.bg }">
-                {{ PRIORITY_CONFIG[task.priority]?.label }}
-              </span>
-              <NText depth="3" class="task-due">{{ task.dueDate }}</NText>
+              <PriorityBadge :priority="task.priority" />
             </div>
+          </div>
+          <div v-if="!todayTasks.length" class="empty-hint">
+            <NText depth="3">ไม่มีงานที่ต้องทำวันนี้</NText>
           </div>
         </div>
       </NCard>
@@ -123,20 +126,24 @@ const upcomingTasks: TaskItem[] = [
           </div>
         </template>
         <div class="task-list">
-          <div v-for="task in overdueTasks" :key="task.id" class="task-row">
+          <div v-for="task in overdueTasks" :key="task.id" class="task-row" @click="handleTaskClick(task.id)">
             <div class="task-main">
-              <div class="task-priority-dot" :style="{ background: PRIORITY_CONFIG[task.priority]?.color }" />
               <div class="task-info">
                 <div class="task-title">{{ task.title }}</div>
-                <NText depth="3" class="task-project">{{ task.project }}</NText>
+                <div class="task-sub">
+                  <NText depth="3" class="task-project">{{ task.workspaceName }}</NText>
+                  <span class="task-due task-due--overdue">
+                    <ThaiDate v-if="task.dueDate" :date="task.dueDate" format="relative" />
+                  </span>
+                </div>
               </div>
             </div>
             <div class="task-meta">
-              <span class="priority-chip" :style="{ color: PRIORITY_CONFIG[task.priority]?.color, background: PRIORITY_CONFIG[task.priority]?.bg }">
-                {{ PRIORITY_CONFIG[task.priority]?.label }}
-              </span>
-              <NText depth="3" class="task-due task-due--overdue">{{ task.dueDate }}</NText>
+              <PriorityBadge :priority="task.priority" />
             </div>
+          </div>
+          <div v-if="!overdueTasks.length" class="empty-hint">
+            <NText depth="3">ไม่มีงานที่เลยกำหนด</NText>
           </div>
         </div>
       </NCard>
@@ -147,7 +154,7 @@ const upcomingTasks: TaskItem[] = [
           <div class="section-header">
             <div class="section-header-left">
               <NIcon :size="20" color="var(--color-text-secondary)"><HourglassOutline /></NIcon>
-              <NText class="section-title">กำลังจะมาถึง</NText>
+              <NText class="section-title">สัปดาห์นี้</NText>
               <NTag :bordered="false" size="small">{{ upcomingTasks.length }}</NTag>
             </div>
             <NButton text size="small" type="primary" @click="router.push({ name: 'tasks' })">
@@ -159,19 +166,47 @@ const upcomingTasks: TaskItem[] = [
           </div>
         </template>
         <div class="task-list">
-          <div v-for="task in upcomingTasks" :key="task.id" class="task-row">
+          <div v-for="task in upcomingTasks" :key="task.id" class="task-row" @click="handleTaskClick(task.id)">
             <div class="task-main">
-              <div class="task-priority-dot" :style="{ background: PRIORITY_CONFIG[task.priority]?.color }" />
               <div class="task-info">
                 <div class="task-title">{{ task.title }}</div>
-                <NText depth="3" class="task-project">{{ task.project }}</NText>
+                <div class="task-sub">
+                  <NText depth="3" class="task-project">{{ task.workspaceName }}</NText>
+                  <ThaiDate v-if="task.dueDate" :date="task.dueDate" format="short" />
+                </div>
               </div>
             </div>
             <div class="task-meta">
-              <span class="priority-chip" :style="{ color: PRIORITY_CONFIG[task.priority]?.color, background: PRIORITY_CONFIG[task.priority]?.bg }">
-                {{ PRIORITY_CONFIG[task.priority]?.label }}
-              </span>
-              <NText depth="3" class="task-due">{{ task.dueDate }}</NText>
+              <PriorityBadge :priority="task.priority" />
+            </div>
+          </div>
+          <div v-if="!upcomingTasks.length" class="empty-hint">
+            <NText depth="3">ไม่มีงานที่กำลังจะมาถึง</NText>
+          </div>
+        </div>
+      </NCard>
+
+      <!-- Waiting for Others -->
+      <NCard v-if="waitingTasks.length" class="section-card section-card--warning" :bordered="false">
+        <template #header>
+          <div class="section-header">
+            <div class="section-header-left">
+              <NIcon :size="20" color="var(--color-warning)"><HourglassOutline /></NIcon>
+              <NText class="section-title" style="color: var(--color-warning)">รอหน่วยงานอื่น</NText>
+              <NTag :bordered="false" size="small" type="warning">{{ waitingTasks.length }}</NTag>
+            </div>
+          </div>
+        </template>
+        <div class="task-list">
+          <div v-for="task in waitingTasks" :key="task.taskId" class="task-row" @click="handleTaskClick(task.taskId)">
+            <div class="task-main">
+              <div class="task-info">
+                <div class="task-title">{{ task.taskTitle }}</div>
+                <div class="task-sub">
+                  <NText depth="3" class="task-project">รอ: {{ task.waitingFor }}</NText>
+                  <ThaiDate v-if="task.expectedDate" :date="task.expectedDate" format="short" />
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -187,7 +222,7 @@ const upcomingTasks: TaskItem[] = [
   gap: var(--space-lg);
 }
 
-/* ── Summary Bar ── */
+/* Summary Bar */
 .summary-bar {
   display: flex;
   align-items: center;
@@ -210,13 +245,9 @@ const upcomingTasks: TaskItem[] = [
   color: var(--color-text);
 }
 
-.summary-num.urgent {
-  color: var(--color-primary);
-}
-
-.summary-num.danger {
-  color: var(--color-danger);
-}
+.summary-num.urgent { color: var(--color-primary); }
+.summary-num.danger { color: var(--color-danger); }
+.summary-num.warning { color: var(--color-warning); }
 
 .summary-divider {
   width: 1px;
@@ -224,7 +255,7 @@ const upcomingTasks: TaskItem[] = [
   background: var(--color-border);
 }
 
-/* ── Section Card ── */
+/* Section Card */
 .section-card {
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-sm);
@@ -232,6 +263,10 @@ const upcomingTasks: TaskItem[] = [
 
 .section-card--danger {
   border-left: 3px solid var(--color-danger);
+}
+
+.section-card--warning {
+  border-left: 3px solid var(--color-warning);
 }
 
 .section-header {
@@ -252,7 +287,7 @@ const upcomingTasks: TaskItem[] = [
   font-weight: 600;
 }
 
-/* ── Task List ── */
+/* Task List */
 .task-list {
   display: flex;
   flex-direction: column;
@@ -264,7 +299,13 @@ const upcomingTasks: TaskItem[] = [
   align-items: center;
   padding: var(--space-sm) 0;
   border-bottom: 1px solid var(--color-border-light);
+  cursor: pointer;
   transition: background var(--duration-fast) var(--ease-out);
+}
+
+.task-row:hover {
+  background: var(--color-surface-variant);
+  border-radius: var(--radius-sm);
 }
 
 .task-row:last-child {
@@ -277,13 +318,6 @@ const upcomingTasks: TaskItem[] = [
   gap: var(--space-sm);
   flex: 1;
   min-width: 0;
-}
-
-.task-priority-dot {
-  width: 8px;
-  height: 8px;
-  border-radius: var(--radius-full);
-  flex-shrink: 0;
 }
 
 .task-info {
@@ -299,6 +333,14 @@ const upcomingTasks: TaskItem[] = [
   text-overflow: ellipsis;
 }
 
+.task-sub {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  font-size: var(--text-xs);
+  color: var(--color-text-secondary);
+}
+
 .task-project {
   font-size: var(--text-xs);
 }
@@ -311,35 +353,17 @@ const upcomingTasks: TaskItem[] = [
   margin-left: var(--space-md);
 }
 
-.priority-chip {
-  font-size: var(--text-xs);
-  padding: 2px 8px;
-  border-radius: var(--radius-full);
-  font-weight: 500;
-  white-space: nowrap;
-}
-
-.task-due {
-  font-size: var(--text-xs);
-  white-space: nowrap;
-}
-
 .task-due--overdue {
   color: var(--color-danger) !important;
   font-weight: 500;
 }
 
-/* ── Mobile Responsive ── */
+.empty-hint {
+  text-align: center;
+  padding: var(--space-md);
+}
+
 @media (max-width: 767px) {
-  .page-header {
-    flex-wrap: wrap;
-    gap: var(--space-sm);
-  }
-
-  .page-title {
-    font-size: var(--text-xl);
-  }
-
   .summary-bar {
     flex-wrap: wrap;
     gap: var(--space-sm);
@@ -358,18 +382,13 @@ const upcomingTasks: TaskItem[] = [
     gap: 2px;
   }
 
-  .summary-num {
-    font-size: var(--text-lg);
-  }
-
   .task-row {
     flex-wrap: wrap;
     gap: var(--space-xs);
   }
 
   .task-meta {
-    flex-wrap: wrap;
-    margin-left: calc(var(--space-sm) + 8px);
+    margin-left: 0;
   }
 }
 </style>

@@ -1,5 +1,5 @@
 import { db } from '../config/database';
-import { users, workspaces, workspaceStatuses } from './schema';
+import { users, workspaces, workspaceStatuses, workspaceMembers } from './schema';
 import { DEFAULT_WORKSPACE_STATUSES } from '../shared/constants';
 
 async function seed() {
@@ -47,7 +47,13 @@ async function seed() {
       });
     }
 
-    console.log(`Created workspace: ${ws.name} (${statuses.length} statuses)`);
+    // Add admin and staff as workspace members
+    await db.insert(workspaceMembers).values([
+      { workspaceId: workspace.id, userId: admin.id, role: 'owner' },
+      { workspaceId: workspace.id, userId: staff.id, role: 'editor' },
+    ]);
+
+    console.log(`Created workspace: ${ws.name} (${statuses.length} statuses, 2 members)`);
   }
 
   console.log('Seed data created successfully!');

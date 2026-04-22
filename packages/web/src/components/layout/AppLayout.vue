@@ -29,6 +29,7 @@ import {
   CloseOutline,
   ChevronBackOutline,
   ChevronForwardOutline,
+  GridOutline,
 } from "@vicons/ionicons5";
 import LoginView from "../../views/LoginView.vue";
 import { useAuthStore } from "../../stores/auth";
@@ -106,6 +107,11 @@ const menuOptions = [
   },
   { type: "divider" as const, key: "d1" },
   {
+    label: "พื้นที่ทำงาน",
+    key: "workspaces",
+    icon: () => h(NIcon, { size: 18 }, { default: () => h(GridOutline) }),
+  },
+  {
     label: "งานทั้งหมด",
     key: "tasks",
     icon: () => h(NIcon, { size: 18 }, { default: () => h(CheckmarkCircleOutline) }),
@@ -140,7 +146,8 @@ const currentPageTitle = computed(() => {
   const titleMap: Record<string, string> = {
     "my-work": "งานของฉัน",
     dashboard: "แดชบอร์ด",
-    tasks: "งานทั้งหมด",
+    workspaces: "พื้นที่ทำงาน",
+    tasks: "All Tasks",
     "task-board": "บอร์ดงาน",
     "task-calendar": "ปฏิทินงาน",
     projects: "โครงการ",
@@ -198,14 +205,8 @@ onMounted(async () => {
   <template v-else>
     <NLayout :has-sider="!isMobile" style="height: 100vh">
       <!-- ── Desktop Sidebar ── -->
-      <NLayoutSider
-        v-if="!isMobile"
-        :width="siderCollapsed ? 64 : 240"
-        :native-scrollbar="false"
-        :bordered="false"
-        content-style="padding: 0; display: flex; flex-direction: column; height: 100%;"
-        class="dark-sider"
-      >
+      <NLayoutSider v-if="!isMobile" :width="siderCollapsed ? 64 : 240" :native-scrollbar="false" :bordered="false"
+        content-style="padding: 0; display: flex; flex-direction: column; height: 100%;" class="dark-sider">
         <div class="sider-brand" :class="{ 'sider-brand--collapsed': siderCollapsed }">
           <div class="brand-logo">TP</div>
           <Transition name="fade-slide">
@@ -220,14 +221,8 @@ onMounted(async () => {
         </Transition>
         <div class="sider-nav" :class="{ 'sider-nav--collapsed': siderCollapsed }">
           <NConfigProvider :theme-overrides="darkMenuTheme">
-            <NMenu
-              :value="activeKey"
-              :options="menuOptions"
-              :collapsed="siderCollapsed"
-              :collapsed-width="64"
-              :collapsed-icon-size="20"
-              @update:value="handleMenuUpdate"
-            />
+            <NMenu :value="activeKey" :options="menuOptions" :collapsed="siderCollapsed" :collapsed-width="64"
+              :collapsed-icon-size="20" @update:value="handleMenuUpdate" />
           </NConfigProvider>
         </div>
         <NDropdown :options="userDropdownOptions" @select="handleUserAction" placement="right-end">
@@ -243,7 +238,9 @@ onMounted(async () => {
                 </div>
               </div>
             </Transition>
-            <NIcon v-if="!siderCollapsed" :size="14" color="rgba(255,255,255,0.3)"><ChevronUpOutline /></NIcon>
+            <NIcon v-if="!siderCollapsed" :size="14" color="rgba(255,255,255,0.3)">
+              <ChevronUpOutline />
+            </NIcon>
           </div>
         </NDropdown>
         <!-- Collapse toggle button -->
@@ -260,24 +257,24 @@ onMounted(async () => {
         <header class="app-header">
           <!-- Hamburger (mobile only) -->
           <button v-if="isMobile" class="hamburger-btn" @click="mobileOpen = true">
-            <NIcon :size="22" color="var(--color-text-secondary)"><MenuOutline /></NIcon>
+            <NIcon :size="22" color="var(--color-text-secondary)">
+              <MenuOutline />
+            </NIcon>
           </button>
           <h1 class="header-title">{{ currentPageTitle }}</h1>
           <div class="header-right">
-            <NInput
-              v-if="!isMobile"
-              v-model:value="searchQuery"
-              placeholder="ค้นหา..."
-              clearable
-              class="search-input"
-            >
+            <NInput v-if="!isMobile" v-model:value="searchQuery" placeholder="ค้นหา..." clearable class="search-input">
               <template #prefix>
-                <NIcon :size="15" color="var(--color-text-tertiary)"><SearchOutline /></NIcon>
+                <NIcon :size="15" color="var(--color-text-tertiary)">
+                  <SearchOutline />
+                </NIcon>
               </template>
             </NInput>
             <NBadge :value="3" :max="99">
               <div class="notif-btn">
-                <NIcon :size="20" color="var(--color-text-secondary)"><NotificationsOutline /></NIcon>
+                <NIcon :size="20" color="var(--color-text-secondary)">
+                  <NotificationsOutline />
+                </NIcon>
               </div>
             </NBadge>
           </div>
@@ -299,7 +296,9 @@ onMounted(async () => {
               <div class="brand-sub">อุทยานเทคโนโลยี</div>
             </div>
             <button class="drawer-close-btn" @click="mobileOpen = false">
-              <NIcon :size="20" color="rgba(255,255,255,0.5)"><CloseOutline /></NIcon>
+              <NIcon :size="20" color="rgba(255,255,255,0.5)">
+                <CloseOutline />
+              </NIcon>
             </button>
           </div>
           <div class="nav-section-label">เมนูหลัก</div>
@@ -319,7 +318,9 @@ onMounted(async () => {
                   {{ authStore.user?.role === "admin" ? "ผู้ดูแลระบบ" : "เจ้าหน้าที่" }}
                 </div>
               </div>
-              <NIcon :size="14" color="rgba(255,255,255,0.3)"><ChevronUpOutline /></NIcon>
+              <NIcon :size="14" color="rgba(255,255,255,0.3)">
+                <ChevronUpOutline />
+              </NIcon>
             </div>
           </NDropdown>
         </div>
