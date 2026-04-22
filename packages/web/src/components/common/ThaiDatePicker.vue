@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import { NDatePicker } from 'naive-ui'
+import { VueDatePicker } from '@vuepic/vue-datepicker'
+import '@vuepic/vue-datepicker/dist/main.css'
+import { THAI_MONTHS_SHORT } from '@/utils/thai'
 
 const YEAR_OFFSET = 543
 
@@ -21,40 +23,53 @@ const emit = defineEmits<{
   (e: 'update:value', value: number | null): void
 }>()
 
-const buddhistValue = computed<number | null>(() => {
+const modelValue = computed(() => {
   if (!props.value) return null
-  const d = new Date(props.value)
-  d.setFullYear(d.getFullYear() + YEAR_OFFSET)
-  return d.getTime()
+  return new Date(props.value)
 })
 
-const defaultCalendarValue = computed(() => {
-  const now = new Date()
-  now.setFullYear(now.getFullYear() + YEAR_OFFSET)
-  return now.getTime()
-})
-
-function handleChange(ts: number | null) {
-  if (!ts) {
+function handleChange(value: any) {
+  if (!value) {
     emit('update:value', null)
     return
   }
-  const d = new Date(ts)
-  d.setFullYear(d.getFullYear() - YEAR_OFFSET)
-  emit('update:value', d.getTime())
+  emit('update:value', new Date(value).getTime())
 }
+
+function formatInput(date: Date): string {
+  const d = date.getDate()
+  const m = THAI_MONTHS_SHORT[date.getMonth()]
+  const y = date.getFullYear() + YEAR_OFFSET
+  return `${d} ${m} ${y}`
+}
+
+const thaiDayNames = ['อา.', 'จ.', 'อ.', 'พ.', 'พฤ.', 'ศ.', 'ส.']
 </script>
 
 <template>
-  <NDatePicker
-    :value="buddhistValue"
-    :default-value="defaultCalendarValue"
-    :type="type"
-    :placeholder="placeholder"
-    :clearable="clearable"
-    :disabled="disabled"
-    format="dd/MM/yyyy"
-    style="width: 100%"
-    @update:value="handleChange"
-  />
+  <VueDatePicker :model-value="modelValue" :placeholder="placeholder" :disabled="disabled"
+    :time-config="{ enableTimePicker: type === 'datetime' }" :day-names="thaiDayNames" :formats="{ input: formatInput }"
+    auto-apply :teleport="true" @update:model-value="handleChange">
+    <template #month="{ value }">
+      {{ THAI_MONTHS_SHORT[value] }}
+    </template>
+    <template #year="{ value }">
+      {{ value + YEAR_OFFSET }}
+    </template>
+    <template #year-overlay-value="{ value }">
+      {{ value + YEAR_OFFSET }}
+    </template>
+    <template #month-overlay-value="{ value }">
+      {{ THAI_MONTHS_SHORT[value] }}
+    </template>
+  </VueDatePicker>
 </template>
+
+<style scoped>
+:deep(.dp__input) {
+  border-radius: var(--radius-md, 3px);
+  font-family: inherit;
+  height: 34px;
+  font-size: 14px;
+}
+</style>

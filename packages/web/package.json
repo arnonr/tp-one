@@ -9,15 +9,16 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "vue": "^3.5.0",
-    "vue-router": "^4.5.0",
-    "pinia": "^2.3.0",
-    "naive-ui": "^2.40.0",
     "@vicons/ionicons5": "^0.12.0",
+    "@vuepic/vue-datepicker": "^12.1.0",
     "axios": "^1.7.0",
+    "dayjs": "^1.11.0",
     "echarts": "^5.6.0",
+    "naive-ui": "^2.40.0",
+    "pinia": "^2.3.0",
+    "vue": "^3.5.0",
     "vue-echarts": "^7.0.0",
-    "dayjs": "^1.11.0"
+    "vue-router": "^4.5.0"
   },
   "devDependencies": {
     "@vitejs/plugin-vue": "^5.2.0",
