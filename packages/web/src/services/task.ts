@@ -74,6 +74,11 @@ export const taskService = {
     return data.data
   },
 
+  async updateComment(taskId: string, commentId: string, content: string) {
+    const { data } = await api.put(`/tasks/${taskId}/comments/${commentId}`, { content })
+    return data.data
+  },
+
   async batchUpdateStatus(updates: Array<{ taskId: string; statusId: string; sortOrder?: number }>) {
     const { data } = await api.post('/tasks/batch/status', { updates })
     return data

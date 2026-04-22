@@ -21,7 +21,8 @@
     "ioredis": "^5.4.0",
     "jsonwebtoken": "^9.0.3",
     "nodemailer": "^6.10.0",
-    "postgres": "^3.4.0"
+    "postgres": "^3.4.0",
+    "sharp": "^0.34.5"
   },
   "devDependencies": {
     "@types/bun": "latest",

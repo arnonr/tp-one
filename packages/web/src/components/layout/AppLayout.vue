@@ -30,10 +30,12 @@ import {
   ChevronBackOutline,
   ChevronForwardOutline,
   GridOutline,
+  CameraOutline,
 } from "@vicons/ionicons5";
 import LoginView from "../../views/LoginView.vue";
 import NotificationPanel from "./NotificationPanel.vue";
 import QuickNotePanel from "./QuickNotePanel.vue";
+import SnapshotUpload from "./SnapshotUpload.vue";
 import { useNotificationStore } from "@/stores/notification";
 import { useAuthStore } from "../../stores/auth";
 import WorkspaceSelector from "./WorkspaceSelector.vue";
@@ -52,6 +54,7 @@ const searchQuery = ref("");
 const isMobile = ref(false);
 const mobileOpen = ref(false);
 const siderCollapsed = ref(false);
+const showSnapshotUpload = ref(false);
 
 function checkMobile() {
   isMobile.value = window.innerWidth < 1024;
@@ -296,6 +299,11 @@ onUnmounted(() => {
                 <DocumentTextOutline />
               </NIcon>
             </button>
+            <!-- <button class="quick-note-btn" title="อัปโหลดภาพหลักฐาน" @click="showSnapshotUpload = true">
+              <NIcon :size="18" color="var(--color-text-secondary)">
+                <CameraOutline />
+              </NIcon>
+            </button> -->
             <NBadge :value="3" :max="99">
               <NotificationPanel />
             </NBadge>
@@ -309,6 +317,10 @@ onUnmounted(() => {
 
     <!-- ── Quick Note Panel ── -->
     <QuickNotePanel />
+
+    <!-- ── Snapshot Upload Modal ── -->
+    <SnapshotUpload :show="showSnapshotUpload" @close="showSnapshotUpload = false"
+      @uploaded="showSnapshotUpload = false" />
 
     <!-- ── Mobile Sidebar Drawer ── -->
     <Teleport to="body">

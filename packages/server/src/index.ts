@@ -2,6 +2,7 @@ import { Elysia } from "elysia";
 import { cors } from "@elysiajs/cors";
 import { database } from "./config/database";
 import { redis } from "./config/redis";
+import { config } from "./config/env";
 import { authPlugin } from "./modules/auth/auth.plugin";
 import { workspacePlugin } from "./modules/workspace/workspace.plugin";
 import { taskPlugin } from "./modules/task/task.plugin";
@@ -10,6 +11,7 @@ import { templatePlugin } from "./modules/template/template.plugin";
 import { myWorkPlugin } from "./modules/my-work/my-work.plugin";
 import { notificationPlugin } from "./modules/notification/notification.plugin";
 import { quickNotePlugin } from "./modules/quick-note/quick-note.plugin";
+import { snapshotPlugin } from "./modules/snapshot/snapshot.plugin";
 import { usersPlugin } from "./modules/auth/users.plugin";
 import { AppError } from "./shared/errors";
 
@@ -22,6 +24,22 @@ const app = new Elysia()
   }))
   .use(database)
   .use(redis)
+  .get("/api/uploads/snapshots/*", async ({ params, set }) => {
+    const filePath = params["*"];
+    const fullPath = `${config.uploadDir}/snapshots/${filePath}`;
+    const file = Bun.file(fullPath);
+    if (await file.exists()) {
+      const ext = filePath.split(".").pop()?.toLowerCase() || "";
+      const mimeTypes: Record<string, string> = {
+        jpg: "image/jpeg", jpeg: "image/jpeg", png: "image/png",
+        webp: "image/webp", heic: "image/heic", heif: "image/heif",
+      };
+      set.headers["Content-Type"] = mimeTypes[ext] || "application/octet-stream";
+      return file;
+    }
+    set.status = 404;
+    return { success: false, error: { code: "NOT_FOUND", message: "File not found" } };
+  })
   .use(authPlugin)
   .use(workspacePlugin)
   .use(taskPlugin)
@@ -30,6 +48,7 @@ const app = new Elysia()
   .use(myWorkPlugin)
   .use(notificationPlugin)
   .use(quickNotePlugin)
+  .use(snapshotPlugin)
   .use(usersPlugin)
   .get("/api/health", () => ({ status: "ok", timestamp: new Date().toISOString() }))
   .onError(({ error, set }) => {

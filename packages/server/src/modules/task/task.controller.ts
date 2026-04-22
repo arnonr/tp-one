@@ -84,6 +84,11 @@ export const TaskController = {
     return { success: true };
   },
 
+  async updateComment(user: any, params: any, body: any) {
+    const comment = await TaskService.updateComment(params.commentId, user.userId, user.role, body.content);
+    return { success: true, data: comment };
+  },
+
   // Batch
   async batchUpdateStatus(user: any, body: any) {
     await TaskService.batchUpdateStatus(body.updates);

@@ -1,6 +1,8 @@
 import { db } from '../../config/database';
 import { tasks, taskAssignees, taskWatchers, tags, taskTags, comments, attachments, workspaceStatuses, workspaces, users, projects } from '../../db/schema';
 import { eq, and, or, ilike, sql, desc, asc, count, isNull, gte, lte, inArray, type SQL } from 'drizzle-orm';
+import { notificationService } from '../../modules/notification/notification.service';
+import { telegramService } from '../../modules/notification/telegram.service';
 import { NotFoundError, ForbiddenError, ValidationError } from '../../shared/errors';
 import { getWorkspacePermission } from '../../middleware/rbac.middleware';
 import { getFiscalYear } from '../../shared/thai.utils';
@@ -423,7 +425,39 @@ export const TaskService = {
   async addComment(taskId: string, userId: string, content: string) {
     await this.getById(taskId); // verify task exists
     const [comment] = await db.insert(comments).values({ taskId, userId, content }).returning();
+
+    // Get commenter info
+    const [commenter] = await db.select({ name: users.name }).from(users).where(eq(users.id, userId)).limit(1);
+
+    // Get task info for notifications
+    const task = await this.getById(taskId);
+
+    // Parse @mentions and notify mentioned users
+    const mentionedNames = this.parseMentions(content);
+    if (mentionedNames.length > 0) {
+      await this.notifyMentionedUsers(taskId, task.title, mentionedNames, commenter?.name || 'Someone', userId);
+    }
+
+    // Notify task watchers
+    await this.notifyTaskWatchers(taskId, task.title, commenter?.name || 'Someone', content);
+
     return comment;
+  },
+
+  async updateComment(commentId: string, userId: string, userRole: GlobalRole, content: string) {
+    const [comment] = await db.select().from(comments).where(eq(comments.id, commentId)).limit(1);
+    if (!comment) throw new NotFoundError('Comment', commentId);
+    if (comment.userId !== userId && userRole !== 'admin') {
+      throw new ForbiddenError('Cannot edit this comment');
+    }
+
+    const [updated] = await db
+      .update(comments)
+      .set({ content, updatedAt: new Date() })
+      .where(eq(comments.id, commentId))
+      .returning();
+
+    return updated;
   },
 
   async deleteComment(commentId: string, userId: string, userRole: GlobalRole) {
@@ -434,6 +468,82 @@ export const TaskService = {
     }
     await db.delete(comments).where(eq(comments.id, commentId));
     return { success: true };
+  },
+
+  // --- @mention helpers ---
+
+  parseMentions(content: string): string[] {
+    const mentionRegex = /@([฀-๿a-zA-Z\s]+?)(?:\s|$|[.,!?;:])/g;
+    const matches = content.matchAll(mentionRegex);
+    const names: string[] = [];
+    for (const match of matches) {
+      const name = match[1].trim();
+      if (name && !names.includes(name)) {
+        names.push(name);
+      }
+    }
+    return names;
+  },
+
+  async notifyMentionedUsers(taskId: string, taskTitle: string, mentionedNames: string[], commenterName: string, commenterId: string) {
+    // Find users by their display names
+    for (const name of mentionedNames) {
+      const [mentionedUser] = await db
+        .select({ id: users.id, telegramChatId: users.telegramChatId })
+        .from(users)
+        .where(ilike(users.name, `%${name}%`))
+        .limit(1);
+
+      if (mentionedUser && mentionedUser.id !== commenterId) {
+        const { notificationService } = await import('../../modules/notification/notification.service');
+
+        // Create in-app notification
+        await notificationService.createNotification({
+          userId: mentionedUser.id,
+          type: 'mention',
+          title: `คุณถูกกล่าวถึงใน: ${taskTitle}`,
+          message: `${commenterName} กล่าวถึงคุณในความคิดเห็น`,
+          entityType: 'task',
+          entityId: taskId,
+        });
+
+        // Send Telegram notification if configured
+        if (mentionedUser.telegramChatId) {
+          const { telegramService } = await import('../../modules/notification/telegram.service');
+          const truncatedTitle = taskTitle.length > 100 ? taskTitle.substring(0, 100) + '...' : taskTitle;
+          await telegramService.sendToUser(
+            mentionedUser.telegramChatId,
+            `📢 *ถูกกล่าวถึง!*\n\n📌 งาน: ${truncatedTitle}\n👤 ${commenterName} กล่าวถึงคุณในความคิดเห็น\n\n🤖 ส่งโดย TP-One Bot`
+          );
+        }
+      }
+    }
+  },
+
+  async notifyTaskWatchers(taskId: string, taskTitle: string, commenterName: string, commentText: string) {
+    // Get all watchers except the commenter
+    const watchers = await db
+      .select({ userId: taskWatchers.userId })
+      .from(taskWatchers)
+      .where(eq(taskWatchers.taskId, taskId));
+
+    for (const watcher of watchers) {
+      // Get user's telegram ID
+      const [user] = await db
+        .select({ telegramChatId: users.telegramChatId })
+        .from(users)
+        .where(eq(users.id, watcher.userId))
+        .limit(1);
+
+      const { notificationService } = await import('../../modules/notification/notification.service');
+      await notificationService.notifyTaskComment({
+        userId: watcher.userId,
+        userTelegramId: user?.telegramChatId,
+        taskTitle,
+        commenterName,
+        commentText,
+      });
+    }
   },
 
   // --- Batch status update (for Kanban) ---

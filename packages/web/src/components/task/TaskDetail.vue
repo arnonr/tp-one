@@ -1,14 +1,14 @@
 <script setup lang="ts">
-import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
+import { ref, computed, watch, onMounted, onUnmounted, nextTick } from 'vue'
 import {
   NDrawer, NDrawerContent, NDescriptions, NDescriptionsItem, NButton,
   NSpace, NIcon, NInput, NPopconfirm, NSpin, NTag, NCheckbox,
-  NDatePicker, NDivider,
+  NDatePicker, NDivider, NAvatar,
   useMessage, useDialog,
 } from 'naive-ui'
 import {
   CreateOutline, TrashOutline, CopyOutline, SendOutline, AddOutline,
-  TimeOutline, CheckmarkCircleOutline, ChatbubbleOutline,
+  TimeOutline, CheckmarkCircleOutline, ChatbubbleOutline, PencilOutline,
 } from '@vicons/ionicons5'
 import PriorityBadge from '@/components/common/PriorityBadge.vue'
 import StatusBadge from '@/components/common/StatusBadge.vue'
@@ -17,6 +17,8 @@ import { useTaskStore } from '@/stores/task'
 import { useClipboard } from '@/composables/useClipboard'
 import { relativeTime } from '@/utils/thai'
 import { taskService } from '@/services/task'
+import api from '@/services/api'
+import { useAuthStore } from '@/stores/auth'
 import type { WaitingItem, FollowUpItem } from '@/services/task'
 import type { TaskPriority } from '@/types'
 
@@ -34,6 +36,7 @@ const emit = defineEmits<{
 const message = useMessage()
 const dialog = useDialog()
 const taskStore = useTaskStore()
+const authStore = useAuthStore()
 const { copy, formatTaskFull } = useClipboard()
 
 const windowWidth = ref(typeof window !== 'undefined' ? window.innerWidth : 1024)
@@ -46,6 +49,19 @@ const drawerWidth = computed(() => isMobile.value ? windowWidth.value : 560)
 const commentText = ref('')
 const newSubtaskTitle = ref('')
 const addingSubtask = ref(false)
+
+// --- @mention autocomplete ---
+const showMentionDropdown = ref(false)
+const mentionQuery = ref('')
+const mentionSuggestions = ref<Array<{ userId: string; name: string; avatarUrl?: string | null }>>([])
+const mentionPosition = ref({ top: 0, left: 0 })
+const mentionFilter = ref('')
+const workspaceMembers = ref<Array<{ userId: string; name: string; avatarUrl?: string | null }>>([])
+const textareaRef = ref<HTMLTextAreaElement | null>(null)
+
+// --- Comment edit ---
+const editingCommentId = ref<string | null>(null)
+const editingCommentText = ref('')
 
 // Waiting for others
 const waitingList = ref<WaitingItem[]>([])
@@ -140,6 +156,7 @@ watch(() => props.taskId, async (id) => {
   if (id && props.show) {
     await taskStore.fetchTaskById(id)
     await fetchWaiting(id)
+    await fetchWorkspaceMembers()
   }
 })
 
@@ -147,12 +164,15 @@ watch(() => props.show, async (show) => {
   if (show && props.taskId) {
     await taskStore.fetchTaskById(props.taskId)
     await fetchWaiting(props.taskId)
+    await fetchWorkspaceMembers()
   }
   if (!show) {
     taskStore.clearCurrent()
     waitingList.value = []
     showAddWaiting.value = false
     newWaitingDateTs.value = null
+    showMentionDropdown.value = false
+    editingCommentId.value = null
   }
 })
 
@@ -231,6 +251,122 @@ async function handleAddComment() {
   } catch {
     message.error('เพิ่มความคิดเห็นไม่สำเร็จ')
   }
+}
+
+// --- @mention helpers ---
+async function fetchWorkspaceMembers() {
+  if (!task.value?.workspaceId) return
+  try {
+    const { data } = await api.get(`/workspaces/${task.value.workspaceId}/members`)
+    workspaceMembers.value = data.data.map((m: any) => ({
+      userId: m.userId,
+      name: m.name,
+      avatarUrl: m.avatarUrl,
+    }))
+  } catch {
+    workspaceMembers.value = []
+  }
+}
+
+function handleCommentInput(value: string | [string, string]) {
+  const text = typeof value === 'string' ? value : value[1]
+  const textarea = textareaRef.value
+  if (!textarea) return
+
+  const cursorPos = textarea.selectionStart
+
+  // Find @mention pattern
+  const textBeforeCursor = text.substring(0, cursorPos)
+  const mentionMatch = textBeforeCursor.match(/@([฀-๿a-zA-Z\s]*)$/)
+
+  if (mentionMatch) {
+    mentionFilter.value = mentionMatch[1]
+    mentionQuery.value = mentionMatch[0]
+    showMentionDropdown.value = true
+
+    // Filter suggestions based on what user has typed
+    if (mentionFilter.value) {
+      mentionSuggestions.value = workspaceMembers.value.filter(m =>
+        m.name.toLowerCase().includes(mentionFilter.value.toLowerCase())
+      ).slice(0, 5)
+    } else {
+      mentionSuggestions.value = workspaceMembers.value.slice(0, 5)
+    }
+
+    // Calculate dropdown position
+    nextTick(() => {
+      const rect = textarea.getBoundingClientRect()
+      mentionPosition.value = {
+        top: rect.top + 60,
+        left: rect.left + 20,
+      }
+    })
+  } else {
+    showMentionDropdown.value = false
+    mentionQuery.value = ''
+  }
+}
+
+function insertMention(name: string) {
+  const textarea = textareaRef.value
+  if (!textarea) return
+
+  const text = commentText.value
+  const cursorPos = textarea.selectionStart
+  const textBeforeCursor = text.substring(0, cursorPos)
+  const textAfterCursor = text.substring(cursorPos)
+
+  // Replace the @query with @name followed by a space
+  const newTextBefore = textBeforeCursor.substring(0, textBeforeCursor.length - mentionQuery.value.length) + `@${name} `
+  commentText.value = newTextBefore + textAfterCursor
+
+  showMentionDropdown.value = false
+  mentionQuery.value = ''
+
+  // Move cursor after the inserted mention
+  nextTick(() => {
+    const newCursorPos = newTextBefore.length
+    textarea.setSelectionRange(newCursorPos, newCursorPos)
+    textarea.focus()
+  })
+}
+
+function handleMentionKeydown(e: KeyboardEvent) {
+  if (!showMentionDropdown.value) return
+  if (e.key === 'Escape') {
+    showMentionDropdown.value = false
+    e.preventDefault()
+  }
+}
+
+// --- Comment edit ---
+function startEditComment(comment: any) {
+  if (comment.userId !== authStore.user?.id) return
+  editingCommentId.value = comment.id
+  editingCommentText.value = comment.content
+}
+
+async function saveEditComment() {
+  if (!props.taskId || !editingCommentId.value || !editingCommentText.value.trim()) return
+  try {
+    await taskService.updateComment(props.taskId, editingCommentId.value, editingCommentText.value.trim())
+    // Refresh comments
+    await taskStore.fetchComments(props.taskId)
+    editingCommentId.value = null
+    editingCommentText.value = ''
+    message.success('แก้ไขความคิดเห็นสำเร็จ')
+  } catch {
+    message.error('แก้ไขความคิดเห็นไม่สำเร็จ')
+  }
+}
+
+function cancelEditComment() {
+  editingCommentId.value = null
+  editingCommentText.value = ''
+}
+
+function highlightMentions(content: string): string {
+  return content.replace(/@([฀-๿a-zA-Z\s]+?)(?:\s|$|[.,!?;:])/g, '<span class="mention">@$1</span>')
 }
 
 function handleEdit() {
@@ -549,8 +685,35 @@ function handleClose() {
             <h4 class="section-title">ความคิดเห็น ({{ comments.length }})</h4>
 
             <div class="comment-input">
-              <NInput v-model:value="commentText" placeholder="เขียนความคิดเห็น..." type="textarea" :rows="2"
-                @keyup.ctrl.enter="handleAddComment" />
+              <div class="comment-input-wrapper">
+                <NInput
+                  ref="textareaRef"
+                  v-model:value="commentText"
+                  placeholder="เขียนความคิดเห็น... (พิมพ์ @ เพื่อกล่าวถึงผู้อื่น)"
+                  type="textarea"
+                  :rows="2"
+                  @input="handleCommentInput"
+                  @keydown="handleMentionKeydown"
+                  @keyup.ctrl.enter="handleAddComment"
+                />
+                <!-- @mention dropdown -->
+                <div
+                  v-if="showMentionDropdown && mentionSuggestions.length"
+                  class="mention-dropdown"
+                  :style="{ top: mentionPosition.top + 'px', left: mentionPosition.left + 'px' }"
+                >
+                  <div
+                    v-for="member in mentionSuggestions"
+                    :key="member.userId"
+                    class="mention-item"
+                    @click="insertMention(member.name)"
+                  >
+                    <NAvatar v-if="member.avatarUrl" :size="24" :src="member.avatarUrl" round />
+                    <NAvatar v-else :size="24" round>{{ member.name.charAt(0) }}</NAvatar>
+                    <span class="mention-name">{{ member.name }}</span>
+                  </div>
+                </div>
+              </div>
               <NButton size="small" type="primary" :disabled="!commentText.trim()" @click="handleAddComment">
                 <template #icon>
                   <NIcon>
@@ -564,10 +727,38 @@ function handleClose() {
             <div v-if="comments.length" class="comment-list">
               <div v-for="comment in comments" :key="comment.id" class="comment-item">
                 <div class="comment-header">
-                  <span class="comment-author">{{ comment.userName || comment.userId }}</span>
-                  <span class="comment-time">{{ relativeTime(comment.createdAt) }}</span>
+                  <div class="comment-author-row">
+                    <NAvatar v-if="(comment as any).userAvatar" :size="24" :src="(comment as any).userAvatar" round />
+                    <NAvatar v-else :size="24" round>{{ ((comment as any).userName || comment.userId).charAt(0) }}</NAvatar>
+                    <span class="comment-author">{{ (comment as any).userName || comment.userId }}</span>
+                  </div>
+                  <div class="comment-actions">
+                    <span class="comment-time">{{ relativeTime(comment.createdAt) }}</span>
+                    <NButton
+                      v-if="comment.userId === authStore.user?.id"
+                      size="tiny"
+                      quaternary
+                      @click="startEditComment(comment)"
+                    >
+                      <template #icon><NIcon :size="14"><PencilOutline /></NIcon></template>
+                    </NButton>
+                  </div>
                 </div>
-                <p class="comment-body">{{ comment.content }}</p>
+                <!-- Editing mode -->
+                <div v-if="editingCommentId === comment.id" class="comment-edit">
+                  <NInput
+                    v-model:value="editingCommentText"
+                    type="textarea"
+                    :rows="2"
+                    @keyup.ctrl.enter="saveEditComment"
+                  />
+                  <NSpace justify="end" :size="6" style="margin-top: 6px">
+                    <NButton size="tiny" @click="cancelEditComment">ยกเลิก</NButton>
+                    <NButton size="tiny" type="primary" @click="saveEditComment">บันทึก</NButton>
+                  </NSpace>
+                </div>
+                <!-- Display mode -->
+                <p v-else class="comment-body" v-html="highlightMentions(comment.content)" />
               </div>
             </div>
             <p v-else class="empty-hint">ยังไม่มีความคิดเห็น</p>
@@ -656,8 +847,43 @@ function handleClose() {
   margin-bottom: var(--space-sm);
 }
 
+.comment-input-wrapper {
+  flex: 1;
+  position: relative;
+}
+
 .comment-input :deep(.n-input) {
   flex: 1;
+}
+
+.mention-dropdown {
+  position: fixed;
+  background: white;
+  border: 1px solid var(--color-border, #e0e0e0);
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  z-index: 1000;
+  max-height: 200px;
+  overflow-y: auto;
+  min-width: 200px;
+}
+
+.mention-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.mention-item:hover {
+  background: var(--color-surface-variant, #f0f0f0);
+}
+
+.mention-name {
+  font-size: 0.85rem;
+  color: var(--color-text, #333);
 }
 
 .comment-list {
@@ -675,12 +901,25 @@ function handleClose() {
 .comment-header {
   display: flex;
   justify-content: space-between;
+  align-items: center;
   margin-bottom: 4px;
+}
+
+.comment-author-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
 }
 
 .comment-author {
   font-size: 0.8rem;
   font-weight: 600;
+}
+
+.comment-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
 }
 
 .comment-time {
@@ -692,6 +931,20 @@ function handleClose() {
   font-size: 0.85rem;
   line-height: 1.5;
   white-space: pre-wrap;
+}
+
+.comment-body :deep(.mention) {
+  color: #1890ff;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.comment-body :deep(.mention:hover) {
+  text-decoration: underline;
+}
+
+.comment-edit {
+  margin-top: 8px;
 }
 
 .empty-hint {

@@ -45,6 +45,9 @@ export const taskPlugin = new Elysia({ prefix: '/api/tasks' })
   .post('/:id/comments', async ({ user, params, body }) => TaskController.addComment(user, params, body), {
     detail: { summary: 'Add comment' },
   })
+  .put('/:id/comments/:commentId', async ({ user, params, body }) => TaskController.updateComment(user, params, body), {
+    detail: { summary: 'Update comment' },
+  })
   .delete('/:id/comments/:commentId', async ({ user, params }) => TaskController.deleteComment(user, params), {
     detail: { summary: 'Delete comment' },
   })
