@@ -26,6 +26,9 @@ export const dashboardPlugin = new Elysia({ prefix: '/api/dashboard' })
   .get('/trend', async ({ query }) => DashboardController.getMonthlyTrend(query), {
     detail: { summary: 'Get monthly trend data' },
   })
+  .get('/monthly-status-breakdown', async ({ query }) => DashboardController.getMonthlyStatusBreakdown(query), {
+    detail: { summary: 'Get monthly status breakdown bar chart data' },
+  })
   .get('/deadline-heatmap', async ({ query }) => DashboardController.getDeadlineHeatmap(query), {
     detail: { summary: 'Get deadline heatmap data' },
   });

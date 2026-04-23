@@ -31,6 +31,7 @@ import {
   AlertCircleOutline,
 } from "@vicons/ionicons5";
 import { useFiscalYear } from "@/composables/useFiscalYear";
+import { useWorkspaceStore, ALL_WORKSPACES_ID } from "@/stores/workspace";
 import {
   dashboardService,
   type DashboardStats,
@@ -41,6 +42,7 @@ import {
   type OverdueTask,
   type MonthlyTrendItem,
   type DeadlineHeatmapItem,
+  type MonthlyStatusBreakdownItem,
 } from "@/services/dashboard";
 import { formatThaiDate } from "@/utils/thai";
 import PageHeader from "@/components/common/PageHeader.vue";
@@ -57,14 +59,28 @@ use([
 ]);
 
 const { selectedFY, fyLabel, fyOptions } = useFiscalYear();
+const workspaceStore = useWorkspaceStore();
 
-// Status-based color configurations
-const STATUS_COLORS: Record<string, string> = {
-  "รออนุมัติ": "var(--color-warning)",
-  "กำลังดำเนินการ": "var(--color-primary)",
-  "เสร็จสิ้น": "var(--color-success)",
-  "เลยกำหนด": "var(--color-error)",
-};
+// Convert __ALL__ or null to null for API calls (both mean "all workspaces")
+const workspaceIdForApi = computed(() => {
+  const id = workspaceStore.currentWorkspaceId;
+  return (id === ALL_WORKSPACES_ID || id === null) ? null : id;
+});
+
+// Map actual DB status names to color groups
+function getStatusColorGroup(statusName: string): { color: string; group: string } {
+  if (statusName.includes('อนุมัติ') || statusName.includes('ขออนุมัติ')) {
+    return { color: "#f59e0b", group: "รออนุมัติ" }; // สีส้ม
+  }
+  if (statusName.includes('กำลัง') || statusName.includes('ดำเนินการ') || statusName.includes('ประเมิน') || statusName.includes('บ่มเพาะ')) {
+    return { color: "#3b82f6", group: "กำลังดำเนินการ" }; // สีน้ำเงิน
+  }
+  if (statusName.includes('เสร็จสิ้น') || statusName.includes('สำเร็จ') || statusName.includes('สรุปผล') || statusName.includes('ส่งมอบ') || statusName.includes('ติดตาม')) {
+    return { color: "#10b981", group: "เสร็จสิ้น" }; // สีเขียว
+  }
+  // Default: pending/in progress statuses
+  return { color: "#6b7280", group: "อื่นๆ" }; // สีเทา
+}
 
 const PROJECT_STATUS_COLORS: Record<string, string> = {
   planning: "#f59e0b",
@@ -100,6 +116,7 @@ const kpiData = ref<KpiData | null>(null);
 const overdueData = ref<{ count: number; tasks: OverdueTask[] } | null>(null);
 const trendData = ref<MonthlyTrendItem[] | null>(null);
 const deadlineData = ref<DeadlineHeatmapItem[] | null>(null);
+const statusBreakdownData = ref<MonthlyStatusBreakdownItem[] | null>(null);
 
 // Stat cards derived from API data
 const statCards = computed(() => {
@@ -192,7 +209,7 @@ const priorityChartOption = computed(() => {
           value: item.value,
           name: item.label,
           itemStyle: {
-            color: ["var(--color-priority-urgent)", "var(--color-priority-high)", "var(--color-priority-normal)", "var(--color-priority-low)"][i],
+            color: ["#ef4444", "#f59e0b", "#3b82f6", "#6b7280"][i],
           },
         })),
       },
@@ -279,10 +296,19 @@ const workspaceChartOption = computed(() => {
 // Status distribution pie chart option
 const statusChartOption = computed(() => {
   if (!taskChart.value) return {};
-  const statusEntries = Object.entries(taskChart.value.byStatus).map(([label, value]) => ({
-    label,
-    value,
-  }));
+  const statusEntries = taskChart.value.byStatus;
+
+  // Group statuses by color group and aggregate values
+  const grouped = new Map<string, { name: string; value: number; itemStyle: { color: string } }>();
+  for (const item of statusEntries) {
+    const { color, group } = getStatusColorGroup(item.label);
+    if (grouped.has(group)) {
+      grouped.get(group)!.value += item.value;
+    } else {
+      grouped.set(group, { name: group, value: item.value, itemStyle: { color } });
+    }
+  }
+
   return {
     tooltip: {
       trigger: "item",
@@ -305,15 +331,9 @@ const statusChartOption = computed(() => {
         },
         label: {
           show: true,
-          formatter: "{b}\n{c}",
+          formatter: "{b}: {c}",
         },
-        data: statusEntries.map((item) => ({
-          value: item.value,
-          name: item.label,
-          itemStyle: {
-            color: STATUS_COLORS[item.label] || "var(--color-primary)",
-          },
-        })),
+        data: Array.from(grouped.values()),
       },
     ],
   };
@@ -391,10 +411,45 @@ const trendChartOption = computed(() => {
   };
 });
 
-// Deadline heatmap bar chart option
+// Status breakdown bar chart option
+const statusBreakdownChartOption = computed(() => {
+  if (!statusBreakdownData.value || statusBreakdownData.value.length === 0) return {};
+  const groups = ['รออนุมัติ', 'กำลังดำเนินการ', 'เสร็จสิ้น'];
+  const colors = ['#f59e0b', '#3b82f6', '#10b981'];
+  return {
+    tooltip: {
+      trigger: 'axis',
+      axisPointer: { type: 'shadow' },
+      formatter: (params: any) => {
+        let result = params[0].name + '<br/>';
+        params.forEach((p: any) => {
+          result += `${p.marker} ${p.seriesName}: ${p.value} งาน<br/>`;
+        });
+        return result;
+      },
+    },
+    legend: { orient: 'horizontal', bottom: 0, textStyle: { fontSize: 12 } },
+    grid: { left: 80, right: 40, top: 10, bottom: 40 },
+    xAxis: {
+      type: 'category',
+      data: statusBreakdownData.value.map(d => d.month),
+      axisLabel: { fontSize: 11 },
+    },
+    yAxis: {
+      type: 'value',
+      axisLabel: { fontSize: 11 },
+    },
+    series: groups.map((name, i) => ({
+      name,
+      type: 'bar',
+      data: statusBreakdownData.value.map(d => d.statuses[i]?.count || 0),
+      itemStyle: { color: colors[i], borderRadius: [4, 4, 0, 0] },
+      barMaxWidth: 32,
+    })),
+  };
+});
 const deadlineChartOption = computed(() => {
   if (!deadlineData.value || deadlineData.value.length === 0) return {};
-  const maxCount = Math.max(...deadlineData.value.map(d => d.count));
   return {
     tooltip: {
       trigger: "axis",
@@ -462,15 +517,17 @@ async function fetchDashboardData() {
   error.value = null;
   try {
     const fy = selectedFY.value;
-    const [statsData, chartData, projectsData, workload, kpis, overdue, trend, deadline] = await Promise.all([
-      dashboardService.getStats(fy),
-      dashboardService.getTaskChart(fy),
-      dashboardService.getProjects(fy),
-      dashboardService.getWorkload(fy),
-      dashboardService.getKpi(fy),
-      dashboardService.getOverdue(fy),
-      dashboardService.getTrend(fy),
-      dashboardService.getDeadlineHeatmap(fy),
+    const wsId = workspaceIdForApi.value;
+    const [statsData, chartData, projectsData, workload, kpis, overdue, trend, deadline, statusBreakdown] = await Promise.all([
+      dashboardService.getStats(fy, wsId),
+      dashboardService.getTaskChart(fy, wsId),
+      dashboardService.getProjects(fy, wsId),
+      dashboardService.getWorkload(fy, wsId),
+      dashboardService.getKpi(fy, wsId),
+      dashboardService.getOverdue(fy, wsId),
+      dashboardService.getTrend(fy, wsId),
+      dashboardService.getDeadlineHeatmap(fy, wsId),
+      dashboardService.getMonthlyStatusBreakdown(fy, wsId),
     ]);
     stats.value = statsData;
     taskChart.value = chartData;
@@ -480,6 +537,7 @@ async function fetchDashboardData() {
     overdueData.value = overdue?.overdue ?? null;
     trendData.value = trend?.monthlyTrend ?? null;
     deadlineData.value = deadline?.deadlineHeatmap ?? null;
+    statusBreakdownData.value = statusBreakdown?.monthlyStatusBreakdown ?? null;
   } catch (e: any) {
     error.value = e?.response?.data?.message || e?.message || "เกิดข้อผิดพลาด";
     console.error("Dashboard fetch error:", e);
@@ -488,12 +546,13 @@ async function fetchDashboardData() {
   }
 }
 
-// Watch fiscal year changes
-watch(selectedFY, () => {
+// Watch fiscal year and workspace changes
+watch([selectedFY, () => workspaceStore.currentWorkspaceId], () => {
   fetchDashboardData();
 });
 
-onMounted(() => {
+onMounted(async () => {
+  await workspaceStore.fetchWorkspaces();
   fetchDashboardData();
 });
 </script>
@@ -519,8 +578,8 @@ onMounted(() => {
       </div>
 
       <!-- Stat Cards -->
-      <NGrid :cols="5" :x-gap="16" :y-gap="16" responsive="screen" item-responsive>
-        <NGi v-for="stat in statCards" :key="stat.label" span="5 m:3 l:2">
+      <NGrid :cols="4" :x-gap="12" :y-gap="12" responsive="screen" item-responsive>
+        <NGi v-for="stat in statCards" :key="stat.label" span="4 m:2 l:1">
           <NCard class="stat-card" :bordered="false">
             <div class="stat-card-inner">
               <div class="stat-icon-wrap" :style="{ background: stat.bg }">
@@ -564,6 +623,19 @@ onMounted(() => {
               <NText depth="3">{{ formatOverdueDate(task.dueDate) }}</NText>
             </div>
           </div>
+        </div>
+      </NCard>
+
+      <!-- Monthly Status Breakdown Bar Chart -->
+      <NCard class="section-card" :bordered="false">
+        <template #header>
+          <NText class="section-title">จำนวนงานรายเดือนตามสถานะ</NText>
+        </template>
+        <div v-if="statusBreakdownData && statusBreakdownData.length > 0" class="chart-container">
+          <VChart :option="statusBreakdownChartOption" autoresize style="height: 260px" />
+        </div>
+        <div v-else class="empty-chart">
+          <NText depth="3">ไม่มีข้อมูล</NText>
         </div>
       </NCard>
 

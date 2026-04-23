@@ -3,6 +3,11 @@ import { tasks, taskAssignees, workspaceStatuses, workspaces, projects, projectK
 import { eq, and, isNull, sql, inArray, count } from 'drizzle-orm';
 import { getCurrentFiscalYear, THAI_MONTHS_SHORT } from '../../shared/thai.utils';
 
+function buildWorkspaceFilter(workspaceId: string | null) {
+  if (!workspaceId) return undefined;
+  return eq(tasks.workspaceId, workspaceId);
+}
+
 export interface StatsResponse {
   total: number;
   inProgress: number;
@@ -37,6 +42,11 @@ export interface OverdueTask {
   workspaceName: string;
 }
 
+export interface MonthlyStatusBreakdownItem {
+  month: string;
+  statuses: { name: string; count: number; color: string }[];
+}
+
 export interface MonthlyTrendItem {
   month: string;
   created: number;
@@ -48,8 +58,60 @@ export interface DeadlineHeatmapItem {
   count: number;
 }
 
+const STATUS_GROUPS = [
+  { name: 'รออนุมัติ', color: '#f59e0b', keywords: ['อนุมัติ', 'ขออนุมัติ', 'รอ', 'ตรวจสอบ'] },
+  { name: 'กำลังดำเนินการ', color: '#3b82f6', keywords: ['กำลัง', 'ดำเนินการ', 'ประเมิน', 'บ่มเพาะ', 'ดำเนิน', 'รับ', 'ส่ง', 'ศึกษา'] },
+  { name: 'เสร็จสิ้น', color: '#10b981', keywords: ['เสร็จสิ้น', 'สำเร็จ', 'สรุปผล', 'ส่งมอบ', 'ติดตาม', 'เสร็จ', 'สำเร็จ'] },
+];
+
+function getStatusGroup(statusName: string): number {
+  for (let i = 0; i < STATUS_GROUPS.length; i++) {
+    if (STATUS_GROUPS[i].keywords.some(k => statusName.includes(k))) {
+      return i;
+    }
+  }
+  return 1; // default to "กำลังดำเนินการ"
+}
+
 export const DashboardService = {
-  async getStats(fiscalYear: number = getCurrentFiscalYear()): Promise<StatsResponse> {
+  async getMonthlyStatusBreakdown(fiscalYear: number = getCurrentFiscalYear(), workspaceId?: string | null): Promise<MonthlyStatusBreakdownItem[]> {
+    const wsCondition = workspaceId ? eq(tasks.workspaceId, workspaceId) : undefined;
+    const conditions = [eq(tasks.fiscalYear, fiscalYear)];
+    if (wsCondition) conditions.push(wsCondition);
+
+    const rows = await db
+      .select({
+        createdAt: tasks.createdAt,
+        statusName: workspaceStatuses.name,
+      })
+      .from(tasks)
+      .leftJoin(workspaceStatuses, eq(tasks.statusId, workspaceStatuses.id))
+      .where(and(...conditions));
+
+    const monthlyData: number[][] = Array.from({ length: 12 }, () => [0, 0, 0]);
+
+    for (const row of rows) {
+      if (row.createdAt) {
+        const date = new Date(row.createdAt);
+        const month = date.getMonth();
+        const statusName = row.statusName || '';
+        const groupIndex = getStatusGroup(statusName);
+        monthlyData[month][groupIndex]++;
+      }
+    }
+
+    return THAI_MONTHS_SHORT.map((month, idx) => ({
+      month,
+      statuses: STATUS_GROUPS.map((g, i) => ({ name: g.name, count: monthlyData[idx][i], color: g.color })),
+    }));
+  },
+
+  async getStats(fiscalYear: number = getCurrentFiscalYear(), workspaceId?: string | null): Promise<StatsResponse> {
+    // Build filter conditions
+    const conditions = [eq(tasks.fiscalYear, fiscalYear)];
+    const wsFilter = buildWorkspaceFilter(workspaceId ?? undefined);
+    if (wsFilter) conditions.push(wsFilter);
+
     // Get all tasks for fiscal year
     const tasksResult = await db
       .select({
@@ -61,7 +123,7 @@ export const DashboardService = {
       })
       .from(tasks)
       .leftJoin(workspaceStatuses, eq(tasks.statusId, workspaceStatuses.id))
-      .where(eq(tasks.fiscalYear, fiscalYear));
+      .where(and(...conditions));
 
     const total = tasksResult.length;
 
@@ -104,7 +166,9 @@ export const DashboardService = {
     };
   },
 
-  async getTaskStatusChart(fiscalYear: number = getCurrentFiscalYear()): Promise<TaskChartResponse> {
+  async getTaskStatusChart(fiscalYear: number = getCurrentFiscalYear(), workspaceId?: string | null): Promise<TaskChartResponse> {
+    const wsConditions = workspaceId ? [eq(tasks.workspaceId, workspaceId)] : [];
+
     // By priority
     const priorityRows = await db
       .select({
@@ -112,7 +176,7 @@ export const DashboardService = {
         count: count(),
       })
       .from(tasks)
-      .where(eq(tasks.fiscalYear, fiscalYear))
+      .where(and(eq(tasks.fiscalYear, fiscalYear), ...wsConditions))
       .groupBy(tasks.priority);
 
     const priorityLabels: Record<string, string> = {
@@ -127,6 +191,7 @@ export const DashboardService = {
     }));
 
     // By status
+    const statusConditions = [eq(tasks.fiscalYear, fiscalYear), ...wsConditions];
     const statusRows = await db
       .select({
         statusName: workspaceStatuses.name,
@@ -134,7 +199,7 @@ export const DashboardService = {
       })
       .from(tasks)
       .leftJoin(workspaceStatuses, eq(tasks.statusId, workspaceStatuses.id))
-      .where(eq(tasks.fiscalYear, fiscalYear))
+      .where(and(...statusConditions))
       .groupBy(workspaceStatuses.name);
 
     const byStatus = statusRows.map(row => ({
@@ -143,6 +208,7 @@ export const DashboardService = {
     }));
 
     // By workspace
+    const wsConditionsForGroupBy = workspaceId ? [eq(tasks.workspaceId, workspaceId)] : [];
     const workspaceRows = await db
       .select({
         workspaceId: tasks.workspaceId,
@@ -151,7 +217,7 @@ export const DashboardService = {
       })
       .from(tasks)
       .innerJoin(workspaces, eq(tasks.workspaceId, workspaces.id))
-      .where(eq(tasks.fiscalYear, fiscalYear))
+      .where(and(eq(tasks.fiscalYear, fiscalYear), ...wsConditionsForGroupBy))
       .groupBy(tasks.workspaceId, workspaces.name);
 
     const byWorkspace = workspaceRows.map(row => ({
@@ -162,7 +228,11 @@ export const DashboardService = {
     return { byPriority, byStatus, byWorkspace };
   },
 
-  async getProjectProgress(fiscalYear: number = getCurrentFiscalYear()): Promise<ProjectProgressResponse> {
+  async getProjectProgress(fiscalYear: number = getCurrentFiscalYear(), workspaceId?: string | null): Promise<ProjectProgressResponse> {
+    const wsCondition = workspaceId ? eq(tasks.workspaceId, workspaceId) : undefined;
+    const conditions = [eq(tasks.fiscalYear, fiscalYear)];
+    if (wsCondition) conditions.push(wsCondition);
+
     // Get projects that have tasks in this fiscal year
     const projectRows = await db
       .select({
@@ -173,7 +243,7 @@ export const DashboardService = {
       })
       .from(projects)
       .innerJoin(tasks, eq(tasks.projectId, projects.id))
-      .where(eq(tasks.fiscalYear, fiscalYear))
+      .where(and(...conditions))
       .groupBy(projects.id, projects.name, projects.progress, projects.status);
 
     const projectsList = projectRows.map(row => ({
@@ -186,7 +256,11 @@ export const DashboardService = {
     return { projects: projectsList };
   },
 
-  async getWorkloadDistribution(fiscalYear: number = getCurrentFiscalYear()): Promise<WorkloadDistributionResponse> {
+  async getWorkloadDistribution(fiscalYear: number = getCurrentFiscalYear(), workspaceId?: string | null): Promise<WorkloadDistributionResponse> {
+    const wsCondition = workspaceId ? eq(tasks.workspaceId, workspaceId) : undefined;
+    const conditions = [eq(tasks.fiscalYear, fiscalYear)];
+    if (wsCondition) conditions.push(wsCondition);
+
     // Get tasks per assignee for the fiscal year
     const rows = await db
       .select({
@@ -197,7 +271,7 @@ export const DashboardService = {
       .from(taskAssignees)
       .innerJoin(tasks, eq(tasks.id, taskAssignees.taskId))
       .innerJoin(users, eq(taskAssignees.userId, users.id))
-      .where(eq(tasks.fiscalYear, fiscalYear))
+      .where(and(...conditions))
       .groupBy(taskAssignees.userId, users.name);
 
     const usersList = rows.map(row => ({
@@ -209,7 +283,11 @@ export const DashboardService = {
     return { users: usersList };
   },
 
-  async getKpiSummary(fiscalYear: number = getCurrentFiscalYear()): Promise<KpiSummaryResponse> {
+  async getKpiSummary(fiscalYear: number = getCurrentFiscalYear(), workspaceId?: string | null): Promise<KpiSummaryResponse> {
+    const wsCondition = workspaceId ? eq(tasks.workspaceId, workspaceId) : undefined;
+    const conditions = [eq(tasks.fiscalYear, fiscalYear)];
+    if (wsCondition) conditions.push(wsCondition);
+
     // Get all KPIs from projects that have tasks in this fiscal year
     const kpiRows = await db
       .select({
@@ -221,7 +299,7 @@ export const DashboardService = {
       .from(projectKpis)
       .innerJoin(projects, eq(projects.id, projectKpis.projectId))
       .innerJoin(tasks, eq(tasks.projectId, projects.id))
-      .where(eq(tasks.fiscalYear, fiscalYear))
+      .where(and(...conditions))
       .groupBy(
         projectKpis.id,
         projectKpis.name,
@@ -246,7 +324,11 @@ export const DashboardService = {
     return { kpis };
   },
 
-  async getOverdueTasks(fiscalYear: number = getCurrentFiscalYear()): Promise<{ count: number; tasks: OverdueTask[] }> {
+  async getOverdueTasks(fiscalYear: number = getCurrentFiscalYear(), workspaceId?: string | null): Promise<{ count: number; tasks: OverdueTask[] }> {
+    const wsCondition = workspaceId ? eq(tasks.workspaceId, workspaceId) : undefined;
+    const conditions = [eq(tasks.fiscalYear, fiscalYear), isNull(tasks.completedAt)];
+    if (wsCondition) conditions.push(wsCondition);
+
     const overdueRows = await db
       .select({
         id: tasks.id,
@@ -257,12 +339,7 @@ export const DashboardService = {
       })
       .from(tasks)
       .innerJoin(workspaces, eq(tasks.workspaceId, workspaces.id))
-      .where(
-        and(
-          eq(tasks.fiscalYear, fiscalYear),
-          isNull(tasks.completedAt),
-        )
-      );
+      .where(and(...conditions));
 
     // Filter for overdue: dueDate < today (date only comparison)
     const today = new Date();
@@ -290,11 +367,10 @@ export const DashboardService = {
     };
   },
 
-  async getMonthlyTrend(fiscalYear: number = getCurrentFiscalYear()): Promise<MonthlyTrendItem[]> {
-    // Get fiscal year date range (Oct of previous AD year to Sep of current AD year)
-    const adYear = fiscalYear - 543;
-    const fiscalStartDate = `${adYear - 1}-10-01`;
-    const fiscalEndDate = `${adYear}-09-30`;
+  async getMonthlyTrend(fiscalYear: number = getCurrentFiscalYear(), workspaceId?: string | null): Promise<MonthlyTrendItem[]> {
+    const wsCondition = workspaceId ? eq(tasks.workspaceId, workspaceId) : undefined;
+    const conditions = [eq(tasks.fiscalYear, fiscalYear)];
+    if (wsCondition) conditions.push(wsCondition);
 
     // Get all tasks created within fiscal year
     const createdRows = await db
@@ -302,23 +378,17 @@ export const DashboardService = {
         createdAt: tasks.createdAt,
       })
       .from(tasks)
-      .where(eq(tasks.fiscalYear, fiscalYear));
+      .where(and(...conditions));
 
     // Get all tasks completed within fiscal year
-    const completedRows = await db
+    const allCompletedRows = await db
       .select({
         completedAt: tasks.completedAt,
       })
       .from(tasks)
-      .where(
-        and(
-          eq(tasks.fiscalYear, fiscalYear),
-          isNull(tasks.completedAt),
-        )
-      );
+      .where(and(...conditions));
 
     // Build monthly counts
-    // Fiscal year: Oct(10) -> Sep(9) of next year
     const createdCounts: number[] = Array(12).fill(0);
     const completedCounts: number[] = Array(12).fill(0);
 
@@ -329,15 +399,6 @@ export const DashboardService = {
         createdCounts[month]++;
       }
     }
-
-    // For completed, we need to count tasks that have completedAt set and completed within fiscal year
-    // Since we're querying completedAt IS NULL, we need different approach
-    const allCompletedRows = await db
-      .select({
-        completedAt: tasks.completedAt,
-      })
-      .from(tasks)
-      .where(eq(tasks.fiscalYear, fiscalYear));
 
     for (const row of allCompletedRows) {
       if (row.completedAt) {
@@ -354,19 +415,18 @@ export const DashboardService = {
     }));
   },
 
-  async getDeadlineHeatmap(fiscalYear: number = getCurrentFiscalYear()): Promise<DeadlineHeatmapItem[]> {
+  async getDeadlineHeatmap(fiscalYear: number = getCurrentFiscalYear(), workspaceId?: string | null): Promise<DeadlineHeatmapItem[]> {
+    const wsCondition = workspaceId ? eq(tasks.workspaceId, workspaceId) : undefined;
+    const conditions = [eq(tasks.fiscalYear, fiscalYear), isNull(tasks.completedAt)];
+    if (wsCondition) conditions.push(wsCondition);
+
     const deadlineRows = await db
       .select({
         dueDate: tasks.dueDate,
         count: count(),
       })
       .from(tasks)
-      .where(
-        and(
-          eq(tasks.fiscalYear, fiscalYear),
-          isNull(tasks.completedAt),
-        )
-      )
+      .where(and(...conditions))
       .groupBy(tasks.dueDate);
 
     // Group by month (0-11)
