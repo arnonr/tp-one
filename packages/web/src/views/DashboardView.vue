@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref } from "vue";
+import { ref, computed, onMounted, watch } from "vue";
 import {
   NCard,
   NGrid,
@@ -8,110 +8,240 @@ import {
   NText,
   NSpin,
   NButton,
-  NSpace,
+  NSelect,
+  NProgress,
 } from "naive-ui";
+import { use } from "echarts/core";
+import { CanvasRenderer } from "echarts/renderers";
+import { PieChart, BarChart } from "echarts/charts";
+import {
+  TitleComponent,
+  TooltipComponent,
+  LegendComponent,
+  GridComponent,
+} from "echarts/components";
+import VChart from "vue-echarts";
 import {
   CheckmarkCircleOutline,
   TimeOutline,
   CheckmarkDoneOutline,
   FolderOutline,
   TrendingUpOutline,
-  ArrowForwardOutline,
 } from "@vicons/ionicons5";
 import { useFiscalYear } from "@/composables/useFiscalYear";
+import {
+  dashboardService,
+  type DashboardStats,
+  type TaskChartData,
+  type ProjectProgress,
+  type WorkloadData,
+  type KpiData,
+} from "@/services/dashboard";
 import PageHeader from "@/components/common/PageHeader.vue";
 
-const { fyLabel } = useFiscalYear();
+use([
+  CanvasRenderer,
+  PieChart,
+  BarChart,
+  TitleComponent,
+  TooltipComponent,
+  LegendComponent,
+  GridComponent,
+]);
+
+const { selectedFY, fyLabel, fyOptions } = useFiscalYear();
+
+// Loading state
 const loading = ref(false);
+const error = ref<string | null>(null);
 
-interface StatCard {
-  label: string
-  value: number
-  icon: any
-  color: string
-  bg: string
-  trend: string
-  trendUp: boolean
+// Dashboard data
+const stats = ref<DashboardStats | null>(null);
+const taskChart = ref<TaskChartData | null>(null);
+const projectData = ref<ProjectProgress | null>(null);
+const workloadData = ref<WorkloadData | null>(null);
+const kpiData = ref<KpiData | null>(null);
+
+// Stat cards derived from API data
+const statCards = computed(() => {
+  if (!stats.value) return [];
+  const s = stats.value;
+  const successRate = s.total > 0 ? Math.round((s.completed / s.total) * 100) : 0;
+  return [
+    {
+      label: "งานทั้งหมด",
+      value: s.total,
+      icon: CheckmarkCircleOutline,
+      color: "var(--color-primary)",
+      bg: "var(--color-primary-bg)",
+      trend: `${s.total} งานในปีงบนี้`,
+      trendUp: true,
+    },
+    {
+      label: "กำลังดำเนินการ",
+      value: s.inProgress,
+      icon: TimeOutline,
+      color: "var(--color-warning)",
+      bg: "var(--color-warning-bg)",
+      trend: `${Math.round((s.inProgress / s.total) * 100) || 0}% ของงานทั้งหมด`,
+      trendUp: true,
+    },
+    {
+      label: "เสร็จสิ้น",
+      value: s.completed,
+      icon: CheckmarkDoneOutline,
+      color: "var(--color-success)",
+      bg: "var(--color-success-bg)",
+      trend: `อัตราสำเร็จ ${successRate}%`,
+      trendUp: true,
+    },
+    {
+      label: "โครงการ",
+      value: projectData.value?.projects.length || 0,
+      icon: FolderOutline,
+      color: "var(--color-info)",
+      bg: "var(--color-info-bg)",
+      trend: `${projectData.value?.projects.filter(p => p.progress >= 80).length || 0} โครงการใกล้เสร็จ`,
+      trendUp: true,
+    },
+  ];
+});
+
+// Priority chart option
+const priorityChartOption = computed(() => {
+  if (!taskChart.value) return {};
+  return {
+    tooltip: {
+      trigger: "item",
+      formatter: "{b}: {c} งาน ({d}%)",
+    },
+    legend: {
+      orient: "horizontal",
+      bottom: 0,
+      textStyle: { fontSize: 12 },
+    },
+    series: [
+      {
+        type: "pie",
+        radius: ["40%", "70%"],
+        avoidLabelOverlap: true,
+        itemStyle: {
+          borderRadius: 4,
+          borderColor: "#fff",
+          borderWidth: 2,
+        },
+        label: {
+          show: true,
+          formatter: "{b}\n{c}",
+        },
+        data: taskChart.value.byPriority.map((item, i) => ({
+          value: item.value,
+          name: item.label,
+          itemStyle: {
+            color: ["var(--color-priority-urgent)", "var(--color-priority-high)", "var(--color-priority-normal)", "var(--color-priority-low)"][i],
+          },
+        })),
+      },
+    ],
+  };
+});
+
+// Workload chart option
+const workloadChartOption = computed(() => {
+  if (!workloadData.value) return {};
+  const sorted = [...workloadData.value.users].sort((a, b) => b.taskCount - a.taskCount);
+  return {
+    tooltip: {
+      trigger: "axis",
+      axisPointer: { type: "shadow" },
+      formatter: (params: any) => {
+        const d = params[0];
+        return `${d.name}<br/>งาน: ${d.value} งาน`;
+      },
+    },
+    grid: { left: 120, right: 40, top: 10, bottom: 30 },
+    xAxis: {
+      type: "value",
+      axisLabel: { fontSize: 11 },
+    },
+    yAxis: {
+      type: "category",
+      data: sorted.map(u => u.displayName),
+      axisLabel: { fontSize: 11, width: 100, overflow: "truncate" },
+    },
+    series: [
+      {
+        type: "bar",
+        data: sorted.map(u => u.taskCount),
+        itemStyle: {
+          color: "var(--color-primary)",
+          borderRadius: [0, 4, 4, 0],
+        },
+        barMaxWidth: 24,
+      },
+    ],
+  };
+});
+
+// Fetch all dashboard data
+async function fetchDashboardData() {
+  loading.value = true;
+  error.value = null;
+  try {
+    const fy = selectedFY.value;
+    const [statsData, chartData, projectsData, workload, kpis] = await Promise.all([
+      dashboardService.getStats(fy),
+      dashboardService.getTaskChart(fy),
+      dashboardService.getProjects(fy),
+      dashboardService.getWorkload(fy),
+      dashboardService.getKpi(fy),
+    ]);
+    stats.value = statsData;
+    taskChart.value = chartData;
+    projectData.value = projectsData;
+    workloadData.value = workload;
+    kpiData.value = kpis;
+  } catch (e: any) {
+    error.value = e?.response?.data?.message || e?.message || "เกิดข้อผิดพลาด";
+    console.error("Dashboard fetch error:", e);
+  } finally {
+    loading.value = false;
+  }
 }
 
-const stats: StatCard[] = [
-  {
-    label: "งานทั้งหมด",
-    value: 128,
-    icon: CheckmarkCircleOutline,
-    color: "var(--color-primary)",
-    bg: "var(--color-primary-bg)",
-    trend: "+12% จากเดือนก่อน",
-    trendUp: true,
-  },
-  {
-    label: "กำลังดำเนินการ",
-    value: 34,
-    icon: TimeOutline,
-    color: "var(--color-warning)",
-    bg: "var(--color-warning-bg)",
-    trend: "+5 งานสัปดาห์นี้",
-    trendUp: true,
-  },
-  {
-    label: "เสร็จสิ้น",
-    value: 89,
-    icon: CheckmarkDoneOutline,
-    color: "var(--color-success)",
-    bg: "var(--color-success-bg)",
-    trend: "อัตราสำเร็จ 69%",
-    trendUp: true,
-  },
-  {
-    label: "โครงการ",
-    value: 12,
-    icon: FolderOutline,
-    color: "var(--color-info)",
-    bg: "var(--color-info-bg)",
-    trend: "3 โครงการใกล้เสร็จ",
-    trendUp: false,
-  },
-];
+// Watch fiscal year changes
+watch(selectedFY, () => {
+  fetchDashboardData();
+});
 
-interface RecentTask {
-  id: string
-  title: string
-  project: string
-  priority: "urgent" | "high" | "normal" | "low"
-  dueDate: string
-  status: string
-}
-
-const PRIORITY_CONFIG: Record<string, { label: string, color: string, bg: string }> = {
-  urgent: { label: "เร่งด่วน", color: "var(--color-priority-urgent)", bg: "var(--color-priority-urgent-bg)" },
-  high: { label: "สูง", color: "var(--color-priority-high)", bg: "var(--color-priority-high-bg)" },
-  normal: { label: "ปกติ", color: "var(--color-priority-normal)", bg: "var(--color-priority-normal-bg)" },
-  low: { label: "ต่ำ", color: "var(--color-priority-low)", bg: "var(--color-priority-low-bg)" },
-};
-
-const recentTasks: RecentTask[] = [
-  { id: "1", title: "จัดเตรียมเอกสารสัญญาเช่า", project: "เช่าพื้นที่", priority: "urgent", dueDate: "22 เม.ย. 2569", status: "กำลังดำเนินการ" },
-  { id: "2", title: "ติดตามผลการอบรม AI Workshop", project: "อบรม/สัมนา", priority: "high", dueDate: "25 เม.ย. 2569", status: "รอดำเนินการ" },
-  { id: "3", title: "ประเมินผลโครงการบ่มเพาะฯ Q2", project: "บ่มเพาะสตาร์ทอัป", priority: "normal", dueDate: "30 เม.ย. 2569", status: "กำลังดำเนินการ" },
-  { id: "4", title: "จัดทำรายงานให้คำปรึกษาภาคเรียน 2", project: "ที่ปรึกษา/วิจัย", priority: "low", dueDate: "15 พ.ค. 2569", status: "รอดำเนินการ" },
-  { id: "5", title: "อัปเดตแผนปฏิบัติการ Q3", project: "แผนปฏิบัติการ", priority: "high", dueDate: "28 เม.ย. 2569", status: "กำลังดำเนินการ" },
-];
-
-const STATUS_COLORS: Record<string, string> = {
-  "กำลังดำเนินการ": "var(--color-primary)",
-  "รอดำเนินการ": "var(--color-warning)",
-  "เสร็จสิ้น": "var(--color-success)",
-};
+onMounted(() => {
+  fetchDashboardData();
+});
 </script>
 
 <template>
   <NSpin :show="loading">
     <div class="dashboard">
-      <PageHeader title="แดชบอร์ด" :subtitle="fyLabel" />
+      <PageHeader title="แดชบอร์ด" :subtitle="fyLabel">
+        <template #actions>
+          <NSelect
+            v-model:value="selectedFY"
+            :options="fyOptions"
+            size="small"
+            style="width: 140px"
+          />
+        </template>
+      </PageHeader>
+
+      <!-- Error message -->
+      <div v-if="error" class="error-banner">
+        <NText>{{ error }}</NText>
+        <NButton size="small" @click="fetchDashboardData">ลองใหม่</NButton>
+      </div>
 
       <!-- Stat Cards -->
       <NGrid :cols="4" :x-gap="16" :y-gap="16" responsive="screen" item-responsive>
-        <NGi v-for="stat in stats" :key="stat.label" span="4 m:2 l:1">
+        <NGi v-for="stat in statCards" :key="stat.label" span="4 m:2 l:1">
           <NCard class="stat-card" :bordered="false">
             <div class="stat-card-inner">
               <div class="stat-icon-wrap" :style="{ background: stat.bg }">
@@ -132,93 +262,116 @@ const STATUS_COLORS: Record<string, string> = {
         </NGi>
       </NGrid>
 
-      <!-- Recent Tasks -->
-      <NCard class="section-card" :bordered="false">
-        <template #header>
-          <div class="section-header">
-            <NText class="section-title">งานล่าสุด</NText>
-            <NButton text size="small" type="primary">
-              ดูทั้งหมด
-              <template #icon>
-                <NIcon><ArrowForwardOutline /></NIcon>
-              </template>
-            </NButton>
-          </div>
-        </template>
-        <div class="task-list">
-          <div v-for="task in recentTasks" :key="task.id" class="task-row">
-            <div class="task-main">
-              <div class="task-priority-dot" :style="{ background: PRIORITY_CONFIG[task.priority]?.color }" />
-              <div class="task-info">
-                <div class="task-title">{{ task.title }}</div>
-                <NText depth="3" class="task-project">{{ task.project }}</NText>
-              </div>
-            </div>
-            <div class="task-meta">
-              <span
-                class="status-chip"
-                :style="{
-                  color: STATUS_COLORS[task.status] || 'var(--color-text-secondary)',
-                  background: task.status === 'กำลังดำเนินการ' ? 'var(--color-primary-bg)' : task.status === 'รอดำเนินการ' ? 'var(--color-warning-bg)' : 'var(--color-success-bg)',
-                }"
-              >
-                {{ task.status }}
-              </span>
-              <span
-                class="priority-chip"
-                :style="{
-                  color: PRIORITY_CONFIG[task.priority]?.color,
-                  background: PRIORITY_CONFIG[task.priority]?.bg,
-                }"
-              >
-                {{ PRIORITY_CONFIG[task.priority]?.label }}
-              </span>
-              <NText depth="3" class="task-date">{{ task.dueDate }}</NText>
-            </div>
-          </div>
-        </div>
-      </NCard>
-
-      <!-- Quick Actions -->
+      <!-- Middle Section: Charts -->
       <NGrid :cols="2" :x-gap="16" :y-gap="16" responsive="screen" item-responsive>
+        <!-- Task Priority Pie Chart -->
         <NGi span="2 l:1">
           <NCard class="section-card" :bordered="false">
             <template #header>
-              <NText class="section-title">ภาพรวมโครงการ</NText>
+              <NText class="section-title">สถานะงานตามความสำคัญ</NText>
             </template>
-            <NSpace vertical :size="12">
-              <div v-for="i in 3" :key="i" class="project-row">
-                <div class="project-info">
-                  <div class="project-dot" :style="{ background: ['var(--color-primary)', 'var(--color-success)', 'var(--color-warning)'][i - 1] }" />
-                  <div>
-                    <div class="project-name">{{ ["เช่าพื้นที่", "อบรม/สัมนา", "บ่มเพาะสตาร์ทอัป"][i - 1] }}</div>
-                    <NText depth="3" class="project-stat">{{ [12, 8, 5][i - 1] }} งาน</NText>
-                  </div>
-                </div>
-                <NText class="project-progress">{{ [75, 60, 40][i - 1] }}%</NText>
-              </div>
-            </NSpace>
+            <div v-if="taskChart && taskChart.byPriority.length > 0" class="chart-container">
+              <VChart :option="priorityChartOption" autoresize style="height: 260px" />
+            </div>
+            <div v-else class="empty-chart">
+              <NText depth="3">ไม่มีข้อมูล</NText>
+            </div>
           </NCard>
         </NGi>
+
+        <!-- Workload Bar Chart -->
         <NGi span="2 l:1">
           <NCard class="section-card" :bordered="false">
             <template #header>
-              <NText class="section-title">กิจกรรมล่าสุด</NText>
+              <NText class="section-title">ภาระงานตามผู้รับผิดชอบ</NText>
             </template>
-            <NSpace vertical :size="12">
-              <div v-for="i in 4" :key="i" class="activity-item">
-                <div class="activity-dot" />
-                <div class="activity-content">
-                  <div class="activity-text">
-                    {{ ["สมชาย อัปเดตสถานะงาน", "วิภา สร้างงานใหม่", "ประเสริฐ เพิ่มความคิดเห็น", "สุนีย์ อนุมัติแผนปฏิบัติการ"][i - 1] }}
-                  </div>
-                  <NText depth="3" class="activity-time">{{ ["5 นาทีก่อน", "1 ชั่วโมงก่อน", "2 ชั่วโมงก่อน", "3 ชั่วโมงก่อน"][i - 1] }}</NText>
-                </div>
-              </div>
-            </NSpace>
+            <div v-if="workloadData && workloadData.users.length > 0" class="chart-container">
+              <VChart :option="workloadChartOption" autoresize style="height: 260px" />
+            </div>
+            <div v-else class="empty-chart">
+              <NText depth="3">ไม่มีข้อมูล</NText>
+            </div>
           </NCard>
         </NGi>
       </NGrid>
+
+      <!-- Projects Progress -->
+      <NCard class="section-card" :bordered="false">
+        <template #header>
+          <NText class="section-title">ความก้าวหน้าโครงการ</NText>
+        </template>
+        <div v-if="projectData && projectData.projects.length > 0" class="project-list">
+          <div v-for="project in projectData.projects" :key="project.id" class="project-row">
+            <div class="project-info">
+              <div class="project-dot" :style="{ background: 'var(--color-primary)' }" />
+              <div>
+                <div class="project-name">{{ project.name }}</div>
+                <NText depth="3" class="project-stat">{{ project.status }}</NText>
+              </div>
+            </div>
+            <div class="project-progress-wrap">
+              <NProgress
+                type="line"
+                :percentage="project.progress"
+                :show-indicator="true"
+                :height="8"
+                :border-radius="4"
+                :fill-border-radius="4"
+                style="width: 160px"
+              />
+            </div>
+          </div>
+        </div>
+        <div v-else class="empty-chart">
+          <NText depth="3">ไม่มีข้อมูลโครงการ</NText>
+        </div>
+      </NCard>
+
+      <!-- KPI Achievement -->
+      <NCard class="section-card" :bordered="false">
+        <template #header>
+          <NText class="section-title">ผลความสำเร็จ KPI</NText>
+        </template>
+        <div v-if="kpiData && kpiData.kpis.length > 0" class="kpi-grid">
+          <div v-for="kpi in kpiData.kpis" :key="kpi.name" class="kpi-card">
+            <div class="kpi-header">
+              <NText class="kpi-name">{{ kpi.name }}</NText>
+              <NText class="kpi-achievement" :style="{ color: kpi.achievement >= 100 ? 'var(--color-success)' : kpi.achievement >= 50 ? 'var(--color-warning)' : 'var(--color-error)' }">
+                {{ kpi.achievement }}%
+              </NText>
+            </div>
+            <div class="kpi-progress">
+              <NProgress
+                type="line"
+                :percentage="Math.min(kpi.achievement, 100)"
+                :show-indicator="false"
+                :height="6"
+                :border-radius="3"
+                :fill-border-radius="3"
+              />
+            </div>
+            <div class="kpi-values">
+              <NText depth="3">{{ kpi.current.toLocaleString() }} / {{ kpi.target.toLocaleString() }} {{ kpi.unit }}</NText>
+            </div>
+          </div>
+        </div>
+        <div v-else class="empty-chart">
+          <NText depth="3">ไม่มีข้อมูล KPI</NText>
+        </div>
+      </NCard>
+
+      <!-- Task by Status breakdown -->
+      <NCard v-if="stats && Object.keys(stats.byStatus).length > 0" class="section-card" :bordered="false">
+        <template #header>
+          <NText class="section-title">สถานะงานทั้งหมด</NText>
+        </template>
+        <div class="status-grid">
+          <div v-for="(count, status) in stats.byStatus" :key="status" class="status-item">
+            <div class="status-name">{{ status }}</div>
+            <div class="status-count">{{ count }}</div>
+          </div>
+        </div>
+      </NCard>
     </div>
   </NSpin>
 </template>
@@ -228,6 +381,15 @@ const STATUS_COLORS: Record<string, string> = {
   display: flex;
   flex-direction: column;
   gap: var(--space-lg);
+}
+
+.error-banner {
+  padding: var(--space-md);
+  background: var(--color-error-bg);
+  border-radius: var(--radius-md);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
 }
 
 /* ── Stat Cards ── */
@@ -303,86 +465,25 @@ const STATUS_COLORS: Record<string, string> = {
   font-weight: 600;
 }
 
-/* ── Task List ── */
-.task-list {
+/* ── Chart ── */
+.chart-container {
+  padding: var(--space-sm) 0;
+}
+
+.empty-chart {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 200px;
+}
+
+/* ── Project List ── */
+.project-list {
   display: flex;
   flex-direction: column;
+  gap: var(--space-md);
 }
 
-.task-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: var(--space-sm) 0;
-  border-bottom: 1px solid var(--color-border-light);
-}
-
-.task-row:last-child {
-  border-bottom: none;
-}
-
-.task-main {
-  display: flex;
-  align-items: center;
-  gap: var(--space-sm);
-  flex: 1;
-  min-width: 0;
-}
-
-.task-priority-dot {
-  width: 8px;
-  height: 8px;
-  border-radius: var(--radius-full);
-  flex-shrink: 0;
-}
-
-.task-info {
-  min-width: 0;
-}
-
-.task-title {
-  font-size: var(--text-sm);
-  font-weight: 500;
-  color: var(--color-text);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.task-project {
-  font-size: var(--text-xs);
-}
-
-.task-meta {
-  display: flex;
-  align-items: center;
-  gap: var(--space-sm);
-  flex-shrink: 0;
-  margin-left: var(--space-md);
-}
-
-.status-chip {
-  font-size: var(--text-xs);
-  padding: 2px 8px;
-  border-radius: var(--radius-full);
-  font-weight: 500;
-  white-space: nowrap;
-}
-
-.priority-chip {
-  font-size: var(--text-xs);
-  padding: 2px 8px;
-  border-radius: var(--radius-full);
-  font-weight: 500;
-  white-space: nowrap;
-}
-
-.task-date {
-  font-size: var(--text-xs);
-  white-space: nowrap;
-}
-
-/* ── Project Row ── */
 .project-row {
   display: flex;
   justify-content: space-between;
@@ -412,66 +513,91 @@ const STATUS_COLORS: Record<string, string> = {
   font-size: var(--text-xs);
 }
 
-.project-progress {
-  font-size: var(--text-sm);
-  font-weight: 600;
-  color: var(--color-primary);
-}
-
-/* ── Activity ── */
-.activity-item {
-  display: flex;
-  gap: var(--space-sm);
-  align-items: flex-start;
-}
-
-.activity-dot {
-  width: 8px;
-  height: 8px;
-  border-radius: var(--radius-full);
-  background: var(--color-primary-light);
+.project-progress-wrap {
   flex-shrink: 0;
-  margin-top: 6px;
 }
 
-.activity-content {
+/* ── KPI Grid ── */
+.kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: var(--space-md);
+}
+
+.kpi-card {
+  padding: var(--space-md);
+  background: var(--color-surface);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border-light);
+}
+
+.kpi-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--space-sm);
+}
+
+.kpi-name {
+  font-size: var(--text-sm);
+  font-weight: 500;
   flex: 1;
 }
 
-.activity-text {
-  font-size: var(--text-sm);
-  color: var(--color-text);
+.kpi-achievement {
+  font-size: var(--text-lg);
+  font-weight: 700;
 }
 
-.activity-time {
+.kpi-progress {
+  margin-bottom: var(--space-xs);
+}
+
+.kpi-values {
   font-size: var(--text-xs);
+}
+
+/* ── Status Grid ── */
+.status-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-md);
+}
+
+.status-item {
+  padding: var(--space-sm) var(--space-md);
+  background: var(--color-surface);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border-light);
+  min-width: 120px;
+}
+
+.status-name {
+  font-size: var(--text-sm);
+  color: var(--color-text-secondary);
+  margin-bottom: var(--space-xs);
+}
+
+.status-count {
+  font-size: var(--text-xl);
+  font-weight: 700;
+  color: var(--color-text);
 }
 
 /* ── Mobile Responsive ── */
 @media (max-width: 767px) {
-  .page-title {
-    font-size: var(--text-xl);
-  }
-
-  .task-row {
-    flex-wrap: wrap;
-    gap: var(--space-xs);
+  .project-row {
+    flex-direction: column;
     align-items: flex-start;
+    gap: var(--space-sm);
   }
 
-  .task-main {
+  .project-progress-wrap {
     width: 100%;
   }
 
-  .task-meta {
-    width: 100%;
-    flex-wrap: wrap;
-    margin-left: calc(var(--space-sm) + 8px);
-    gap: var(--space-xs);
-  }
-
-  .task-date {
-    width: 100%;
+  .project-progress-wrap :deep(.n-progress) {
+    width: 100% !important;
   }
 }
 </style>
