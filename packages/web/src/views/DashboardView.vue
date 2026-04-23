@@ -10,10 +10,11 @@ import {
   NButton,
   NSelect,
   NProgress,
+  NTag,
 } from "naive-ui";
 import { use } from "echarts/core";
 import { CanvasRenderer } from "echarts/renderers";
-import { PieChart, BarChart } from "echarts/charts";
+import { PieChart, BarChart, LineChart } from "echarts/charts";
 import {
   TitleComponent,
   TooltipComponent,
@@ -27,6 +28,7 @@ import {
   CheckmarkDoneOutline,
   FolderOutline,
   TrendingUpOutline,
+  AlertCircleOutline,
 } from "@vicons/ionicons5";
 import { useFiscalYear } from "@/composables/useFiscalYear";
 import {
@@ -36,13 +38,18 @@ import {
   type ProjectProgress,
   type WorkloadData,
   type KpiData,
+  type OverdueTask,
+  type MonthlyTrendItem,
+  type DeadlineHeatmapItem,
 } from "@/services/dashboard";
+import { formatThaiDate } from "@/utils/thai";
 import PageHeader from "@/components/common/PageHeader.vue";
 
 use([
   CanvasRenderer,
   PieChart,
   BarChart,
+  LineChart,
   TitleComponent,
   TooltipComponent,
   LegendComponent,
@@ -50,6 +57,35 @@ use([
 ]);
 
 const { selectedFY, fyLabel, fyOptions } = useFiscalYear();
+
+// Status-based color configurations
+const STATUS_COLORS: Record<string, string> = {
+  "รออนุมัติ": "var(--color-warning)",
+  "กำลังดำเนินการ": "var(--color-primary)",
+  "เสร็จสิ้น": "var(--color-success)",
+  "เลยกำหนด": "var(--color-error)",
+};
+
+const PROJECT_STATUS_COLORS: Record<string, string> = {
+  planning: "#f59e0b",
+  active: "#3b82f6",
+  on_hold: "#6b7280",
+  completed: "#10b981",
+  cancelled: "#ef4444",
+};
+
+const PRIORITY_COLORS: Record<string, string> = {
+  urgent: "#ef4444",
+  high: "#f59e0b",
+  normal: "#3b82f6",
+  low: "#6b7280",
+};
+
+// Workspace color palette for pie charts
+const WORKSPACE_COLORS = [
+  "#3b82f6", "#10b981", "#f59e0b", "#ef4444", "#8b5cf6",
+  "#06b6d4", "#ec4899", "#84cc16", "#f97316", "#6366f1",
+];
 
 // Loading state
 const loading = ref(false);
@@ -61,13 +97,16 @@ const taskChart = ref<TaskChartData | null>(null);
 const projectData = ref<ProjectProgress | null>(null);
 const workloadData = ref<WorkloadData | null>(null);
 const kpiData = ref<KpiData | null>(null);
+const overdueData = ref<{ count: number; tasks: OverdueTask[] } | null>(null);
+const trendData = ref<MonthlyTrendItem[] | null>(null);
+const deadlineData = ref<DeadlineHeatmapItem[] | null>(null);
 
 // Stat cards derived from API data
 const statCards = computed(() => {
   if (!stats.value) return [];
   const s = stats.value;
   const successRate = s.total > 0 ? Math.round((s.completed / s.total) * 100) : 0;
-  return [
+  const cards = [
     {
       label: "งานทั้งหมด",
       value: s.total,
@@ -105,6 +144,21 @@ const statCards = computed(() => {
       trendUp: true,
     },
   ];
+
+  // Add overdue card if available
+  if (overdueData.value) {
+    cards.push({
+      label: "เลยกำหนด",
+      value: overdueData.value.count,
+      icon: AlertCircleOutline,
+      color: "var(--color-error)",
+      bg: "var(--color-error-bg)",
+      trend: `${overdueData.value.tasks.length} งานที่ต้องติดตาม`,
+      trendUp: false,
+    });
+  }
+
+  return cards;
 });
 
 // Priority chart option
@@ -183,24 +237,249 @@ const workloadChartOption = computed(() => {
   };
 });
 
+// Workspace breakdown pie chart option
+const workspaceChartOption = computed(() => {
+  if (!taskChart.value) return {};
+  return {
+    tooltip: {
+      trigger: "item",
+      formatter: "{b}: {c} งาน ({d}%)",
+    },
+    legend: {
+      orient: "horizontal",
+      bottom: 0,
+      textStyle: { fontSize: 12 },
+    },
+    series: [
+      {
+        type: "pie",
+        radius: ["40%", "70%"],
+        avoidLabelOverlap: true,
+        itemStyle: {
+          borderRadius: 4,
+          borderColor: "#fff",
+          borderWidth: 2,
+        },
+        label: {
+          show: true,
+          formatter: "{b}\n{c}",
+        },
+        data: taskChart.value.byWorkspace.map((item, i) => ({
+          value: item.value,
+          name: item.label,
+          itemStyle: {
+            color: WORKSPACE_COLORS[i % WORKSPACE_COLORS.length],
+          },
+        })),
+      },
+    ],
+  };
+});
+
+// Status distribution pie chart option
+const statusChartOption = computed(() => {
+  if (!taskChart.value) return {};
+  const statusEntries = Object.entries(taskChart.value.byStatus).map(([label, value]) => ({
+    label,
+    value,
+  }));
+  return {
+    tooltip: {
+      trigger: "item",
+      formatter: "{b}: {c} งาน ({d}%)",
+    },
+    legend: {
+      orient: "horizontal",
+      bottom: 0,
+      textStyle: { fontSize: 12 },
+    },
+    series: [
+      {
+        type: "pie",
+        radius: ["40%", "70%"],
+        avoidLabelOverlap: true,
+        itemStyle: {
+          borderRadius: 4,
+          borderColor: "#fff",
+          borderWidth: 2,
+        },
+        label: {
+          show: true,
+          formatter: "{b}\n{c}",
+        },
+        data: statusEntries.map((item) => ({
+          value: item.value,
+          name: item.label,
+          itemStyle: {
+            color: STATUS_COLORS[item.label] || "var(--color-primary)",
+          },
+        })),
+      },
+    ],
+  };
+});
+
+// Monthly trend line chart option
+const trendChartOption = computed(() => {
+  if (!trendData.value || trendData.value.length === 0) return {};
+  return {
+    tooltip: {
+      trigger: "axis",
+      axisPointer: { type: "line" },
+      formatter: (params: any) => {
+        const month = params[0].name;
+        let result = `${month}<br/>`;
+        params.forEach((p: any) => {
+          result += `${p.marker} ${p.seriesName}: ${p.value} งาน<br/>`;
+        });
+        return result;
+      },
+    },
+    legend: {
+      orient: "horizontal",
+      bottom: 0,
+      textStyle: { fontSize: 12 },
+    },
+    grid: { left: 50, right: 20, top: 20, bottom: 40 },
+    xAxis: {
+      type: "category",
+      data: trendData.value.map(t => t.month),
+      axisLabel: { fontSize: 11 },
+    },
+    yAxis: {
+      type: "value",
+      axisLabel: { fontSize: 11 },
+    },
+    series: [
+      {
+        name: "งานใหม่",
+        type: "line",
+        data: trendData.value.map(t => t.created),
+        itemStyle: { color: "var(--color-primary)" },
+        lineStyle: { width: 2 },
+        smooth: true,
+        areaStyle: {
+          color: {
+            type: "linear",
+            x: 0, y: 0, x2: 0, y2: 1,
+            colorStops: [
+              { offset: 0, color: "rgba(59, 130, 246, 0.3)" },
+              { offset: 1, color: "rgba(59, 130, 246, 0.05)" },
+            ],
+          },
+        },
+      },
+      {
+        name: "งานเสร็จ",
+        type: "line",
+        data: trendData.value.map(t => t.completed),
+        itemStyle: { color: "var(--color-success)" },
+        lineStyle: { width: 2 },
+        smooth: true,
+        areaStyle: {
+          color: {
+            type: "linear",
+            x: 0, y: 0, x2: 0, y2: 1,
+            colorStops: [
+              { offset: 0, color: "rgba(16, 185, 129, 0.3)" },
+              { offset: 1, color: "rgba(16, 185, 129, 0.05)" },
+            ],
+          },
+        },
+      },
+    ],
+  };
+});
+
+// Deadline heatmap bar chart option
+const deadlineChartOption = computed(() => {
+  if (!deadlineData.value || deadlineData.value.length === 0) return {};
+  const maxCount = Math.max(...deadlineData.value.map(d => d.count));
+  return {
+    tooltip: {
+      trigger: "axis",
+      axisPointer: { type: "shadow" },
+      formatter: (params: any) => {
+        const d = params[0];
+        return `${d.name}<br/>งาน: ${d.value} งาน`;
+      },
+    },
+    grid: { left: 80, right: 40, top: 10, bottom: 30 },
+    xAxis: {
+      type: "value",
+      axisLabel: { fontSize: 11 },
+    },
+    yAxis: {
+      type: "category",
+      data: deadlineData.value.map(d => d.month).reverse(),
+      axisLabel: { fontSize: 11 },
+    },
+    series: [
+      {
+        type: "bar",
+        data: deadlineData.value.map(d => d.count).reverse(),
+        itemStyle: {
+          color: {
+            type: "linear",
+            x: 0, y: 0, x2: 1, y2: 0,
+            colorStops: [
+              { offset: 0, color: "#fbbf24" },
+              { offset: 1, color: "#ef4444" },
+            ],
+          },
+          borderRadius: [0, 4, 4, 0],
+        },
+        barMaxWidth: 24,
+        label: {
+          show: true,
+          position: "right",
+          formatter: "{c}",
+          fontSize: 11,
+        },
+      },
+    ],
+  };
+});
+
+// Get project status color
+function getProjectStatusColor(status: string): string {
+  return PROJECT_STATUS_COLORS[status.toLowerCase()] || "var(--color-primary)";
+}
+
+// Get priority color
+function getPriorityColor(priority: string): string {
+  return PRIORITY_COLORS[priority.toLowerCase()] || "var(--color-primary)";
+}
+
+// Format overdue due date
+function formatOverdueDate(dateStr: string): string {
+  return formatThaiDate(dateStr);
+}
+
 // Fetch all dashboard data
 async function fetchDashboardData() {
   loading.value = true;
   error.value = null;
   try {
     const fy = selectedFY.value;
-    const [statsData, chartData, projectsData, workload, kpis] = await Promise.all([
+    const [statsData, chartData, projectsData, workload, kpis, overdue, trend, deadline] = await Promise.all([
       dashboardService.getStats(fy),
       dashboardService.getTaskChart(fy),
       dashboardService.getProjects(fy),
       dashboardService.getWorkload(fy),
       dashboardService.getKpi(fy),
+      dashboardService.getOverdue(fy),
+      dashboardService.getTrend(fy),
+      dashboardService.getDeadlineHeatmap(fy),
     ]);
     stats.value = statsData;
     taskChart.value = chartData;
     projectData.value = projectsData;
     workloadData.value = workload;
     kpiData.value = kpis;
+    overdueData.value = overdue?.overdue ?? null;
+    trendData.value = trend?.monthlyTrend ?? null;
+    deadlineData.value = deadline?.deadlineHeatmap ?? null;
   } catch (e: any) {
     error.value = e?.response?.data?.message || e?.message || "เกิดข้อผิดพลาด";
     console.error("Dashboard fetch error:", e);
@@ -240,8 +519,8 @@ onMounted(() => {
       </div>
 
       <!-- Stat Cards -->
-      <NGrid :cols="4" :x-gap="16" :y-gap="16" responsive="screen" item-responsive>
-        <NGi v-for="stat in statCards" :key="stat.label" span="4 m:2 l:1">
+      <NGrid :cols="5" :x-gap="16" :y-gap="16" responsive="screen" item-responsive>
+        <NGi v-for="stat in statCards" :key="stat.label" span="5 m:3 l:2">
           <NCard class="stat-card" :bordered="false">
             <div class="stat-card-inner">
               <div class="stat-icon-wrap" :style="{ background: stat.bg }">
@@ -251,7 +530,7 @@ onMounted(() => {
                 <NText depth="3" class="stat-label">{{ stat.label }}</NText>
                 <div class="stat-value">{{ stat.value.toLocaleString() }}</div>
                 <div class="stat-trend">
-                  <NIcon :size="14" :color="stat.trendUp ? 'var(--color-success)' : 'var(--color-info)'">
+                  <NIcon :size="14" :color="stat.trendUp ? 'var(--color-success)' : 'var(--color-error)'">
                     <TrendingUpOutline />
                   </NIcon>
                   <NText depth="3" class="stat-trend-text">{{ stat.trend }}</NText>
@@ -261,6 +540,32 @@ onMounted(() => {
           </NCard>
         </NGi>
       </NGrid>
+
+      <!-- Overdue Tasks Section -->
+      <NCard v-if="overdueData && overdueData.tasks.length > 0" class="section-card" :bordered="false">
+        <template #header>
+          <NText class="section-title">งานเลยกำหนด</NText>
+        </template>
+        <div class="overdue-list">
+          <div v-for="task in overdueData.tasks.slice(0, 5)" :key="task.id" class="overdue-item">
+            <div class="overdue-info">
+              <div class="overdue-title">{{ task.title }}</div>
+              <div class="overdue-meta">
+                <NText depth="3" class="overdue-workspace">{{ task.workspaceName }}</NText>
+                <NTag
+                  size="small"
+                  :color="{ color: getPriorityColor(task.priority), textColor: '#fff' }"
+                >
+                  {{ task.priority }}
+                </NTag>
+              </div>
+            </div>
+            <div class="overdue-date">
+              <NText depth="3">{{ formatOverdueDate(task.dueDate) }}</NText>
+            </div>
+          </div>
+        </div>
+      </NCard>
 
       <!-- Middle Section: Charts -->
       <NGrid :cols="2" :x-gap="16" :y-gap="16" responsive="screen" item-responsive>
@@ -295,6 +600,65 @@ onMounted(() => {
         </NGi>
       </NGrid>
 
+      <!-- Workspace & Status Pie Charts -->
+      <NGrid :cols="2" :x-gap="16" :y-gap="16" responsive="screen" item-responsive>
+        <!-- Workspace Breakdown Pie Chart -->
+        <NGi span="2 l:1">
+          <NCard class="section-card" :bordered="false">
+            <template #header>
+              <NText class="section-title">งานตามพื้นที่</NText>
+            </template>
+            <div v-if="taskChart && taskChart.byWorkspace.length > 0" class="chart-container">
+              <VChart :option="workspaceChartOption" autoresize style="height: 260px" />
+            </div>
+            <div v-else class="empty-chart">
+              <NText depth="3">ไม่มีข้อมูล</NText>
+            </div>
+          </NCard>
+        </NGi>
+
+        <!-- Status Distribution Pie Chart -->
+        <NGi span="2 l:1">
+          <NCard class="section-card" :bordered="false">
+            <template #header>
+              <NText class="section-title">สถานะงาน</NText>
+            </template>
+            <div v-if="taskChart && Object.keys(taskChart.byStatus).length > 0" class="chart-container">
+              <VChart :option="statusChartOption" autoresize style="height: 260px" />
+            </div>
+            <div v-else class="empty-chart">
+              <NText depth="3">ไม่มีข้อมูล</NText>
+            </div>
+          </NCard>
+        </NGi>
+      </NGrid>
+
+      <!-- Monthly Trend Line Chart -->
+      <NCard class="section-card" :bordered="false">
+        <template #header>
+          <NText class="section-title">แนวโน้มงานรายเดือน</NText>
+        </template>
+        <div v-if="trendData && trendData.length > 0" class="chart-container">
+          <VChart :option="trendChartOption" autoresize style="height: 260px" />
+        </div>
+        <div v-else class="empty-chart">
+          <NText depth="3">ไม่มีข้อมูล</NText>
+        </div>
+      </NCard>
+
+      <!-- Deadline Heatmap Bar Chart -->
+      <NCard class="section-card" :bordered="false">
+        <template #header>
+          <NText class="section-title">กำหนดส่งงานรายเดือน</NText>
+        </template>
+        <div v-if="deadlineData && deadlineData.length > 0" class="chart-container">
+          <VChart :option="deadlineChartOption" autoresize style="height: 260px" />
+        </div>
+        <div v-else class="empty-chart">
+          <NText depth="3">ไม่มีข้อมูล</NText>
+        </div>
+      </NCard>
+
       <!-- Projects Progress -->
       <NCard class="section-card" :bordered="false">
         <template #header>
@@ -303,7 +667,7 @@ onMounted(() => {
         <div v-if="projectData && projectData.projects.length > 0" class="project-list">
           <div v-for="project in projectData.projects" :key="project.id" class="project-row">
             <div class="project-info">
-              <div class="project-dot" :style="{ background: 'var(--color-primary)' }" />
+              <div class="project-dot" :style="{ background: getProjectStatusColor(project.status) }" />
               <div>
                 <div class="project-name">{{ project.name }}</div>
                 <NText depth="3" class="project-stat">{{ project.status }}</NText>
@@ -477,6 +841,54 @@ onMounted(() => {
   min-height: 200px;
 }
 
+/* ── Overdue List ── */
+.overdue-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+}
+
+.overdue-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--space-sm) var(--space-md);
+  background: var(--color-error-bg);
+  border-radius: var(--radius-md);
+  border-left: 3px solid var(--color-error);
+}
+
+.overdue-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.overdue-title {
+  font-size: var(--text-sm);
+  font-weight: 500;
+  color: var(--color-text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.overdue-meta {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  margin-top: var(--space-xs);
+}
+
+.overdue-workspace {
+  font-size: var(--text-xs);
+}
+
+.overdue-date {
+  flex-shrink: 0;
+  color: var(--color-error);
+  font-size: var(--text-sm);
+}
+
 /* ── Project List ── */
 .project-list {
   display: flex;
@@ -598,6 +1010,16 @@ onMounted(() => {
 
   .project-progress-wrap :deep(.n-progress) {
     width: 100% !important;
+  }
+
+  .overdue-item {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--space-sm);
+  }
+
+  .overdue-date {
+    align-self: flex-end;
   }
 }
 </style>

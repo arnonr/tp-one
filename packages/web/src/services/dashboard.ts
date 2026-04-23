@@ -40,6 +40,25 @@ export interface KpiData {
   kpis: KpiItem[]
 }
 
+export interface OverdueTask {
+  id: string;
+  title: string;
+  dueDate: string;
+  priority: string;
+  workspaceName: string;
+}
+
+export interface MonthlyTrendItem {
+  month: string;
+  created: number;
+  completed: number;
+}
+
+export interface DeadlineHeatmapItem {
+  month: string;
+  count: number;
+}
+
 export const dashboardService = {
   async getStats(fiscalYear: number): Promise<DashboardStats> {
     const { data } = await api.get(`/dashboard/stats?fiscalYear=${fiscalYear}`)
@@ -63,6 +82,21 @@ export const dashboardService = {
 
   async getKpi(fiscalYear: number): Promise<KpiData> {
     const { data } = await api.get(`/dashboard/kpi?fiscalYear=${fiscalYear}`)
+    return data.data
+  },
+
+  async getOverdue(fiscalYear: number): Promise<{ overdue: { count: number; tasks: OverdueTask[] } }> {
+    const { data } = await api.get(`/dashboard/overdue?fiscalYear=${fiscalYear}`)
+    return data.data
+  },
+
+  async getTrend(fiscalYear: number): Promise<{ monthlyTrend: MonthlyTrendItem[] }> {
+    const { data } = await api.get(`/dashboard/trend?fiscalYear=${fiscalYear}`)
+    return data.data
+  },
+
+  async getDeadlineHeatmap(fiscalYear: number): Promise<{ deadlineHeatmap: DeadlineHeatmapItem[] }> {
+    const { data } = await api.get(`/dashboard/deadline-heatmap?fiscalYear=${fiscalYear}`)
     return data.data
   },
 }

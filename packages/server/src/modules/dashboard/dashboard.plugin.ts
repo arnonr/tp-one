@@ -19,4 +19,13 @@ export const dashboardPlugin = new Elysia({ prefix: '/api/dashboard' })
   })
   .get('/kpi', async ({ query }) => DashboardController.getKpi(query), {
     detail: { summary: 'Get KPI achievement summary' },
+  })
+  .get('/overdue', async ({ query }) => DashboardController.getOverdue(query), {
+    detail: { summary: 'Get overdue tasks' },
+  })
+  .get('/trend', async ({ query }) => DashboardController.getMonthlyTrend(query), {
+    detail: { summary: 'Get monthly trend data' },
+  })
+  .get('/deadline-heatmap', async ({ query }) => DashboardController.getDeadlineHeatmap(query), {
+    detail: { summary: 'Get deadline heatmap data' },
   });

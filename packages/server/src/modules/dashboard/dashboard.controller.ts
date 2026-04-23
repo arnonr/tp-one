@@ -31,4 +31,22 @@ export const DashboardController = {
     const kpi = await DashboardService.getKpiSummary(fiscalYear);
     return { success: true, data: kpi };
   },
+
+  async getOverdue(query: any) {
+    const fiscalYear = query.fiscalYear ? Number(query.fiscalYear) : getCurrentFiscalYear();
+    const overdue = await DashboardService.getOverdueTasks(fiscalYear);
+    return { success: true, data: { overdue } };
+  },
+
+  async getMonthlyTrend(query: any) {
+    const fiscalYear = query.fiscalYear ? Number(query.fiscalYear) : getCurrentFiscalYear();
+    const monthlyTrend = await DashboardService.getMonthlyTrend(fiscalYear);
+    return { success: true, data: { monthlyTrend } };
+  },
+
+  async getDeadlineHeatmap(query: any) {
+    const fiscalYear = query.fiscalYear ? Number(query.fiscalYear) : getCurrentFiscalYear();
+    const deadlineHeatmap = await DashboardService.getDeadlineHeatmap(fiscalYear);
+    return { success: true, data: { deadlineHeatmap } };
+  },
 };

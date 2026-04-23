@@ -1,7 +1,7 @@
 import { db } from '../../config/database';
 import { tasks, taskAssignees, workspaceStatuses, workspaces, projects, projectKpis, users } from '../../db/schema';
 import { eq, and, isNull, sql, inArray, count } from 'drizzle-orm';
-import { getCurrentFiscalYear } from '../../shared/thai.utils';
+import { getCurrentFiscalYear, THAI_MONTHS_SHORT } from '../../shared/thai.utils';
 
 export interface StatsResponse {
   total: number;
@@ -27,6 +27,25 @@ export interface WorkloadDistributionResponse {
 
 export interface KpiSummaryResponse {
   kpis: { name: string; target: number; current: number; unit: string; achievement: number }[];
+}
+
+export interface OverdueTask {
+  id: string;
+  title: string;
+  dueDate: string | null;
+  priority: string;
+  workspaceName: string;
+}
+
+export interface MonthlyTrendItem {
+  month: string;
+  created: number;
+  completed: number;
+}
+
+export interface DeadlineHeatmapItem {
+  month: string;
+  count: number;
 }
 
 export const DashboardService = {
@@ -225,5 +244,145 @@ export const DashboardService = {
     });
 
     return { kpis };
+  },
+
+  async getOverdueTasks(fiscalYear: number = getCurrentFiscalYear()): Promise<{ count: number; tasks: OverdueTask[] }> {
+    const overdueRows = await db
+      .select({
+        id: tasks.id,
+        title: tasks.title,
+        dueDate: tasks.dueDate,
+        priority: tasks.priority,
+        workspaceName: workspaces.name,
+      })
+      .from(tasks)
+      .innerJoin(workspaces, eq(tasks.workspaceId, workspaces.id))
+      .where(
+        and(
+          eq(tasks.fiscalYear, fiscalYear),
+          isNull(tasks.completedAt),
+        )
+      );
+
+    // Filter for overdue: dueDate < today (date only comparison)
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const overdueTasks: OverdueTask[] = [];
+    for (const task of overdueRows) {
+      if (task.dueDate) {
+        const dueDateObj = new Date(task.dueDate);
+        if (dueDateObj < today) {
+          overdueTasks.push({
+            id: task.id,
+            title: task.title,
+            dueDate: task.dueDate,
+            priority: task.priority || 'normal',
+            workspaceName: task.workspaceName || 'ไม่ระบุ',
+          });
+        }
+      }
+    }
+
+    return {
+      count: overdueTasks.length,
+      tasks: overdueTasks,
+    };
+  },
+
+  async getMonthlyTrend(fiscalYear: number = getCurrentFiscalYear()): Promise<MonthlyTrendItem[]> {
+    // Get fiscal year date range (Oct of previous AD year to Sep of current AD year)
+    const adYear = fiscalYear - 543;
+    const fiscalStartDate = `${adYear - 1}-10-01`;
+    const fiscalEndDate = `${adYear}-09-30`;
+
+    // Get all tasks created within fiscal year
+    const createdRows = await db
+      .select({
+        createdAt: tasks.createdAt,
+      })
+      .from(tasks)
+      .where(eq(tasks.fiscalYear, fiscalYear));
+
+    // Get all tasks completed within fiscal year
+    const completedRows = await db
+      .select({
+        completedAt: tasks.completedAt,
+      })
+      .from(tasks)
+      .where(
+        and(
+          eq(tasks.fiscalYear, fiscalYear),
+          isNull(tasks.completedAt),
+        )
+      );
+
+    // Build monthly counts
+    // Fiscal year: Oct(10) -> Sep(9) of next year
+    const createdCounts: number[] = Array(12).fill(0);
+    const completedCounts: number[] = Array(12).fill(0);
+
+    for (const row of createdRows) {
+      if (row.createdAt) {
+        const date = new Date(row.createdAt);
+        const month = date.getMonth(); // 0-11
+        createdCounts[month]++;
+      }
+    }
+
+    // For completed, we need to count tasks that have completedAt set and completed within fiscal year
+    // Since we're querying completedAt IS NULL, we need different approach
+    const allCompletedRows = await db
+      .select({
+        completedAt: tasks.completedAt,
+      })
+      .from(tasks)
+      .where(eq(tasks.fiscalYear, fiscalYear));
+
+    for (const row of allCompletedRows) {
+      if (row.completedAt) {
+        const date = new Date(row.completedAt);
+        const month = date.getMonth(); // 0-11
+        completedCounts[month]++;
+      }
+    }
+
+    return THAI_MONTHS_SHORT.map((month, index) => ({
+      month,
+      created: createdCounts[index],
+      completed: completedCounts[index],
+    }));
+  },
+
+  async getDeadlineHeatmap(fiscalYear: number = getCurrentFiscalYear()): Promise<DeadlineHeatmapItem[]> {
+    const deadlineRows = await db
+      .select({
+        dueDate: tasks.dueDate,
+        count: count(),
+      })
+      .from(tasks)
+      .where(
+        and(
+          eq(tasks.fiscalYear, fiscalYear),
+          isNull(tasks.completedAt),
+        )
+      )
+      .groupBy(tasks.dueDate);
+
+    // Group by month (0-11)
+    const monthlyCounts: number[] = Array(12).fill(0);
+
+    for (const row of deadlineRows) {
+      if (row.dueDate) {
+        const dueDateObj = new Date(row.dueDate);
+        const month = dueDateObj.getMonth(); // 0-11
+        monthlyCounts[month] += Number(row.count);
+      }
+    }
+
+    return THAI_MONTHS_SHORT.map((month, index) => ({
+      month,
+      count: monthlyCounts[index],
+    }));
   },
 };
