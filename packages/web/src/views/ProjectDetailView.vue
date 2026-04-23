@@ -11,34 +11,25 @@ import {
   NGi,
   NText,
   NAvatar,
-  NAvatarGroup,
   NModal,
   NTabs,
   NTabPane,
-  NDataTable,
-  NPagination,
-  NSelect,
-  NInput,
   useMessage,
 } from 'naive-ui'
 import {
   ArrowBackOutline,
   PeopleOutline,
-  CreateOutline,
   TrashOutline,
   RefreshOutline,
   AddCircleOutline,
 } from '@vicons/ionicons5'
 import { useRouter, useRoute } from 'vue-router'
-import PageHeader from '@/components/common/PageHeader.vue'
-import ThaiDate from '@/components/common/ThaiDate.vue'
 import KpiCard from '@/components/project/KpiCard.vue'
 import KpiForm from '@/components/project/KpiForm.vue'
 import MemberForm from '@/components/project/MemberForm.vue'
+import ProjectTaskTab from '@/components/project/ProjectTaskTab.vue'
 import { projectService } from '@/services/project'
-import { taskService } from '@/services/task'
 import { getFiscalYear } from '@/utils/thai'
-import type { ProjectStatus, ProjectMemberRole } from '@/types'
 
 const router = useRouter()
 const route = useRoute()
@@ -51,11 +42,6 @@ const loading = ref(false)
 const project = ref<any>(null)
 const kpis = ref<any[]>([])
 const members = ref<any[]>([])
-const tasks = ref<any[]>([])
-const taskTotal = ref(0)
-const taskPage = ref(1)
-const taskPageSize = ref(20)
-const taskLoading = ref(false)
 
 const showKpiForm = ref(false)
 const showMemberForm = ref(false)
@@ -64,15 +50,17 @@ const activeTab = ref('overview')
 
 // Computed
 const completedTasks = computed(() =>
-  tasks.value.filter(t => t.completedAt).length
+  project.value?.completedTaskCount ?? 0
 )
 const inProgressTasks = computed(() =>
-  tasks.value.filter(t => !t.completedAt && t.statusId).length
+  project.value?.inProgressTaskCount ?? 0
 )
-const overdueTasks = computed(() => {
-  const now = new Date()
-  return tasks.value.filter(t => t.dueDate && new Date(t.dueDate) < now && !t.completedAt).length
-})
+const overdueTasks = computed(() =>
+  project.value?.overdueTaskCount ?? 0
+)
+const taskTotal = computed(() =>
+  project.value?.taskCount ?? 0
+)
 
 const STATUS_CONFIG: Record<string, { label: string; color: string; bg: string }> = {
   active: { label: 'กำลังดำเนินการ', color: 'var(--color-primary)', bg: 'var(--color-primary-bg)' },
@@ -81,37 +69,6 @@ const STATUS_CONFIG: Record<string, { label: string; color: string; bg: string }
   completed: { label: 'เสร็จสิ้น', color: 'var(--color-success)', bg: 'var(--color-success-bg)' },
   cancelled: { label: 'ยกเลิก', color: 'var(--color-text-secondary)', bg: 'var(--color-surface-variant)' },
 }
-
-const PRIORITY_CONFIG: Record<string, { label: string; color: string }> = {
-  urgent: { label: 'เร่งด่วน', color: '#d03050' },
-  high: { label: 'สูง', color: '#f0a020' },
-  normal: { label: 'ปกติ', color: '#18a058' },
-  low: { label: 'ต่ำ', color: '#888' },
-}
-
-// Task table columns
-const taskColumns = [
-  {
-    title: 'ชื่อรายการ',
-    key: 'title',
-    ellipsis: true,
-  },
-  {
-    title: 'สถานะ',
-    key: 'statusName',
-    width: 140,
-  },
-  {
-    title: 'ความสำคัญ',
-    key: 'priority',
-    width: 100,
-  },
-  {
-    title: 'วันที่',
-    key: 'dueDate',
-    width: 120,
-  },
-]
 
 // Load project data
 async function loadProject() {
@@ -125,24 +82,6 @@ async function loadProject() {
     message.error('โหลดข้อมูลโครงการไม่สำเร็จ')
   } finally {
     loading.value = false
-  }
-}
-
-// Load tasks within project
-async function loadTasks() {
-  taskLoading.value = true
-  try {
-    const res = await taskService.list({
-      projectId,
-      page: taskPage.value,
-      pageSize: taskPageSize.value,
-    })
-    tasks.value = res.data
-    taskTotal.value = res.total
-  } catch (e: any) {
-    message.error('โหลดรายการงานไม่สำเร็จ')
-  } finally {
-    taskLoading.value = false
   }
 }
 
@@ -170,7 +109,7 @@ function openKpiEdit(kpi: any) {
 }
 
 async function handleKpiDeleted(kpiId: string) {
-  await projectService.deleteKpi(kpiId)
+  await projectService.deleteKpi(projectId, kpiId)
   await loadProject()
   message.success('ลบ KPI แล้ว')
 }
@@ -189,7 +128,6 @@ async function handleMemberRemoved(userId: string) {
 
 onMounted(() => {
   loadProject()
-  loadTasks()
 })
 </script>
 
@@ -285,24 +223,7 @@ onMounted(() => {
         </NTabPane>
 
         <NTabPane name="tasks" tab="รายการงาน">
-          <NCard :bordered="false" class="section-card">
-            <NDataTable
-              :loading="taskLoading"
-              :columns="taskColumns"
-              :data="tasks"
-              :pagination="false"
-              :bordered="false"
-              size="small"
-            />
-            <div class="pagination-wrap">
-              <NPagination
-                v-model:page="taskPage"
-                :page-size="taskPageSize"
-                :total="taskTotal"
-                @update:page="loadTasks"
-              />
-            </div>
-          </NCard>
+          <ProjectTaskTab :project-id="projectId" />
         </NTabPane>
 
         <NTabPane name="members" tab="สมาชิก">

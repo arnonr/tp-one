@@ -77,15 +77,15 @@ const statusOptions = [
 async function fetchProjects() {
   loading.value = true;
   try {
-    const res = await projectService.list({
+    const projects_data = await projectService.list({
       workspaceId: selectedWorkspaceId.value || undefined,
       status: statusFilter.value || undefined,
       search: searchFilter.value || undefined,
       page: page.value,
       pageSize: pageSize.value,
     });
-    projects.value = res.data ?? res;
-    total.value = res.total ?? projects.value.length;
+    projects.value = projects_data ?? [];
+    total.value = projects_data?.length ?? 0;
   } catch (e) {
     message.error("โหลดรายการโครงการไม่สำเร็จ");
   } finally {

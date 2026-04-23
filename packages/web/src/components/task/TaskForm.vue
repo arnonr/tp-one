@@ -21,6 +21,7 @@ const props = defineProps<{
   defaultStatusId?: string
   defaultStartDate?: number
   defaultDueDate?: number
+  initialProjectId?: string
 }>()
 
 const emit = defineEmits<{
@@ -53,7 +54,7 @@ const formValue = ref({
   title: '',
   description: '',
   workspaceId: props.defaultWorkspaceId || null as string | null,
-  projectId: null as string | null,
+  projectId: props.initialProjectId || null as string | null,
   statusId: null as string | null,
   priority: 'normal' as TaskPriority,
   assigneeIds: [] as string[],

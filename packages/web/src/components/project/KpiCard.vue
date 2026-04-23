@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 import { NCard, NText, NProgress, NButton, NIcon, NDropdown } from 'naive-ui'
-import { createOutline, trashOutline, timeOutline } from '@vicons/ionicons5'
+import { CreateOutline, TrashOutline, TimeOutline } from '@vicons/ionicons5'
 
 const props = defineProps<{
   kpi: {
