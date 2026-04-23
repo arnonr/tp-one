@@ -12,6 +12,10 @@ const props = defineProps<{
   projectId: string
 }>()
 
+const emit = defineEmits<{
+  (e: 'tasksChanged'): void
+}>()
+
 const message = useMessage()
 const taskStore = useTaskStore()
 
@@ -91,6 +95,7 @@ async function handleDrop(event: DragEvent, targetStatusId: string) {
   try {
     await taskStore.updateTask(taskId, { statusId: targetStatusId })
     await fetchBoard()
+    emit('tasksChanged')
     message.success('อัปเดตสถานะสำเร็จ')
   } catch {
     message.error('อัปเดตสถานะไม่สำเร็จ')
@@ -171,15 +176,15 @@ onMounted(() => {
     v-model:show="showTaskForm"
     :task-id="editingTaskId"
     :initial-project-id="projectId"
-    @created="fetchBoard"
-    @updated="fetchBoard"
+    @created="emit('tasksChanged'); fetchBoard()"
+    @updated="emit('tasksChanged'); fetchBoard()"
   />
 
   <TaskDetail
     v-model:show="showDetail"
     :task-id="detailTaskId"
     @edit="(id) => { editingTaskId = id; showTaskForm = true }"
-    @deleted="fetchBoard"
+    @deleted="emit('tasksChanged'); fetchBoard()"
   />
 </template>
 

@@ -1,6 +1,6 @@
 import { db } from '../../config/database';
 import { projects, projectMembers, projectKpis, tasks, users, workspaces, kpiAuditLogs } from '../../db/schema';
-import { eq, and, ilike, desc, count, inArray, isNull } from 'drizzle-orm';
+import { eq, and, ilike, desc, count, inArray, isNull, isNotNull, sql } from 'drizzle-orm';
 import { NotFoundError, ForbiddenError, ValidationError } from '../../shared/errors';
 
 export const ProjectService = {
@@ -133,7 +133,28 @@ export const ProjectService = {
       .from(projectKpis)
       .where(eq(projectKpis.projectId, projectId));
 
-    return { ...project, members, kpis };
+    // Load task statistics (top-level tasks only, sub-tasks excluded)
+    const taskStats = await db
+      .select({
+        total: count(),
+        completed: sql<number>`SUM(CASE WHEN ${tasks.completedAt} IS NOT NULL THEN 1 ELSE 0 END)`,
+        inProgress: sql<number>`SUM(CASE WHEN ${tasks.completedAt} IS NULL AND ${tasks.statusId} IS NOT NULL THEN 1 ELSE 0 END)`,
+        overdue: sql<number>`SUM(CASE WHEN ${tasks.completedAt} IS NULL AND ${tasks.dueDate} < NOW() THEN 1 ELSE 0 END)`,
+      })
+      .from(tasks)
+      .where(and(eq(tasks.projectId, projectId), isNull(tasks.parentId)));
+
+    const stats = taskStats[0] || { total: 0, completed: sql<number>`0`, inProgress: sql<number>`0`, overdue: sql<number>`0` };
+
+    return {
+      ...project,
+      members,
+      kpis,
+      taskCount: Number(stats.total) || 0,
+      completedTaskCount: Number(stats.completed) || 0,
+      inProgressTaskCount: Number(stats.inProgress) || 0,
+      overdueTaskCount: Number(stats.overdue) || 0,
+    };
   },
 
   async create(data: {

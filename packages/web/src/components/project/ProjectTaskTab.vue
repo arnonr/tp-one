@@ -42,6 +42,10 @@ const props = defineProps<{
   projectId: string
 }>()
 
+const emit = defineEmits<{
+  (e: 'tasksChanged'): void
+}>()
+
 const message = useMessage()
 const taskStore = useTaskStore()
 
@@ -165,6 +169,7 @@ async function handleStatusChange(taskId: string, statusId: string, workspaceId:
   }
   try {
     await taskStore.updateTask(taskId, { statusId })
+    emit('tasksChanged')
     message.success('เปลี่ยนสถานะสำเร็จ')
   } catch {
     Object.assign(task, prev)
@@ -517,7 +522,7 @@ onUnmounted(() => {
       </template>
 
       <!-- Board View -->
-      <ProjectTaskBoard v-else-if="activeTab === 'board'" :project-id="projectId" />
+      <ProjectTaskBoard v-else-if="activeTab === 'board'" :project-id="projectId" @tasks-changed="emit('tasksChanged')" />
 
       <!-- Calendar View -->
       <ProjectTaskCalendar v-else-if="activeTab === 'calendar'" :project-id="projectId" />
@@ -525,10 +530,10 @@ onUnmounted(() => {
   </NSpin>
 
   <TaskForm v-model:show="showTaskForm" :task-id="editingTaskId" :initial-project-id="projectId"
-    @created="fetchTasks" @updated="fetchTasks" />
+    @created="emit('tasksChanged'); fetchTasks()" @updated="emit('tasksChanged'); fetchTasks()" />
 
   <TaskDetail v-model:show="showDetail" :task-id="detailTaskId"
-    @edit="(id) => { editingTaskId = id; showTaskForm = true }" @deleted="fetchTasks" />
+    @edit="(id) => { editingTaskId = id; showTaskForm = true }" @deleted="emit('tasksChanged'); fetchTasks()" />
 </template>
 
 <style scoped>

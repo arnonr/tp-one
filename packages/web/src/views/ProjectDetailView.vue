@@ -223,7 +223,7 @@ onMounted(() => {
         </NTabPane>
 
         <NTabPane name="tasks" tab="รายการงาน">
-          <ProjectTaskTab :project-id="projectId" />
+          <ProjectTaskTab :project-id="projectId" @tasks-changed="loadProject" />
         </NTabPane>
 
         <NTabPane name="members" tab="สมาชิก">
