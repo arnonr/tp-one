@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted } from "vue";
+import { ref, onMounted, watch } from "vue";
 import {
   NCard,
   NText,
@@ -7,7 +7,6 @@ import {
   NButton,
   NGrid,
   NGi,
-  NTag,
   NSpin,
   NProgress,
   NPagination,
@@ -18,6 +17,7 @@ import {
   NForm,
   NFormItem,
   NSpace,
+  NDropdown,
   useMessage,
 } from "naive-ui";
 import {
@@ -26,16 +26,18 @@ import {
   PeopleOutline,
   TimeOutline,
   RefreshOutline,
+  EllipsisHorizontal,
 } from "@vicons/ionicons5";
 import { useRouter } from "vue-router";
 import { useFiscalYear } from "@/composables/useFiscalYear";
+import { useWorkspaceStore } from "@/stores/workspace";
 import PageHeader from "@/components/common/PageHeader.vue";
 import { projectService } from "@/services/project";
-import { workspaceService } from "@/services/workspace";
 
 const router = useRouter();
 const message = useMessage();
 const { fyLabel } = useFiscalYear();
+const workspaceStore = useWorkspaceStore();
 
 const loading = ref(false);
 const projects = ref<any[]>([]);
@@ -43,11 +45,8 @@ const total = ref(0);
 const page = ref(1);
 const pageSize = ref(20);
 
-const workspaces = ref<any[]>([]);
-const workspaceOptions = ref<{ label: string; value: string }[]>([]);
 const statusFilter = ref<string | null>(null);
 const searchFilter = ref("");
-const selectedWorkspaceId = ref<string | null>(null);
 
 const showCreateModal = ref(false);
 const creating = ref(false);
@@ -56,6 +55,13 @@ const createForm = ref({
   name: "",
   description: "",
 });
+
+const showEditModal = ref(false);
+const editingProject = ref<any>(null);
+const editingForm = ref({ name: "", description: "", status: "" });
+const updating = ref(false);
+
+const showStatusMenuId = ref<string | null>(null);
 
 const STATUS_CONFIG: Record<string, { label: string; color: string; bg: string }> = {
   active: { label: "กำลังดำเนินการ", color: "var(--color-primary)", bg: "var(--color-primary-bg)" },
@@ -78,7 +84,7 @@ async function fetchProjects() {
   loading.value = true;
   try {
     const projects_data = await projectService.list({
-      workspaceId: selectedWorkspaceId.value || undefined,
+      workspaceId: workspaceStore.currentWorkspaceId || undefined,
       status: statusFilter.value || undefined,
       search: searchFilter.value || undefined,
       page: page.value,
@@ -90,18 +96,6 @@ async function fetchProjects() {
     message.error("โหลดรายการโครงการไม่สำเร็จ");
   } finally {
     loading.value = false;
-  }
-}
-
-async function loadWorkspaces() {
-  try {
-    workspaces.value = await workspaceService.list();
-    workspaceOptions.value = workspaces.value.map(w => ({
-      label: w.name,
-      value: w.id,
-    }));
-  } catch (e) {
-    message.error("โหลดพื้นที่ทำงานไม่สำเร็จ");
   }
 }
 
@@ -133,8 +127,55 @@ function onPageChange(p: number) {
   fetchProjects();
 }
 
+function openEdit(project: any) {
+  editingProject.value = project;
+  editingForm.value = { name: project.name, description: project.description ?? "", status: project.status };
+  showEditModal.value = true;
+  showStatusMenuId.value = null;
+}
+
+function openStatusMenu(e: MouseEvent, projectId: string) {
+  e.stopPropagation();
+  showStatusMenuId.value = showStatusMenuId.value === projectId ? null : projectId;
+}
+
+async function handleUpdateProject() {
+  if (!editingProject.value || !editingForm.value.name.trim()) return;
+  updating.value = true;
+  try {
+    await projectService.update(editingProject.value.id, {
+      name: editingForm.value.name.trim(),
+      description: editingForm.value.description.trim(),
+      status: editingForm.value.status,
+    });
+    showEditModal.value = false;
+    message.success("อัปเดตโครงการแล้ว");
+    fetchProjects();
+  } catch (e: any) {
+    message.error(e?.message ?? "เกิดข้อผิดพลาด");
+  } finally {
+    updating.value = false;
+  }
+}
+
+async function handleChangeStatus(projectId: string, status: string) {
+  showStatusMenuId.value = null;
+  try {
+    await projectService.update(projectId, { status });
+    message.success("เปลี่ยนสถานะแล้ว");
+    fetchProjects();
+  } catch (e: any) {
+    message.error(e?.message ?? "เกิดข้อผิดพลาด");
+  }
+}
+
 onMounted(() => {
-  loadWorkspaces();
+  workspaceStore.fetchWorkspaces();
+  fetchProjects();
+});
+
+watch(() => workspaceStore.currentWorkspaceId, () => {
+  page.value = 1;
   fetchProjects();
 });
 </script>
@@ -158,14 +199,6 @@ onMounted(() => {
 
       <!-- Filters -->
       <div class="filter-bar">
-        <NSelect
-          v-model:value="selectedWorkspaceId"
-          :options="[{ label: 'ทุกพื้นที่ทำงาน', value: '' }, ...workspaceOptions]"
-          placeholder="เลือกพื้นที่ทำงาน"
-          clearable
-          style="width: 200px"
-          @update:value="fetchProjects"
-        />
         <NSelect
           v-model:value="statusFilter"
           :options="statusOptions"
@@ -201,15 +234,51 @@ onMounted(() => {
                   <NIcon :size="14" color="var(--color-primary)"><FolderOutline /></NIcon>
                   <NText depth="3" class="workspace-name">{{ project.workspaceName }}</NText>
                 </div>
-                <span
-                  class="status-chip"
-                  :style="{
-                    color: STATUS_CONFIG[project.status]?.color,
-                    background: STATUS_CONFIG[project.status]?.bg,
-                  }"
-                >
-                  {{ STATUS_CONFIG[project.status]?.label }}
-                </span>
+                <div class="card-actions">
+                  <NDropdown
+                    trigger="click"
+                    :show="showStatusMenuId === project.id"
+                    :options="[
+                      { label: 'กำลังดำเนินการ', key: 'active' },
+                      { label: 'วางแผน', key: 'planning' },
+                      { label: 'ระงับชั่วคราว', key: 'on_hold' },
+                      { label: 'เสร็จสิ้น', key: 'completed' },
+                      { label: 'ยกเลิก', key: 'cancelled' },
+                    ]"
+                    @select="(key) => handleChangeStatus(project.id, key as string)"
+                    @click.native.stop
+                    @update:show="(v) => { if (!v) showStatusMenuId = null }"
+                  >
+                    <span
+                      class="status-chip"
+                      :style="{
+                        color: STATUS_CONFIG[project.status]?.color,
+                        background: STATUS_CONFIG[project.status]?.bg,
+                      }"
+                      @click.stop="openStatusMenu($event, project.id)"
+                    >
+                      {{ STATUS_CONFIG[project.status]?.label }}
+                    </span>
+                  </NDropdown>
+                  <NDropdown
+                    trigger="click"
+                    :options="[
+                      { label: 'แก้ไขโครงการ', key: 'edit' },
+                      { type: 'divider', key: 'd1' },
+                      { label: 'กำลังดำเนินการ', key: 'active' },
+                      { label: 'วางแผน', key: 'planning' },
+                      { label: 'ระงับชั่วคราว', key: 'on_hold' },
+                      { label: 'เสร็จสิ้น', key: 'completed' },
+                      { label: 'ยกเลิก', key: 'cancelled' },
+                    ]"
+                    @select="(key) => key === 'edit' ? openEdit(project) : handleChangeStatus(project.id, key as string)"
+                    @click.native.stop
+                  >
+                    <NButton quaternary size="tiny" @click.stop>
+                      <template #icon><NIcon><EllipsisHorizontal /></NIcon></template>
+                    </NButton>
+                  </NDropdown>
+                </div>
               </div>
 
               <div class="project-name">{{ project.name }}</div>
@@ -275,7 +344,7 @@ onMounted(() => {
       <NFormItem label="พื้นที่ทำงาน" required>
         <NSelect
           v-model:value="createForm.workspaceId"
-          :options="workspaceOptions"
+          :options="workspaceStore.selectorOptions"
           placeholder="เลือกพื้นที่ทำงาน"
         />
       </NFormItem>
@@ -293,6 +362,34 @@ onMounted(() => {
       <NSpace justify="end" style="margin-top: var(--space-md)">
         <NButton @click="showCreateModal = false">ยกเลิก</NButton>
         <NButton type="primary" :loading="creating" attr-type="submit">สร้างโครงการ</NButton>
+      </NSpace>
+    </NForm>
+  </NModal>
+
+  <!-- Edit Modal -->
+  <NModal v-model:show="showEditModal" preset="card" title="แก้ไขโครงการ" style="width: 480px">
+    <NForm label-placement="top" @submit.prevent="handleUpdateProject">
+      <NFormItem label="ชื่อโครงการ" required>
+        <NInput v-model:value="editingForm.name" placeholder="ชื่อโครงการ" />
+      </NFormItem>
+      <NFormItem label="รายละเอียด">
+        <NInput
+          v-model:value="editingForm.description"
+          type="textarea"
+          :rows="3"
+          placeholder="คำอธิบายโครงการ (ไม่บังคับ)"
+        />
+      </NFormItem>
+      <NFormItem label="สถานะ">
+        <NSelect
+          v-model:value="editingForm.status"
+          :options="statusOptions.slice(1)"
+          placeholder="เลือกสถานะ"
+        />
+      </NFormItem>
+      <NSpace justify="end" style="margin-top: var(--space-md)">
+        <NButton @click="showEditModal = false">ยกเลิก</NButton>
+        <NButton type="primary" :loading="updating" attr-type="submit">บันทึก</NButton>
       </NSpace>
     </NForm>
   </NModal>
@@ -333,6 +430,12 @@ onMounted(() => {
   display: flex;
   justify-content: space-between;
   align-items: center;
+}
+
+.card-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
 }
 
 .project-workspace {
