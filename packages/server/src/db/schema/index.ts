@@ -8,3 +8,4 @@ export * from "./waiting";
 export * from "./templates";
 export * from "./quick-notes";
 export * from "./snapshots";
+export * from "./kpi-audit-logs";

@@ -12,4 +12,9 @@ export const userService = {
     const { data } = await api.get('/users', { params: { search: query } })
     return data.data
   },
+
+  async list(): Promise<UserSearchResult[]> {
+    const { data } = await api.get('/users?pageSize=100')
+    return data.data
+  },
 }

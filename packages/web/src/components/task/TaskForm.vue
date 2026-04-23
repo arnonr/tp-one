@@ -9,6 +9,7 @@ import { useTaskStore } from '@/stores/task'
 import { useWorkspaceStore } from '@/stores/workspace'
 import { taskService } from '@/services/task'
 import { workspaceService } from '@/services/workspace'
+import { projectService } from '@/services/project'
 import { getFiscalYear } from '@/utils/thai'
 import ThaiDatePicker from '@/components/common/ThaiDatePicker.vue'
 import type { Tag, TaskPriority } from '@/types'
@@ -36,6 +37,7 @@ const saving = ref(false)
 const loadingTask = ref(false)
 const skipWorkspaceWatch = ref(false)
 const workspaces = ref<any[]>([])
+const projects = ref<any[]>([])
 const workspaceStatuses = ref<any[]>([])
 const workspaceMembers = ref<any[]>([])
 const workspaceTags = ref<Tag[]>([])
@@ -86,6 +88,10 @@ const statusOptions = computed(() =>
   workspaceStatuses.value.map(s => ({ label: s.name, value: s.id }))
 )
 
+const projectOptions = computed(() =>
+  projects.value.map(p => ({ label: p.name, value: p.id }))
+)
+
 const tagOptions = computed(() =>
   workspaceTags.value.map(t => ({ label: t.name, value: t.id }))
 )
@@ -122,14 +128,16 @@ async function loadWorkspaces() {
 
 async function loadWorkspaceData(workspaceId: string) {
   try {
-    const [statuses, members, fetchedTags] = await Promise.all([
+    const [statuses, members, fetchedTags, fetchedProjects] = await Promise.all([
       workspaceService.getStatuses(workspaceId),
       workspaceService.getMembers(workspaceId),
       taskService.getTags(workspaceId),
+      projectService.list({ workspaceId }),
     ])
     workspaceStatuses.value = statuses
     workspaceMembers.value = members
     workspaceTags.value = fetchedTags
+    projects.value = fetchedProjects
 
     if (statuses.length > 0 && !formValue.value.statusId) {
       if (props.defaultStatusId && statuses.some((s: any) => s.id === props.defaultStatusId)) {
@@ -200,6 +208,7 @@ watch(() => formValue.value.workspaceId, async (wsId) => {
   if (skipWorkspaceWatch.value) return
   if (wsId) {
     formValue.value.statusId = null
+    formValue.value.projectId = null
     formValue.value.assigneeIds = []
     await loadWorkspaceData(wsId)
   }
@@ -312,6 +321,13 @@ function handleClose() {
               :disabled="isEdit || !wsStore.isAllWorkspaces" />
           </NFormItem>
 
+          <NFormItem label="โครงการ">
+            <NSelect v-model:value="formValue.projectId" :options="projectOptions" placeholder="เลือกโครงการ (ถ้ามี)"
+              clearable filterable />
+          </NFormItem>
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
           <NFormItem label="สถานะ">
             <NSelect v-model:value="formValue.statusId" :options="statusOptions" placeholder="เลือกสถานะ" />
           </NFormItem>
