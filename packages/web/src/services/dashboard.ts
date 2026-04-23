@@ -5,12 +5,12 @@ export interface DashboardStats {
   inProgress: number
   completed: number
   byPriority: { urgent: number; high: number; normal: number; low: number }
-  byStatus: Record<string, number>
+  byStatusType: Record<string, number>
 }
 
 export interface TaskChartData {
   byPriority: { label: string; value: number }[]
-  byStatus: { label: string; value: number }[]
+  byStatusType: { label: string; value: number; color: string }[]
   byWorkspace: { label: string; value: number }[]
 }
 

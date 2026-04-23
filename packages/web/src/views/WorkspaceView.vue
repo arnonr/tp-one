@@ -24,7 +24,7 @@ import { workspaceService } from '@/services/workspace'
 import { userService } from '@/services/user'
 import { useAuthStore } from '@/stores/auth'
 import ActionButtons from '@/components/common/ActionButtons.vue'
-import type { Workspace, WorkspaceType, WorkspaceMemberRole } from '@/types'
+import type { Workspace, WorkspaceType, WorkspaceMemberRole, WorkspaceStatusType } from '@/types'
 import type { WorkspaceMember, WorkspaceStatus } from '@/services/workspace'
 
 const message = useMessage()
@@ -74,11 +74,42 @@ const ROLE_COLORS: Record<WorkspaceMemberRole, string> = {
   viewer: 'default',
 }
 
-const isAdmin = computed(() => authStore.user?.role === 'admin')
+const STATUS_TYPE_OPTIONS = [
+  { label: 'รอทำ', value: 'pending' },
+  { label: 'อยู่ระหว่างทำ', value: 'in_progress' },
+  { label: 'อยู่ระหว่างตรวจ', value: 'review' },
+  { label: 'เสร็จสิ้น', value: 'completed' },
+]
+
+const STATUS_TYPE_COLORS: Record<WorkspaceStatusType, string> = {
+  pending: '#f59e0b',
+  in_progress: '#3b82f6',
+  review: '#8b5cf6',
+  completed: '#10b981',
+}
+
+const STATUS_TYPE_TAG_TYPE: Record<WorkspaceStatusType, string> = {
+  pending: 'warning',
+  in_progress: 'info',
+  review: 'default',
+  completed: 'success',
+}
+
+const STATUS_TYPE_LABELS: Record<WorkspaceStatusType, string> = {
+  pending: 'รอทำ',
+  in_progress: 'อยู่ระหว่างทำ',
+  review: 'อยู่ระหว่างตรวจ',
+  completed: 'เสร็จสิ้น',
+}
+
+const sortedStatuses = computed(() => {
+  return [...statuses.value].sort((a, b) => Number(a.sortOrder) - Number(b.sortOrder))
+})
 
 // Status form
 const showStatusModal = ref(false)
-const statusForm = ref({ name: '', color: '#10B981', sortOrder: '0', isDefault: false })
+const editingStatusId = ref<string | null>(null)
+const statusForm = ref({ name: '', statusType: 'pending' as WorkspaceStatusType, color: '#10B981', sortOrder: '0', isDefault: false })
 
 // Member form
 const showMemberModal = ref(false)
@@ -162,20 +193,36 @@ async function handleDelete(ws: Workspace) {
 }
 
 // Status CRUD
-function openStatusModal() {
-  statusForm.value = { name: '', color: '#10B981', sortOrder: '0', isDefault: false }
+function openStatusModal(status?: WorkspaceStatus) {
+  if (status) {
+    editingStatusId.value = status.id
+    statusForm.value = { name: status.name, statusType: status.statusType, color: status.color || '#10B981', sortOrder: status.sortOrder, isDefault: status.isDefault }
+  } else {
+    editingStatusId.value = null
+    statusForm.value = { name: '', statusType: 'pending', color: '#10B981', sortOrder: '0', isDefault: false }
+  }
   showStatusModal.value = true
 }
 
-async function handleCreateStatus() {
+async function handleSaveStatus() {
   if (!selectedWorkspace.value || !statusForm.value.name.trim()) return
   try {
-    await workspaceService.createStatus(selectedWorkspace.value.id, statusForm.value)
-    message.success('เพิ่มสถานะสำเร็จ')
+    if (editingStatusId.value) {
+      await workspaceService.updateStatus(editingStatusId.value, statusForm.value)
+      // Update locally without refetch
+      const idx = statuses.value.findIndex(s => s.id === editingStatusId.value)
+      if (idx !== -1) {
+        statuses.value[idx] = { ...statuses.value[idx], ...statusForm.value }
+      }
+      message.success('แก้ไขสถานะสำเร็จ')
+    } else {
+      await workspaceService.createStatus(selectedWorkspace.value.id, statusForm.value)
+      statuses.value = await workspaceService.getStatuses(selectedWorkspace.value.id)
+      message.success('เพิ่มสถานะสำเร็จ')
+    }
     showStatusModal.value = false
-    statuses.value = await workspaceService.getStatuses(selectedWorkspace.value.id)
   } catch {
-    message.error('เพิ่มสถานะไม่สำเร็จ')
+    message.error(editingStatusId.value ? 'แก้ไขไม่สำเร็จ' : 'เพิ่มไม่สำเร็จ')
   }
 }
 
@@ -280,17 +327,24 @@ const statusColumns: DataTableColumns<WorkspaceStatus> = [
     return h('div', { style: 'display:flex; align-items:center; gap:8px' }, [
       h('div', { style: `width:10px; height:10px; border-radius:50%; background:${row.color || '#6B7280'}` }),
       row.name,
+      h(NTag, { size: 'tiny', type: STATUS_TYPE_TAG_TYPE[row.statusType] as any, bordered: false }, { default: () => STATUS_TYPE_LABELS[row.statusType] }),
       row.isDefault ? h(NTag, { size: 'tiny', type: 'success', bordered: false }, { default: () => 'ค่าเริ่มต้น' }) : null,
     ])
   }},
+  { title: 'ประเภท', key: 'statusType', width: 120, render(row) {
+    return h(NTag, { size: 'tiny', type: STATUS_TYPE_TAG_TYPE[row.statusType] as any, bordered: false }, { default: () => STATUS_TYPE_LABELS[row.statusType] })
+  }},
   { title: 'ลำดับ', key: 'sortOrder', width: 80 },
-  { title: '', key: 'actions', width: 60, align: 'right', render(row) {
-    return h(ActionButtons, {
-      size: 'tiny',
-      showEdit: false,
-      deleteMessage: `ลบสถานะ "${row.name}"?`,
-      onDelete: () => handleDeleteStatus(row.id),
-    })
+  { title: '', key: 'actions', width: 80, align: 'right', render(row) {
+    return h('div', { style: 'display:flex; gap:4px; justify-content:flex-end' }, [
+      h(NButton, { size: 'tiny', type: 'default', bordered: true, onClick: () => openStatusModal(row) }, { default: () => 'แก้ไข' }),
+      h(ActionButtons, {
+        size: 'tiny',
+        showEdit: false,
+        deleteMessage: `ลบสถานะ "${row.name}"?`,
+        onDelete: () => handleDeleteStatus(row.id),
+      }),
+    ])
   }},
 ]
 
@@ -354,9 +408,9 @@ onMounted(fetchWorkspaces)
       <NTabs type="line" animated>
         <NTabPane name="statuses" tab="สถานะ">
           <div style="display:flex; justify-content:flex-end; margin-bottom:12px">
-            <NButton size="small" @click="openStatusModal">+ เพิ่มสถานะ</NButton>
+            <NButton size="small" @click="openStatusModal()">+ เพิ่มสถานะ</NButton>
           </div>
-          <NDataTable v-if="statuses.length" :columns="statusColumns" :data="statuses" :bordered="false" size="small" :row-key="(r: any) => r.id" />
+          <NDataTable v-if="sortedStatuses.length" :columns="statusColumns" :data="sortedStatuses" :bordered="false" size="small" :row-key="(r: any) => r.id" />
           <NEmpty v-else description="ยังไม่มีสถานะ" />
         </NTabPane>
 
@@ -371,9 +425,10 @@ onMounted(fetchWorkspaces)
     </NSpin>
   </NModal>
 
-  <!-- Create Status Modal -->
-  <NModal v-model:show="showStatusModal" preset="dialog" title="เพิ่มสถานะใหม่" positive-text="เพิ่ม" negative-text="ยกเลิก" @positive-click="handleCreateStatus">
+  <!-- Create/Edit Status Modal -->
+  <NModal v-model:show="showStatusModal" preset="dialog" :title="editingStatusId ? 'แก้ไขสถานะ' : 'เพิ่มสถานะใหม่'" :positive-text="editingStatusId ? 'บันทึก' : 'เพิ่ม'" negative-text="ยกเลิก" @positive-click="handleSaveStatus">
     <NForm label-placement="left" label-width="90">
+      <NFormItem label="ประเภทสถานะ"><NSelect v-model:value="statusForm.statusType" :options="STATUS_TYPE_OPTIONS" /></NFormItem>
       <NFormItem label="ชื่อสถานะ"><NInput v-model:value="statusForm.name" placeholder="เช่น รับแจ้ง" /></NFormItem>
       <NFormItem label="สี"><NColorPicker v-model:value="statusForm.color" :modes="['hex']" :show-alpha="false" :swatches="['#10B981','#3B82F6','#F59E0B','#EF4444','#8B5CF6','#EC4899','#6B7280']" /></NFormItem>
       <NFormItem label="ลำดับ"><NInput v-model:value="statusForm.sortOrder" placeholder="0" /></NFormItem>

@@ -57,6 +57,13 @@
       "when": 1776908127453,
       "tag": "0007_lean_shotgun",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1776928916542,
+      "tag": "0008_regular_nick_fury",
+      "breakpoints": true
     }
   ]
 }

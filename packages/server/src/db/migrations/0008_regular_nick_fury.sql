@@ -1,0 +1,2 @@
+CREATE TYPE "public"."workspace_status_type" AS ENUM('pending', 'in_progress', 'review', 'completed');--> statement-breakpoint
+ALTER TABLE "workspace_statuses" ADD COLUMN "status_type" "workspace_status_type" DEFAULT 'pending' NOT NULL;

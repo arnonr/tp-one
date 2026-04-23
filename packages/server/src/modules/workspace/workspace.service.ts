@@ -19,8 +19,11 @@ export interface WorkspaceUpdateInput {
   description?: string;
 }
 
+export type WorkspaceStatusType = 'pending' | 'in_progress' | 'review' | 'completed';
+
 export interface StatusCreateInput {
   name: string;
+  statusType: WorkspaceStatusType;
   color?: string;
   sortOrder?: string;
   isDefault?: boolean;
@@ -28,6 +31,7 @@ export interface StatusCreateInput {
 
 export interface StatusUpdateInput {
   name?: string;
+  statusType?: WorkspaceStatusType;
   color?: string;
   sortOrder?: string;
   isDefault?: boolean;
@@ -126,7 +130,7 @@ export const WorkspaceService = {
 
     const [status] = await db
       .insert(workspaceStatuses)
-      .values({ workspaceId, name: data.name, color: data.color, sortOrder: data.sortOrder, isDefault: data.isDefault })
+      .values({ workspaceId, name: data.name, statusType: data.statusType, color: data.color, sortOrder: data.sortOrder, isDefault: data.isDefault })
       .returning();
     return status;
   },

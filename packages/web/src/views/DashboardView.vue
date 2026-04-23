@@ -67,20 +67,20 @@ const workspaceIdForApi = computed(() => {
   return (id === ALL_WORKSPACES_ID || id === null) ? null : id;
 });
 
-// Map actual DB status names to color groups
-function getStatusColorGroup(statusName: string): { color: string; group: string } {
-  if (statusName.includes('อนุมัติ') || statusName.includes('ขออนุมัติ')) {
-    return { color: "#f59e0b", group: "รออนุมัติ" }; // สีส้ม
-  }
-  if (statusName.includes('กำลัง') || statusName.includes('ดำเนินการ') || statusName.includes('ประเมิน') || statusName.includes('บ่มเพาะ')) {
-    return { color: "#3b82f6", group: "กำลังดำเนินการ" }; // สีน้ำเงิน
-  }
-  if (statusName.includes('เสร็จสิ้น') || statusName.includes('สำเร็จ') || statusName.includes('สรุปผล') || statusName.includes('ส่งมอบ') || statusName.includes('ติดตาม')) {
-    return { color: "#10b981", group: "เสร็จสิ้น" }; // สีเขียว
-  }
-  // Default: pending/in progress statuses
-  return { color: "#6b7280", group: "อื่นๆ" }; // สีเทา
-}
+// Map status type to color
+const STATUS_TYPE_COLORS: Record<string, string> = {
+  pending: '#f59e0b',
+  in_progress: '#3b82f6',
+  review: '#8b5cf6',
+  completed: '#10b981',
+};
+
+const STATUS_TYPE_LABELS: Record<string, string> = {
+  pending: 'รอทำ',
+  in_progress: 'อยู่ระหว่างทำ',
+  review: 'อยู่ระหว่างตรวจ',
+  completed: 'เสร็จสิ้น',
+};
 
 const PROJECT_STATUS_COLORS: Record<string, string> = {
   planning: "#f59e0b",
@@ -296,18 +296,7 @@ const workspaceChartOption = computed(() => {
 // Status distribution pie chart option
 const statusChartOption = computed(() => {
   if (!taskChart.value) return {};
-  const statusEntries = taskChart.value.byStatus;
-
-  // Group statuses by color group and aggregate values
-  const grouped = new Map<string, { name: string; value: number; itemStyle: { color: string } }>();
-  for (const item of statusEntries) {
-    const { color, group } = getStatusColorGroup(item.label);
-    if (grouped.has(group)) {
-      grouped.get(group)!.value += item.value;
-    } else {
-      grouped.set(group, { name: group, value: item.value, itemStyle: { color } });
-    }
-  }
+  const entries = taskChart.value.byStatusType;
 
   return {
     tooltip: {
@@ -333,7 +322,7 @@ const statusChartOption = computed(() => {
           show: true,
           formatter: "{b}: {c}",
         },
-        data: Array.from(grouped.values()),
+        data: entries,
       },
     ],
   };
@@ -414,8 +403,8 @@ const trendChartOption = computed(() => {
 // Status breakdown bar chart option
 const statusBreakdownChartOption = computed(() => {
   if (!statusBreakdownData.value || statusBreakdownData.value.length === 0) return {};
-  const groups = ['รออนุมัติ', 'กำลังดำเนินการ', 'เสร็จสิ้น'];
-  const colors = ['#f59e0b', '#3b82f6', '#10b981'];
+  const groups = ['รอทำ', 'อยู่ระหว่างทำ', 'อยู่ระหว่างตรวจ', 'เสร็จสิ้น'];
+  const colors = ['#f59e0b', '#3b82f6', '#8b5cf6', '#10b981'];
   return {
     tooltip: {
       trigger: 'axis',
@@ -442,7 +431,7 @@ const statusBreakdownChartOption = computed(() => {
     series: groups.map((name, i) => ({
       name,
       type: 'bar',
-      data: statusBreakdownData.value.map(d => d.statuses[i]?.count || 0),
+      data: statusBreakdownData.value!.map(d => d.statuses[i]?.count || 0),
       itemStyle: { color: colors[i], borderRadius: [4, 4, 0, 0] },
       barMaxWidth: 32,
     })),
@@ -695,7 +684,7 @@ onMounted(async () => {
             <template #header>
               <NText class="section-title">สถานะงาน</NText>
             </template>
-            <div v-if="taskChart && Object.keys(taskChart.byStatus).length > 0" class="chart-container">
+            <div v-if="taskChart && taskChart.byStatusType.length > 0" class="chart-container">
               <VChart :option="statusChartOption" autoresize style="height: 260px" />
             </div>
             <div v-else class="empty-chart">
@@ -797,13 +786,14 @@ onMounted(async () => {
       </NCard>
 
       <!-- Task by Status breakdown -->
-      <NCard v-if="stats && Object.keys(stats.byStatus).length > 0" class="section-card" :bordered="false">
+      <NCard v-if="stats && Object.keys(stats.byStatusType).length > 0" class="section-card" :bordered="false">
         <template #header>
           <NText class="section-title">สถานะงานทั้งหมด</NText>
         </template>
         <div class="status-grid">
-          <div v-for="(count, status) in stats.byStatus" :key="status" class="status-item">
-            <div class="status-name">{{ status }}</div>
+          <div v-for="(count, statusType) in stats.byStatusType" :key="statusType" class="status-item">
+            <div class="status-dot" :style="{ background: STATUS_TYPE_COLORS[statusType] || '#6b7280' }" />
+            <div class="status-name">{{ STATUS_TYPE_LABELS[statusType] || statusType }}</div>
             <div class="status-count">{{ count }}</div>
           </div>
         </div>
@@ -1049,6 +1039,9 @@ onMounted(async () => {
 }
 
 .status-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
   padding: var(--space-sm) var(--space-md);
   background: var(--color-surface);
   border-radius: var(--radius-md);
@@ -1056,10 +1049,17 @@ onMounted(async () => {
   min-width: 120px;
 }
 
+.status-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
 .status-name {
+  flex: 1;
   font-size: var(--text-sm);
   color: var(--color-text-secondary);
-  margin-bottom: var(--space-xs);
 }
 
 .status-count {

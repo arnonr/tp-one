@@ -46,12 +46,12 @@ export const workspaceService = {
     return data.data
   },
 
-  async createStatus(workspaceId: string, body: { name: string; color?: string; sortOrder?: string; isDefault?: boolean }): Promise<WorkspaceStatus> {
+  async createStatus(workspaceId: string, body: { name: string; statusType: string; color?: string; sortOrder?: string; isDefault?: boolean }): Promise<WorkspaceStatus> {
     const { data } = await api.post(`/workspaces/${workspaceId}/statuses`, body)
     return data.data
   },
 
-  async updateStatus(statusId: string, body: { name?: string; color?: string; sortOrder?: string; isDefault?: boolean }): Promise<WorkspaceStatus> {
+  async updateStatus(statusId: string, body: { name?: string; statusType?: string; color?: string; sortOrder?: string; isDefault?: boolean }): Promise<WorkspaceStatus> {
     const { data } = await api.patch(`/workspaces/statuses/${statusId}`, body)
     return data.data
   },

@@ -30,10 +30,13 @@ export interface WorkspaceMember {
   role: WorkspaceMemberRole;
 }
 
+export type WorkspaceStatusType = 'pending' | 'in_progress' | 'review' | 'completed';
+
 export interface WorkspaceStatus {
   id: string;
   workspaceId: string;
   name: string;
+  statusType: WorkspaceStatusType;
   color?: string;
   sortOrder: string;
   isDefault: boolean;

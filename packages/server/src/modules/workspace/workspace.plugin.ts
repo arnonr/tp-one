@@ -5,6 +5,7 @@ import { authMiddleware } from '../../middleware/auth.middleware';
 
 const WORKSPACE_TYPES = ['rental', 'consulting', 'training', 'incubation', 'general'] as const;
 const MEMBER_ROLES = ['owner', 'editor', 'viewer'] as const;
+const STATUS_TYPES = ['pending', 'in_progress', 'review', 'completed'] as const;
 
 export const workspacePlugin = new Elysia({ prefix: '/api/workspaces' })
   .onBeforeHandle(authMiddleware())
@@ -53,6 +54,7 @@ export const workspacePlugin = new Elysia({ prefix: '/api/workspaces' })
     params: t.Object({ id: t.String({ format: 'uuid' }) }),
     body: t.Object({
       name: t.String({ minLength: 1, maxLength: 100 }),
+      statusType: t.Union(STATUS_TYPES.map((v) => t.Literal(v))),
       color: t.Optional(t.String({ maxLength: 7 })),
       sortOrder: t.Optional(t.String({ maxLength: 10 })),
       isDefault: t.Optional(t.Boolean()),
@@ -63,6 +65,7 @@ export const workspacePlugin = new Elysia({ prefix: '/api/workspaces' })
     params: t.Object({ statusId: t.String({ format: 'uuid' }) }),
     body: t.Object({
       name: t.Optional(t.String({ minLength: 1, maxLength: 100 })),
+      statusType: t.Optional(t.Union(STATUS_TYPES.map((v) => t.Literal(v)))),
       color: t.Optional(t.String({ maxLength: 7 })),
       sortOrder: t.Optional(t.String({ maxLength: 10 })),
       isDefault: t.Optional(t.Boolean()),

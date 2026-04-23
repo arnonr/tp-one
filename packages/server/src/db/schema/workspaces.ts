@@ -22,10 +22,18 @@ export const workspaces = pgTable("workspaces", {
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
 });
 
+export const workspaceStatusTypeEnum = pgEnum("workspace_status_type", [
+  "pending",
+  "in_progress",
+  "review",
+  "completed",
+]);
+
 export const workspaceStatuses = pgTable("workspace_statuses", {
   id: uuid("id").defaultRandom().primaryKey(),
   workspaceId: uuid("workspace_id").references(() => workspaces.id).notNull(),
   name: varchar("name", { length: 100 }).notNull(),
+  statusType: workspaceStatusTypeEnum("status_type").default("pending").notNull(),
   color: varchar("color", { length: 7 }),
   sortOrder: varchar("sort_order").default("0"),
   isDefault: boolean("is_default").default(false),

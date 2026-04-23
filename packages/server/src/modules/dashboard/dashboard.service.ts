@@ -1,24 +1,40 @@
 import { db } from '../../config/database';
 import { tasks, taskAssignees, workspaceStatuses, workspaces, projects, projectKpis, users } from '../../db/schema';
-import { eq, and, isNull, sql, inArray, count } from 'drizzle-orm';
+import { eq, and, isNull, count } from 'drizzle-orm';
 import { getCurrentFiscalYear, THAI_MONTHS_SHORT } from '../../shared/thai.utils';
+
+type WorkspaceStatusType = 'pending' | 'in_progress' | 'review' | 'completed';
+
+const STATUS_TYPE_LABELS: Record<WorkspaceStatusType, string> = {
+  pending: 'รอทำ',
+  in_progress: 'อยู่ระหว่างทำ',
+  review: 'อยู่ระหว่างตรวจ',
+  completed: 'เสร็จสิ้น',
+}
+
+const STATUS_TYPE_COLORS: Record<WorkspaceStatusType, string> = {
+  pending: '#f59e0b',
+  in_progress: '#3b82f6',
+  review: '#8b5cf6',
+  completed: '#10b981',
+}
 
 function buildWorkspaceFilter(workspaceId: string | null) {
   if (!workspaceId) return undefined;
   return eq(tasks.workspaceId, workspaceId);
 }
 
-export interface StatsResponse {
+export interface DashboardStats {
   total: number;
   inProgress: number;
   completed: number;
   byPriority: { urgent: number; high: number; normal: number; low: number };
-  byStatus: Record<string, number>;
+  byStatusType: Record<WorkspaceStatusType, number>;
 }
 
 export interface TaskChartResponse {
   byPriority: { label: string; value: number }[];
-  byStatus: { label: string; value: number }[];
+  byStatusType: { label: string; value: number; color: string }[];
   byWorkspace: { label: string; value: number }[];
 }
 
@@ -58,21 +74,6 @@ export interface DeadlineHeatmapItem {
   count: number;
 }
 
-const STATUS_GROUPS = [
-  { name: 'รออนุมัติ', color: '#f59e0b', keywords: ['อนุมัติ', 'ขออนุมัติ', 'รอ', 'ตรวจสอบ'] },
-  { name: 'กำลังดำเนินการ', color: '#3b82f6', keywords: ['กำลัง', 'ดำเนินการ', 'ประเมิน', 'บ่มเพาะ', 'ดำเนิน', 'รับ', 'ส่ง', 'ศึกษา'] },
-  { name: 'เสร็จสิ้น', color: '#10b981', keywords: ['เสร็จสิ้น', 'สำเร็จ', 'สรุปผล', 'ส่งมอบ', 'ติดตาม', 'เสร็จ', 'สำเร็จ'] },
-];
-
-function getStatusGroup(statusName: string): number {
-  for (let i = 0; i < STATUS_GROUPS.length; i++) {
-    if (STATUS_GROUPS[i].keywords.some(k => statusName.includes(k))) {
-      return i;
-    }
-  }
-  return 1; // default to "กำลังดำเนินการ"
-}
-
 export const DashboardService = {
   async getMonthlyStatusBreakdown(fiscalYear: number = getCurrentFiscalYear(), workspaceId?: string | null): Promise<MonthlyStatusBreakdownItem[]> {
     const wsCondition = workspaceId ? eq(tasks.workspaceId, workspaceId) : undefined;
@@ -82,43 +83,49 @@ export const DashboardService = {
     const rows = await db
       .select({
         createdAt: tasks.createdAt,
-        statusName: workspaceStatuses.name,
+        statusType: workspaceStatuses.statusType,
       })
       .from(tasks)
       .leftJoin(workspaceStatuses, eq(tasks.statusId, workspaceStatuses.id))
       .where(and(...conditions));
 
-    const monthlyData: number[][] = Array.from({ length: 12 }, () => [0, 0, 0]);
+    const monthlyData: Record<WorkspaceStatusType, number[]> = {
+      pending: Array(12).fill(0),
+      in_progress: Array(12).fill(0),
+      review: Array(12).fill(0),
+      completed: Array(12).fill(0),
+    };
 
     for (const row of rows) {
       if (row.createdAt) {
         const date = new Date(row.createdAt);
         const month = date.getMonth();
-        const statusName = row.statusName || '';
-        const groupIndex = getStatusGroup(statusName);
-        monthlyData[month][groupIndex]++;
+        const st = (row.statusType as WorkspaceStatusType) || 'pending';
+        monthlyData[st][month]++;
       }
     }
 
     return THAI_MONTHS_SHORT.map((month, idx) => ({
       month,
-      statuses: STATUS_GROUPS.map((g, i) => ({ name: g.name, count: monthlyData[idx][i], color: g.color })),
+      statuses: (['pending', 'in_progress', 'review', 'completed'] as WorkspaceStatusType[]).map(st => ({
+        name: STATUS_TYPE_LABELS[st],
+        count: monthlyData[st][idx],
+        color: STATUS_TYPE_COLORS[st],
+      })),
     }));
   },
 
-  async getStats(fiscalYear: number = getCurrentFiscalYear(), workspaceId?: string | null): Promise<StatsResponse> {
-    // Build filter conditions
+  async getStats(fiscalYear: number = getCurrentFiscalYear(), workspaceId?: string | null): Promise<DashboardStats> {
     const conditions = [eq(tasks.fiscalYear, fiscalYear)];
     const wsFilter = buildWorkspaceFilter(workspaceId ?? undefined);
     if (wsFilter) conditions.push(wsFilter);
 
-    // Get all tasks for fiscal year
     const tasksResult = await db
       .select({
         id: tasks.id,
         priority: tasks.priority,
         statusId: tasks.statusId,
-        statusName: workspaceStatuses.name,
+        statusType: workspaceStatuses.statusType,
         completedAt: tasks.completedAt,
       })
       .from(tasks)
@@ -127,28 +134,27 @@ export const DashboardService = {
 
     const total = tasksResult.length;
 
-    // Count by status name (completed = has completedAt or status name contains "เสร็จสิ้น", "สำเร็จ", "สรุปผล")
-    const byStatus: Record<string, number> = {};
-    const completionKeywords = ['เสร็จสิ้น', 'สำเร็จ', 'สรุปผล'];
+    const byStatusType: Record<WorkspaceStatusType, number> = {
+      pending: 0,
+      in_progress: 0,
+      review: 0,
+      completed: 0,
+    };
+
     let inProgress = 0;
     let completed = 0;
 
     for (const task of tasksResult) {
-      // Count by status
-      const statusName = task.statusName || 'ไม่ระบุ';
-      byStatus[statusName] = (byStatus[statusName] || 0) + 1;
+      const st = (task.statusType as WorkspaceStatusType) || 'pending';
+      byStatusType[st] = (byStatusType[st] || 0) + 1;
 
-      // Determine if completed
-      const isCompleted = task.completedAt !== null ||
-        completionKeywords.some(k => statusName.includes(k));
-      if (isCompleted) {
+      if (st === 'completed') {
         completed++;
-      } else {
+      } else if (st === 'in_progress' || st === 'review') {
         inProgress++;
       }
     }
 
-    // Count by priority
     const byPriority = { urgent: 0, high: 0, normal: 0, low: 0 };
     for (const task of tasksResult) {
       const priority = task.priority || 'normal';
@@ -162,7 +168,7 @@ export const DashboardService = {
       inProgress,
       completed,
       byPriority,
-      byStatus,
+      byStatusType,
     };
   },
 
@@ -190,21 +196,22 @@ export const DashboardService = {
       value: Number(row.count),
     }));
 
-    // By status
+    // By status type
     const statusConditions = [eq(tasks.fiscalYear, fiscalYear), ...wsConditions];
     const statusRows = await db
       .select({
-        statusName: workspaceStatuses.name,
+        statusType: workspaceStatuses.statusType,
         count: count(),
       })
       .from(tasks)
       .leftJoin(workspaceStatuses, eq(tasks.statusId, workspaceStatuses.id))
       .where(and(...statusConditions))
-      .groupBy(workspaceStatuses.name);
+      .groupBy(workspaceStatuses.statusType);
 
-    const byStatus = statusRows.map(row => ({
-      label: row.statusName || 'ไม่ระบุ',
+    const byStatusType = statusRows.map(row => ({
+      label: STATUS_TYPE_LABELS[(row.statusType as WorkspaceStatusType) || 'pending'],
       value: Number(row.count),
+      color: STATUS_TYPE_COLORS[(row.statusType as WorkspaceStatusType) || 'pending'],
     }));
 
     // By workspace
@@ -225,7 +232,7 @@ export const DashboardService = {
       value: Number(row.count),
     }));
 
-    return { byPriority, byStatus, byWorkspace };
+    return { byPriority, byStatusType, byWorkspace };
   },
 
   async getProjectProgress(fiscalYear: number = getCurrentFiscalYear(), workspaceId?: string | null): Promise<ProjectProgressResponse> {
