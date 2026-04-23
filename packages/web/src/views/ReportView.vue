@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref } from "vue";
+import { ref, computed, watch } from "vue";
 import {
   NCard,
   NGrid,
@@ -10,6 +10,7 @@ import {
   NSpin,
   NSelect,
   NSpace,
+  NProgress,
 } from "naive-ui";
 import {
   DownloadOutline,
@@ -20,82 +21,57 @@ import {
   DocumentTextOutline,
 } from "@vicons/ionicons5";
 import { useFiscalYear } from "@/composables/useFiscalYear";
+import { useWorkspaceStore } from "@/stores/workspace";
+import { reportService, type ReportSummary } from "@/services/report";
 import PageHeader from "@/components/common/PageHeader.vue";
 
 const loading = ref(false);
-const { fyLabel, fyOptions, selectedFY } = useFiscalYear();
+const reportData = ref<ReportSummary | null>(null);
+const { selectedFY, fyLabel, fyOptions } = useFiscalYear();
+const workspaceStore = useWorkspaceStore();
 
-const categoryOptions = [
-  { label: "ทุกหมวด", value: "" },
-  { label: "เช่าพื้นที่", value: "rental" },
-  { label: "ที่ปรึกษา/วิจัย", value: "consulting" },
-  { label: "อบรม/สัมนา", value: "training" },
-  { label: "บ่มเพาะสตาร์ทอัป", value: "incubator" },
-];
-
-interface ReportCard {
-  title: string
-  description: string
-  icon: any
-  color: string
-  bgColor: string
-  stat: string
-  statLabel: string
+async function fetchReport() {
+  loading.value = true;
+  try {
+    const wsId = workspaceStore.currentWorkspaceId || undefined;
+    reportData.value = await reportService.getSummary(selectedFY.value, wsId);
+  } catch (e) {
+    console.error('Failed to fetch report', e);
+  } finally {
+    loading.value = false;
+  }
 }
 
-const reports: ReportCard[] = [
-  {
-    title: "รายงานสรุปภาพรวม",
-    description: "สรุปจำนวนงาน สถานะ และผลการดำเนินงานรายหมวด",
-    icon: PieChartOutline,
-    color: "var(--color-primary)",
-    bgColor: "var(--color-primary-bg)",
-    stat: "128",
-    statLabel: "งานทั้งหมด",
-  },
-  {
-    title: "รายงานผลการดำเนินงาน",
-    description: "เปรียบเทียบผลการดำเนินงานตามแผนปฏิบัติการรายไตรมาส",
-    icon: BarChartOutline,
-    color: "var(--color-success)",
-    bgColor: "var(--color-success-bg)",
-    stat: "69%",
-    statLabel: "อัตราสำเร็จ",
-  },
-  {
-    title: "รายงานแนวโน้มรายเดือน",
-    description: "แนวโน้มจำนวนงานที่สร้างและเสร็จสิ้นในแต่ละเดือน",
-    icon: TrendingUpOutline,
-    color: "var(--color-warning)",
-    bgColor: "var(--color-warning-bg)",
-    stat: "+12%",
-    statLabel: "เพิ่มขึ้นจากปีก่อน",
-  },
-  {
-    title: "รายงานรายงานตัวชี้วัด",
-    description: "ผลการติดตามตัวชี้วัดตามแผนปฏิบัติการรายปี",
-    icon: DocumentTextOutline,
-    color: "var(--color-info)",
-    bgColor: "var(--color-info-bg)",
-    stat: "45",
-    statLabel: "ตัวชี้วัด",
-  },
-];
+watch([selectedFY, () => workspaceStore.currentWorkspaceId], fetchReport, { immediate: true });
 
-interface CategoryStat {
-  name: string
-  tasks: number
-  completed: number
-  percent: number
-  color: string
+function exportPDF() {
+  const wsId = workspaceStore.currentWorkspaceId || undefined
+  reportService.exportPDF(selectedFY.value, 'summary', wsId)
 }
 
-const categoryStats: CategoryStat[] = [
-  { name: "เช่าพื้นที่", tasks: 32, completed: 24, percent: 75, color: "var(--color-primary)" },
-  { name: "ที่ปรึกษา/วิจัย", tasks: 18, completed: 12, percent: 67, color: "var(--color-success)" },
-  { name: "อบรม/สัมนา", tasks: 15, completed: 8, percent: 53, color: "var(--color-warning)" },
-  { name: "บ่มเพาะสตาร์ทอัป", tasks: 22, completed: 14, percent: 64, color: "var(--color-info)" },
-];
+function exportExcel() {
+  const wsId = workspaceStore.currentWorkspaceId || undefined
+  reportService.exportExcel(selectedFY.value, 'summary', wsId)
+}
+
+const successRate = computed(() => {
+  if (!reportData.value || reportData.value.totalTasks === 0) return 0;
+  return Math.round((reportData.value.tasksByStatusType.completed / reportData.value.totalTasks) * 100);
+});
+
+const STATUS_TYPE_COLORS: Record<string, string> = {
+  pending: 'var(--color-warning)',
+  in_progress: 'var(--color-info)',
+  review: '#8b5cf6',
+  completed: 'var(--color-success)',
+};
+
+const STATUS_TYPE_LABELS: Record<string, string> = {
+  pending: 'รอทำ',
+  in_progress: 'อยู่ระหว่างทำ',
+  review: 'อยู่ระหว่างตรวจ',
+  completed: 'เสร็จสิ้น',
+};
 </script>
 
 <template>
@@ -103,13 +79,13 @@ const categoryStats: CategoryStat[] = [
     <div class="report-page">
       <PageHeader title="รายงาน" :subtitle="fyLabel">
         <template #actions>
-          <NButton>
+          <NButton @click="exportPDF">
             <template #icon>
               <NIcon><PrintOutline /></NIcon>
             </template>
-            พิมพ์
+            พิมพ์ PDF
           </NButton>
-          <NButton type="primary">
+          <NButton type="primary" @click="exportExcel">
             <template #icon>
               <NIcon><DownloadOutline /></NIcon>
             </template>
@@ -123,51 +99,97 @@ const categoryStats: CategoryStat[] = [
         <NSpace :size="12" align="center">
           <NText class="filter-label">ตัวกรอง:</NText>
           <NSelect v-model:value="selectedFY" :options="fyOptions" size="small" style="width: 160px" />
-          <NSelect placeholder="หมวดบริการ" :options="categoryOptions" size="small" style="width: 180px" />
         </NSpace>
       </NCard>
 
-      <!-- Report Cards -->
+      <!-- Summary Cards -->
       <NGrid :cols="4" :x-gap="16" :y-gap="16" responsive="screen" item-responsive>
-        <NGi v-for="report in reports" :key="report.title" span="4 m:2 l:1">
-          <NCard class="report-card" :bordered="false" hoverable>
-            <div class="report-card-inner">
-              <div class="report-icon-wrap" :style="{ background: report.bgColor }">
-                <NIcon :size="24" :color="report.color" :component="report.icon" />
-              </div>
-              <div class="report-stat">
-                <div class="report-stat-value" :style="{ color: report.color }">{{ report.stat }}</div>
-                <NText depth="3" class="report-stat-label">{{ report.statLabel }}</NText>
-              </div>
-              <div class="report-title">{{ report.title }}</div>
-              <NText depth="3" class="report-desc">{{ report.description }}</NText>
-              <NButton text size="small" type="primary" class="report-link">
-                เปิดรายงาน
-                <template #icon><NIcon><TrendingUpOutline /></NIcon></template>
-              </NButton>
-            </div>
+        <NGi span="4 m:2 l:1">
+          <NCard class="stat-card" :bordered="false">
+            <div class="stat-label">งานทั้งหมด</div>
+            <div class="stat-value" style="color: var(--color-primary)">{{ reportData?.totalTasks?.toLocaleString() ?? '-' }}</div>
+            <div class="stat-sub">งานในปีงบนี้</div>
+          </NCard>
+        </NGi>
+        <NGi span="4 m:2 l:1">
+          <NCard class="stat-card" :bordered="false">
+            <div class="stat-label">เสร็จสิ้น</div>
+            <div class="stat-value" style="color: var(--color-success)">{{ reportData?.tasksByStatusType.completed?.toLocaleString() ?? '-' }}</div>
+            <div class="stat-sub">งานเสร็จสิ้น</div>
+          </NCard>
+        </NGi>
+        <NGi span="4 m:2 l:1">
+          <NCard class="stat-card" :bordered="false">
+            <div class="stat-label">อัตราสำเร็จ</div>
+            <div class="stat-value" style="color: var(--color-success)">{{ successRate }}%</div>
+            <div class="stat-sub">ของงานทั้งหมด</div>
+          </NCard>
+        </NGi>
+        <NGi span="4 m:2 l:1">
+          <NCard class="stat-card" :bordered="false">
+            <div class="stat-label">โครงการ</div>
+            <div class="stat-value" style="color: var(--color-info)">{{ reportData?.projectStats.total?.toLocaleString() ?? '-' }}</div>
+            <div class="stat-sub">{{ reportData?.projectStats.inProgress ?? 0 }} กำลังดำเนินการ</div>
           </NCard>
         </NGi>
       </NGrid>
 
-      <!-- Category Breakdown -->
+      <!-- Status Type Breakdown -->
       <NCard class="section-card" :bordered="false">
         <template #header>
-          <NText class="section-title">ผลการดำเนินงานตามหมวดบริการ</NText>
+          <NText class="section-title">สถานะงานตามประเภท</NText>
+        </template>
+        <div class="status-type-grid">
+          <div v-for="(count, type) in reportData?.tasksByStatusType" :key="type" class="status-type-item">
+            <div class="status-type-dot" :style="{ background: STATUS_TYPE_COLORS[type] }" />
+            <div class="status-type-name">{{ STATUS_TYPE_LABELS[type] }}</div>
+            <div class="status-type-count">{{ count?.toLocaleString() ?? 0 }}</div>
+          </div>
+        </div>
+      </NCard>
+
+      <!-- Monthly Trend -->
+      <NCard class="section-card" :bordered="false">
+        <template #header>
+          <NText class="section-title">สถานะงานรายเดือน</NText>
+        </template>
+        <div class="monthly-list">
+          <div v-for="m in reportData?.monthlyData" :key="m.month" class="monthly-row">
+            <div class="monthly-label">{{ m.month }}</div>
+            <div class="monthly-bar-wrap">
+              <div class="monthly-bar" :style="{
+                width: (m.created > 0 ? (m.completed / m.created) * 100 : 0) + '%',
+                background: 'var(--color-success)'
+              }" />
+            </div>
+            <div class="monthly-stats">{{ m.completed }}/{{ m.created }}</div>
+          </div>
+        </div>
+      </NCard>
+
+      <!-- Workspace Breakdown -->
+      <NCard v-if="reportData?.tasksByWorkspace?.length" class="section-card" :bordered="false">
+        <template #header>
+          <NText class="section-title">ผลการดำเนินงานตามพื้นที่</NText>
         </template>
         <div class="category-list">
-          <div v-for="cat in categoryStats" :key="cat.name" class="category-row">
+          <div v-for="ws in reportData.tasksByWorkspace" :key="ws.name" class="category-row">
             <div class="category-info">
-              <div class="category-dot" :style="{ background: cat.color }" />
+              <div class="category-dot" style="background: var(--color-primary)" />
               <div>
-                <div class="category-name">{{ cat.name }}</div>
-                <NText depth="3" class="category-sub">{{ cat.completed }}/{{ cat.tasks }} งาน</NText>
+                <div class="category-name">{{ ws.name }}</div>
+                <NText depth="3" class="category-sub">{{ ws.completed }}/{{ ws.count }} งาน</NText>
               </div>
             </div>
             <div class="category-bar-wrap">
-              <div class="category-bar" :style="{ '--target-width': cat.percent + '%', background: cat.color }" />
+              <div class="category-bar" :style="{
+                '--target-width': (ws.count > 0 ? (ws.completed / ws.count) * 100 : 0) + '%',
+                background: 'var(--color-primary)'
+              }" />
             </div>
-            <div class="category-percent" :style="{ color: cat.color }">{{ cat.percent }}%</div>
+            <div class="category-percent" style="color: var(--color-primary)">
+              {{ ws.count > 0 ? Math.round((ws.completed / ws.count) * 100) : 0 }}%
+            </div>
           </div>
         </div>
       </NCard>
@@ -182,8 +204,6 @@ const categoryStats: CategoryStat[] = [
   gap: var(--space-lg);
 }
 
-
-
 .filter-card {
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-xs);
@@ -194,60 +214,28 @@ const categoryStats: CategoryStat[] = [
   font-weight: 500;
 }
 
-/* ── Report Cards ── */
-.report-card {
+/* ── Stat Cards ── */
+.stat-card {
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-sm);
-  transition: box-shadow var(--duration-normal) var(--ease-out);
+  padding: var(--space-md);
 }
 
-.report-card:hover {
-  box-shadow: var(--shadow-md);
+.stat-label {
+  font-size: var(--text-sm);
+  color: var(--color-text-secondary);
+  margin-bottom: var(--space-xs);
 }
 
-.report-card-inner {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-sm);
-}
-
-.report-icon-wrap {
-  width: 48px;
-  height: 48px;
-  border-radius: var(--radius-md);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.report-stat {
-  display: flex;
-  align-items: baseline;
-  gap: var(--space-xs);
-}
-
-.report-stat-value {
+.stat-value {
   font-size: var(--text-2xl);
   font-weight: 700;
+  line-height: var(--leading-tight);
 }
 
-.report-stat-label {
+.stat-sub {
   font-size: var(--text-xs);
-}
-
-.report-title {
-  font-size: var(--text-md);
-  font-weight: 600;
-  color: var(--color-text);
-}
-
-.report-desc {
-  font-size: var(--text-sm);
-  line-height: var(--leading-normal);
-}
-
-.report-link {
-  align-self: flex-start;
+  color: var(--color-text-tertiary);
   margin-top: var(--space-xs);
 }
 
@@ -260,6 +248,80 @@ const categoryStats: CategoryStat[] = [
 .section-title {
   font-size: var(--text-md);
   font-weight: 600;
+}
+
+/* ── Status Type Grid ── */
+.status-type-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: var(--space-md);
+}
+
+.status-type-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  padding: var(--space-md);
+  background: var(--color-surface);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border-light);
+}
+
+.status-type-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.status-type-name {
+  flex: 1;
+  font-size: var(--text-sm);
+}
+
+.status-type-count {
+  font-size: var(--text-lg);
+  font-weight: 700;
+}
+
+/* ── Monthly List ── */
+.monthly-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+}
+
+.monthly-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+}
+
+.monthly-label {
+  width: 50px;
+  font-size: var(--text-sm);
+  color: var(--color-text-secondary);
+}
+
+.monthly-bar-wrap {
+  flex: 1;
+  height: 8px;
+  background: var(--color-border-light);
+  border-radius: var(--radius-full);
+  overflow: hidden;
+}
+
+.monthly-bar {
+  height: 100%;
+  border-radius: var(--radius-full);
+  transition: width var(--duration-slow);
+}
+
+.monthly-stats {
+  width: 70px;
+  text-align: right;
+  font-size: var(--text-sm);
+  color: var(--color-text-secondary);
 }
 
 /* ── Category List ── */

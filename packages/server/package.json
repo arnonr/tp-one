@@ -18,9 +18,11 @@
     "@elysiajs/static": "^1.2.0",
     "drizzle-orm": "^0.38.0",
     "elysia": "^1.2.0",
+    "exceljs": "^4.4.0",
     "ioredis": "^5.4.0",
     "jsonwebtoken": "^9.0.3",
     "nodemailer": "^6.10.0",
+    "pdfkit": "^0.18.0",
     "postgres": "^3.4.0",
     "sharp": "^0.34.5"
   },

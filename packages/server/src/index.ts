@@ -14,6 +14,7 @@ import { quickNotePlugin } from "./modules/quick-note/quick-note.plugin";
 import { snapshotPlugin } from "./modules/snapshot/snapshot.plugin";
 import { usersPlugin } from "./modules/auth/users.plugin";
 import { dashboardPlugin } from "./modules/dashboard/dashboard.plugin";
+import { reportPlugin } from "./modules/report/report.plugin";
 import { AppError } from "./shared/errors";
 
 const app = new Elysia()
@@ -52,6 +53,7 @@ const app = new Elysia()
   .use(snapshotPlugin)
   .use(usersPlugin)
   .use(dashboardPlugin)
+  .use(reportPlugin)
   .get("/api/health", () => ({ status: "ok", timestamp: new Date().toISOString() }))
   .onError(({ error, set }) => {
     if (error instanceof AppError) {
