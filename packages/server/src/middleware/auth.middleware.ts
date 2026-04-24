@@ -10,7 +10,8 @@ export function authMiddleware() {
     }
     const token = authHeader.slice(7);
     try {
-      ctx.user = AuthService.verifyToken(token);
+      const payload = AuthService.verifyToken(token);
+      ctx.user = { userId: payload.userId, role: payload.role, email: payload.email };
     } catch {
       throw new UnauthorizedError('Invalid or expired token');
     }

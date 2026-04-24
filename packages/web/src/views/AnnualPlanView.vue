@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, h } from "vue";
+import { ref, h, computed, onMounted } from "vue";
 import {
   NCard,
   NDataTable,
@@ -11,54 +11,54 @@ import {
   NSpin,
   NTag,
   NProgress,
+  NModal,
+  NForm,
+  NFormItem,
+  NInput,
+  useMessage,
 } from "naive-ui";
 import {
   AddCircleOutline,
   FilterOutline,
   EyeOutline,
+  CloseOutline,
+  CreateOutline,
+  TrashOutline,
 } from "@vicons/ionicons5";
 import { useRouter } from "vue-router";
 import { useFiscalYear } from "@/composables/useFiscalYear";
 import PageHeader from "@/components/common/PageHeader.vue";
 import type { DataTableColumns } from "naive-ui";
+import { listPlans, createPlan, updatePlan, deletePlan, type PlanListItem } from "@/services/plan";
 
 const router = useRouter();
+const message = useMessage();
 const loading = ref(false);
 const { fyLabel, fyOptions, selectedFY } = useFiscalYear();
 
-interface Plan {
-  id: string
-  name: string
-  category: string
-  status: string
-  indicatorCount: number
-  progress: number
-  owner: string
-  fiscalYear: number
-}
+const plans = ref<PlanListItem[]>([]);
+const showModal = ref(false);
+const modalLoading = ref(false);
+const formData = ref({ year: selectedFY.value, name: "", description: "" });
+const showEditModal = ref(false);
+const editingPlan = ref<PlanListItem | null>(null);
+const editForm = ref({ name: "", description: "", status: "" as "" | "draft" | "active" | "completed" });
 
-const STATUS_CONFIG: Record<string, { label: string, type: "success" | "warning" | "info" | "default" }> = {
+const STATUS_CONFIG: Record<string, { label: string; type: "success" | "warning" | "info" | "default" }> = {
   active: { label: "กำลังดำเนินการ", type: "info" },
   draft: { label: "ร่าง", type: "warning" },
   completed: { label: "เสร็จสิ้น", type: "success" },
 };
 
-const plans: Plan[] = [
-  { id: "1", name: "แผนปฏิบัติการบริการเช่าพื้นที่ 2569", category: "เช่าพื้นที่", status: "active", indicatorCount: 12, progress: 65, owner: "สมชาย", fiscalYear: 2569 },
-  { id: "2", name: "แผนปฏิบัติการให้คำปรึกษา 2569", category: "ที่ปรึกษา/วิจัย", status: "active", indicatorCount: 8, progress: 50, owner: "สุนีย์", fiscalYear: 2569 },
-  { id: "3", name: "แผนปฏิบัติการอบรมสัมนา 2569", category: "อบรม/สัมนา", status: "active", indicatorCount: 10, progress: 40, owner: "วิภา", fiscalYear: 2569 },
-  { id: "4", name: "แผนปฏิบัติการบ่มเพาะสตาร์ทอัป 2569", category: "บ่มเพาะสตาร์ทอัป", status: "active", indicatorCount: 15, progress: 72, owner: "ประเสริฐ", fiscalYear: 2569 },
-  { id: "5", name: "แผนปฏิบัติการบริการเช่าพื้นที่ 2568", category: "เช่าพื้นที่", status: "completed", indicatorCount: 12, progress: 100, owner: "สมชาย", fiscalYear: 2568 },
-];
-
-const columns: DataTableColumns<Plan> = [
+const columns: DataTableColumns<PlanListItem> = [
   {
     title: "แผนปฏิบัติการ",
     key: "name",
+    width: 280,
     render: (row) =>
       h("div", { style: "min-width: 250px" }, [
         h("div", { style: "font-weight: 500; color: var(--color-text)" }, row.name),
-        h("span", { style: "font-size: var(--text-xs); color: var(--color-text-secondary)" }, row.category),
+        h("span", { style: "font-size: var(--text-xs); color: var(--color-text-secondary)" }, `ปี ${row.year}`),
       ]),
   },
   {
@@ -71,39 +71,135 @@ const columns: DataTableColumns<Plan> = [
     },
   },
   {
+    title: "หมวดหมู่",
+    key: "categoryCount",
+    width: 100,
+    render: (row) => h("span", { style: "font-weight: 500" }, `${row.categoryCount} หมวด`),
+  },
+  {
     title: "ตัวชี้วัด",
     key: "indicatorCount",
     width: 100,
     render: (row) => h("span", { style: "font-weight: 500" }, `${row.indicatorCount} ตัว`),
   },
   {
-    title: "ความคืบหน้า",
-    key: "progress",
-    width: 180,
-    render: (row) =>
-      h("div", { style: "display: flex; align-items: center; gap: 8px" }, [
-        h(NProgress, { type: "line", percentage: row.progress, height: 6, borderRadius: 3, showIndicator: false, style: "flex: 1" }),
-        h("span", { style: "font-size: var(--text-xs); font-weight: 600; color: var(--color-primary); min-width: 36px; text-align: right" }, `${row.progress}%`),
-      ]),
-  },
-  {
-    title: "ผู้รับผิดชอบ",
-    key: "owner",
+    title: "ผู้สร้าง",
+    key: "creatorName",
     width: 120,
+    render: (row) => h("span", {}, row.creatorName || "-"),
   },
   {
     title: "",
     key: "actions",
-    width: 50,
+    width: 100,
     render: (row) =>
-      h(NButton, {
-        text: true,
-        size: "small",
-        type: "primary",
-        onClick: () => router.push({ name: "plan-detail", params: { id: row.id } }),
-      }, { icon: () => h(NIcon, null, { default: () => h(EyeOutline) }) }),
+      h(NSpace, { size: 6, noWrap: true }, {
+        default: () => [
+          h(NButton, {
+            text: true,
+            size: "small",
+            type: "primary",
+            onClick: () => router.push({ name: "plan-detail", params: { id: row.id } }),
+          }, { icon: () => h(NIcon, null, { default: () => h(EyeOutline) }) }),
+          h(NButton, {
+            text: true,
+            size: "small",
+            onClick: () => openEditModal(row),
+          }, { icon: () => h(NIcon, null, { default: () => h(CreateOutline) }) }),
+          h(NButton, {
+            text: true,
+            size: "small",
+            type: "error",
+            onClick: () => confirmDelete(row),
+          }, { icon: () => h(NIcon, null, { default: () => h(TrashOutline) }) }),
+        ],
+      }),
   },
 ];
+
+const tableData = computed(() =>
+  plans.value.map((p) => ({
+    ...p,
+    _render: {
+      name: h("div", { style: "min-width: 250px" }, [
+        h("div", { style: "font-weight: 500; color: var(--color-text)" }, p.name),
+        h("span", { style: "font-size: var(--text-xs); color: var(--color-text-secondary)" }, `ปี ${p.year}`),
+      ]),
+    },
+  }))
+);
+
+async function fetchPlans() {
+  loading.value = true;
+  try {
+    plans.value = await listPlans(selectedFY.value);
+  } catch (e) {
+    message.error("โหลดแผนไม่สำเร็จ");
+  } finally {
+    loading.value = false;
+  }
+}
+
+async function handleCreate() {
+  if (!formData.value.name.trim()) {
+    message.warning("กรุณากรอกชื่อแผน");
+    return;
+  }
+  modalLoading.value = true;
+  try {
+    await createPlan({ ...formData.value, year: selectedFY.value });
+    message.success("สร้างแผนสำเร็จ");
+    showModal.value = false;
+    formData.value = { year: selectedFY.value, name: "", description: "" };
+    await fetchPlans();
+  } catch (e) {
+    message.error("สร้างแผนไม่สำเร็จ");
+  } finally {
+    modalLoading.value = false;
+  }
+}
+
+function openEditModal(plan: PlanListItem) {
+  editingPlan.value = plan;
+  editForm.value = { name: plan.name, description: plan.description || "", status: plan.status };
+  showEditModal.value = true;
+}
+
+async function handleEdit() {
+  if (!editingPlan.value || !editForm.value.name.trim()) return;
+  modalLoading.value = true;
+  try {
+    await updatePlan(editingPlan.value.id, { name: editForm.value.name, description: editForm.value.description, status: editForm.value.status });
+    message.success("แก้ไขแผนสำเร็จ");
+    showEditModal.value = false;
+    editingPlan.value = null;
+    await fetchPlans();
+  } catch (e) {
+    message.error("แก้ไขแผนไม่สำเร็จ");
+  } finally {
+    modalLoading.value = false;
+  }
+}
+
+function confirmDelete(plan: PlanListItem) {
+  message.warning(`กดปุ่มยืนยันเพื่อลบแผน: ${plan.name}`);
+  // Use NDialog for proper confirm, fallback to window.confirm
+  if (window.confirm(`ยืนยันลบแผน "${plan.name}" หรือไม่?`)) {
+    handleDelete(plan.id);
+  }
+}
+
+async function handleDelete(planId: string) {
+  try {
+    await deletePlan(planId);
+    message.success("ลบแผนสำเร็จ");
+    await fetchPlans();
+  } catch (e) {
+    message.error("ลบแผนไม่สำเร็จ");
+  }
+}
+
+onMounted(fetchPlans);
 </script>
 
 <template>
@@ -111,7 +207,7 @@ const columns: DataTableColumns<Plan> = [
     <div class="plan-page">
       <PageHeader title="แผนปฏิบัติการรายปี" :subtitle="`${fyLabel} — ${plans.length} แผน`">
         <template #actions>
-          <NButton type="primary">
+          <NButton type="primary" @click="showModal = true">
             <template #icon>
               <NIcon><AddCircleOutline /></NIcon>
             </template>
@@ -124,7 +220,7 @@ const columns: DataTableColumns<Plan> = [
       <NCard class="filter-card" :bordered="false">
         <NSpace :size="12" align="center">
           <NIcon :size="18" color="var(--color-text-tertiary)"><FilterOutline /></NIcon>
-          <NSelect v-model:value="selectedFY" :options="fyOptions" size="small" style="width: 160px" />
+          <NSelect v-model:value="selectedFY" :options="fyOptions" size="small" style="width: 160px" @update:value="fetchPlans" />
         </NSpace>
       </NCard>
 
@@ -132,15 +228,61 @@ const columns: DataTableColumns<Plan> = [
       <NCard class="table-card" :bordered="false">
         <NDataTable
           :columns="columns"
-          :data="plans"
+          :data="tableData"
           :bordered="false"
           :single-line="false"
-          :row-key="(row: Plan) => row.id"
-          :scroll-x="860"
+          :row-key="(row: PlanListItem) => row.id"
+          :scroll-x="1000"
           size="small"
         />
       </NCard>
     </div>
+
+    <!-- Create Modal -->
+    <NModal v-model:show="showModal" preset="card" title="สร้างแผนใหม่" style="width: 480px">
+      <NForm label-placement="top">
+        <NFormItem label="ปีงบประมาณ">
+          <NSelect v-model:value="formData.year" :options="fyOptions" />
+        </NFormItem>
+        <NFormItem label="ชื่อแผน">
+          <NInput v-model:value="formData.name" placeholder="เช่น แผนปฏิบัติการบริการเช่าพื้นที่ 2569" />
+        </NFormItem>
+        <NFormItem label="รายละเอียด">
+          <NInput v-model:value="formData.description" type="textarea" placeholder="คำอธิบายแผน (ถ้ามี)" :rows="3" />
+        </NFormItem>
+      </NForm>
+      <template #footer>
+        <NSpace justify="end">
+          <NButton @click="showModal = false">ยกเลิก</NButton>
+          <NButton type="primary" :loading="modalLoading" @click="handleCreate">สร้างแผน</NButton>
+        </NSpace>
+      </template>
+    </NModal>
+
+    <!-- Edit Modal -->
+    <NModal v-model:show="showEditModal" preset="card" title="แก้ไขแผน" style="width: 480px">
+      <NForm label-placement="top">
+        <NFormItem label="ชื่อแผน">
+          <NInput v-model:value="editForm.name" />
+        </NFormItem>
+        <NFormItem label="รายละเอียด">
+          <NInput v-model:value="editForm.description" type="textarea" :rows="3" />
+        </NFormItem>
+        <NFormItem label="สถานะ">
+          <NSelect v-model:value="editForm.status" :options="[
+            { label: 'ร่าง', value: 'draft' },
+            { label: 'กำลังดำเนินการ', value: 'active' },
+            { label: 'เสร็จสิ้น', value: 'completed' },
+          ]" />
+        </NFormItem>
+      </NForm>
+      <template #footer>
+        <NSpace justify="end">
+          <NButton @click="showEditModal = false">ยกเลิก</NButton>
+          <NButton type="primary" :loading="modalLoading" @click="handleEdit">บันทึก</NButton>
+        </NSpace>
+      </template>
+    </NModal>
   </NSpin>
 </template>
 

@@ -30,6 +30,7 @@ export const annualPlans = pgTable(
     id: uuid("id").defaultRandom().primaryKey(),
     year: integer("year").notNull().unique(),
     name: varchar("name", { length: 255 }).notNull(),
+    description: text("description"),
     status: planStatusEnum("status").default("draft").notNull(),
     createdById: uuid("created_by")
       .references(() => users.id)
@@ -71,6 +72,7 @@ export const planIndicators = pgTable(
       .default("amount")
       .notNull(),
     assigneeId: uuid("assignee_id").references(() => users.id),
+    weight: numeric("weight", { precision: 5, scale: 2 }).default("1"),
     sortOrder: integer("sort_order").default(0),
   },
   (table) => [

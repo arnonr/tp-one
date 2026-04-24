@@ -60,15 +60,21 @@ function checkMobile() {
   isMobile.value = window.innerWidth < 1024;
 }
 
-onMounted(() => {
+function handleResize() {
   checkMobile();
-  window.addEventListener("resize", checkMobile);
+}
+
+onMounted(async () => {
+  checkMobile();
+  window.addEventListener("resize", handleResize);
 
   if (authStore.isAuthenticated && !authStore.user) {
     try {
-      authStore.fetchMe();
+      await authStore.fetchMe();
     } catch {
       authStore.logout();
+      router.push("/login");
+      return;
     }
   }
   wsStore.fetchWorkspaces();
@@ -76,7 +82,7 @@ onMounted(() => {
 });
 
 onUnmounted(() => {
-  window.removeEventListener("resize", checkMobile);
+  window.removeEventListener("resize", handleResize);
   notifStore.stopPolling();
 });
 
@@ -206,21 +212,6 @@ function handleUserAction(key: string) {
   }
 }
 
-onMounted(async () => {
-  if (authStore.isAuthenticated && !authStore.user) {
-    try {
-      await authStore.fetchMe();
-    } catch {
-      authStore.logout();
-    }
-  }
-  await wsStore.fetchWorkspaces();
-  notifStore.startPolling();
-});
-
-onUnmounted(() => {
-  notifStore.stopPolling();
-});
 </script>
 
 <template>

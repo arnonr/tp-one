@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, h } from "vue";
+import { ref, onMounted, computed } from "vue";
 import {
   NCard,
   NText,
@@ -8,89 +8,80 @@ import {
   NSpin,
   NTag,
   NProgress,
-  NGrid,
-  NGi,
   NSpace,
+  NModal,
+  NForm,
+  NFormItem,
+  NInput,
+  NInputNumber,
+  NSelect,
+  useMessage,
 } from "naive-ui";
 import {
   ArrowBackOutline,
   TrendingUpOutline,
   CheckmarkDoneOutline,
   TimeOutline,
+  AddOutline,
+  CreateOutline,
+  TrashOutline,
+  AddCircleOutline,
 } from "@vicons/ionicons5";
-import { useRouter } from "vue-router";
+import { useRoute, useRouter } from "vue-router";
+import { getPlan, getPlanProgress, createUpdate, createCategory, updateCategory, deleteCategory, createIndicator, updateIndicator, deleteIndicator, type AnnualPlan, type PlanCategory, type PlanIndicator } from "@/services/plan";
 
+const route = useRoute();
 const router = useRouter();
+const message = useMessage();
 const loading = ref(false);
 
-interface QuarterTarget {
-  quarter: string
-  target: number
-  actual: number
-}
+const plan = ref<AnnualPlan | null>(null);
+const progressData = ref<{ progress: number; byCategory: Record<string, number> }>({ progress: 0, byCategory: {} });
+const totalIndicators = ref(0);
+const passedIndicators = ref(0);
 
-interface Indicator {
-  id: string
-  name: string
-  unit: string
-  target: number
-  actual: number
-  quarters: QuarterTarget[]
-}
+// Update modal state
+const showUpdateModal = ref(false);
+const updateModalLoading = ref(false);
+const selectedIndicator = ref<PlanIndicator | null>(null);
+const updateForm = ref({ reportedMonth: 1, reportedYear: 2569, reportedValue: "", progressPct: "", note: "" });
+const indicatorUpdates = ref<Record<string, { reportedMonth: number; reportedYear: number; reportedValue: string; progressPct: string | null }[]>>({});
 
-interface PlanSection {
-  id: string
-  title: string
-  progress: number
-  indicators: Indicator[]
-}
+// Category CRUD modal state
+const showCategoryModal = ref(false);
+const categoryModalLoading = ref(false);
+const editingCategory = ref<PlanCategory | null>(null);
+const categoryForm = ref({ code: "", name: "" });
 
-const sections: PlanSection[] = [
-  {
-    id: "1",
-    title: "หมวด 1: การบริการวิชาการ",
-    progress: 65,
-    indicators: [
-      { id: "1.1", name: "จำนวนผู้เช่าพื้นที่", unit: "ราย", target: 30, actual: 25, quarters: [
-        { quarter: "Q1", target: 8, actual: 7 },
-        { quarter: "Q2", target: 8, actual: 8 },
-        { quarter: "Q3", target: 7, actual: 6 },
-        { quarter: "Q4", target: 7, actual: 4 },
-      ]},
-      { id: "1.2", name: "รายได้จากการเช่า", unit: "ล้านบาท", target: 15, actual: 9.8, quarters: [
-        { quarter: "Q1", target: 3.5, actual: 3.2 },
-        { quarter: "Q2", target: 4, actual: 3.5 },
-        { quarter: "Q3", target: 4, actual: 3.1 },
-        { quarter: "Q4", target: 3.5, actual: 0 },
-      ]},
-      { id: "1.3", name: "ความพึงพอใจผู้เช่า", unit: "%", target: 85, actual: 82, quarters: [
-        { quarter: "Q1", target: 85, actual: 80 },
-        { quarter: "Q2", target: 85, actual: 84 },
-        { quarter: "Q3", target: 85, actual: 82 },
-        { quarter: "Q4", target: 85, actual: 0 },
-      ]},
-    ],
-  },
-  {
-    id: "2",
-    title: "หมวด 2: การให้คำปรึกษาและวิจัย",
-    progress: 50,
-    indicators: [
-      { id: "2.1", name: "จำนวนโครงการให้คำปรึกษา", unit: "โครงการ", target: 12, actual: 7, quarters: [
-        { quarter: "Q1", target: 3, actual: 2 },
-        { quarter: "Q2", target: 3, actual: 3 },
-        { quarter: "Q3", target: 3, actual: 2 },
-        { quarter: "Q4", target: 3, actual: 0 },
-      ]},
-      { id: "2.2", name: "จำนวนงานวิจัยที่สนับสนุน", unit: "เรื่อง", target: 8, actual: 4, quarters: [
-        { quarter: "Q1", target: 2, actual: 1 },
-        { quarter: "Q2", target: 2, actual: 2 },
-        { quarter: "Q3", target: 2, actual: 1 },
-        { quarter: "Q4", target: 2, actual: 0 },
-      ]},
-    ],
-  },
+// Indicator CRUD modal state
+const showIndicatorModal = ref(false);
+const indicatorModalLoading = ref(false);
+const editingIndicator = ref<PlanIndicator | null>(null);
+const selectedCategoryForIndicator = ref<PlanCategory | null>(null);
+const indicatorForm = ref({ code: "", name: "", targetValue: "", unit: "", indicatorType: "amount", description: "" });
+
+const INDICATOR_TYPE_OPTIONS = [
+  { label: "จำนวน (amount)", value: "amount" },
+  { label: "จำนวนนับ (count)", value: "count" },
+  { label: "เปอร์เซ็นต์ (%)", value: "percentage" },
 ];
+
+const currentQuarter = computed(() => {
+  const m = new Date().getMonth() + 1;
+  if (m >= 10) return "Q1";
+  if (m >= 1 && m <= 3) return "Q2";
+  if (m >= 4 && m <= 6) return "Q3";
+  return "Q4";
+});
+
+const currentMonth = computed(() => new Date().getMonth() + 1);
+const currentYear = new Date().getFullYear() + 543;
+
+const STATUS_CONFIG: Record<string, { label: string; type: "success" | "warning" | "info" | "default" }> = {
+  active: { label: "กำลังดำเนินการ", type: "info" },
+  draft: { label: "ร่าง", type: "warning" },
+  completed: { label: "เสร็จสิ้น", type: "success" },
+};
 
 function getPercent(actual: number, target: number): number {
   if (target === 0) return 0;
@@ -103,22 +94,273 @@ function getStatusType(actual: number, target: number): "success" | "warning" | 
   if (pct >= 50) return "warning";
   return "error";
 }
+
+function getCatProgress(catId: string): number {
+  return progressData.value.byCategory[catId] || 0;
+}
+
+function getIndicatorUpdates(indId: string) {
+  return indicatorUpdates.value[indId] || [];
+}
+
+async function fetchUpdatesForIndicator(planId: string, categoryId: string, indicatorId: string) {
+  try {
+    const { listUpdates } = await import("@/services/plan");
+    const updates = await listUpdates(planId, categoryId, indicatorId);
+    indicatorUpdates.value[indicatorId] = updates.map(u => ({
+      reportedMonth: u.reportedMonth,
+      reportedYear: u.reportedYear,
+      reportedValue: u.reportedValue,
+      progressPct: u.progressPct,
+    }));
+  } catch (e) {
+    // ignore
+  }
+}
+
+async function fetchPlan() {
+  loading.value = true;
+  try {
+    const id = route.params.id as string;
+    plan.value = await getPlan(id);
+    document.title = `${plan.value.name} — TP-One`;
+
+    // fetch progress
+    try {
+      progressData.value = await getPlanProgress(id);
+    } catch (e) {
+      // no progress yet
+    }
+
+    // count indicators + fetch updates
+    let total = 0;
+    let passed = 0;
+    for (const cat of plan.value.categories || []) {
+      for (const ind of cat.indicators || []) {
+        total++;
+        await fetchUpdates(id, cat.id, ind);
+      }
+    }
+    totalIndicators.value = total;
+    passedIndicators.value = passed;
+  } catch (e) {
+    message.error("โหลดแผนไม่สำเร็จ");
+    router.push({ name: "plans" });
+  } finally {
+    loading.value = false;
+  }
+}
+
+async function fetchUpdates(planId: string, categoryId: string, ind: PlanIndicator) {
+  try {
+    const { listUpdates } = await import("@/services/plan");
+    const updates = await listUpdates(planId, categoryId, ind.id);
+    indicatorUpdates.value[ind.id] = updates.map(u => ({
+      reportedMonth: u.reportedMonth,
+      reportedYear: u.reportedYear,
+      reportedValue: u.reportedValue,
+      progressPct: u.progressPct,
+    }));
+    // check if passed
+    const latest = updates[updates.length - 1];
+    if (latest && parseFloat(latest.progressPct || '0') >= 80) passedIndicators.value++;
+  } catch (e) {
+    // ignore
+  }
+}
+
+function openUpdateModal(ind: PlanIndicator) {
+  selectedIndicator.value = ind;
+  updateForm.value = { reportedMonth: currentMonth.value, reportedYear: currentYear - 543, reportedValue: "", progressPct: "", note: "" };
+  showUpdateModal.value = true;
+}
+
+async function handleCreateUpdate() {
+  if (!selectedIndicator.value || !updateForm.value.reportedValue) {
+    message.warning("กรุณากรอกข้อมูลให้ครบ");
+    return;
+  }
+  updateModalLoading.value = true;
+  try {
+    const planId = route.params.id as string;
+    const cat = plan.value?.categories?.find(c => c.indicators.some(i => i.id === selectedIndicator.value?.id));
+    if (!cat) return;
+    await createUpdate(planId, cat.id, selectedIndicator.value.id, {
+      reportedMonth: updateForm.value.reportedMonth,
+      reportedYear: updateForm.value.reportedYear,
+      reportedValue: updateForm.value.reportedValue,
+      progressPct: updateForm.value.progressPct || undefined,
+      note: updateForm.value.note || undefined,
+    });
+    message.success("บันทึกรายงานสำเร็จ");
+    showUpdateModal.value = false;
+    await fetchPlan();
+  } catch (e) {
+    message.error("บันทึกไม่สำเร็จ");
+  } finally {
+    updateModalLoading.value = false;
+  }
+}
+
+// ===== Category CRUD =====
+
+function openAddCategoryModal() {
+  editingCategory.value = null;
+  categoryForm.value = { code: "", name: "" };
+  showCategoryModal.value = true;
+}
+
+function openEditCategoryModal(cat: PlanCategory) {
+  editingCategory.value = cat;
+  categoryForm.value = { code: cat.code, name: cat.name };
+  showCategoryModal.value = true;
+}
+
+async function handleSaveCategory() {
+  const planId = route.params.id as string;
+  if (!categoryForm.value.code.trim() || !categoryForm.value.name.trim()) {
+    message.warning("กรุณากรอกข้อมูลให้ครบ");
+    return;
+  }
+  categoryModalLoading.value = true;
+  try {
+    if (editingCategory.value) {
+      await updateCategory(editingCategory.value.id, { code: categoryForm.value.code, name: categoryForm.value.name }, planId);
+      message.success("แก้ไขหมวดหมู่สำเร็จ");
+    } else {
+      await createCategory(planId, { code: categoryForm.value.code, name: categoryForm.value.name });
+      message.success("เพิ่มหมวดหมู่สำเร็จ");
+    }
+    showCategoryModal.value = false;
+    await fetchPlan();
+  } catch (e) {
+    message.error("ไม่สำเร็จ");
+  } finally {
+    categoryModalLoading.value = false;
+  }
+}
+
+function confirmDeleteCategory(cat: PlanCategory) {
+  if (window.confirm(`ยืนยันลบหมวดหมู่ "${cat.name}" และตัวชี้วัดภายในหมวดนี้?`)) {
+    handleDeleteCategory(cat.id);
+  }
+}
+
+async function handleDeleteCategory(categoryId: string) {
+  const planId = route.params.id as string;
+  try {
+    await deleteCategory(categoryId, planId);
+    message.success("ลบหมวดหมู่สำเร็จ");
+    await fetchPlan();
+  } catch (e) {
+    message.error("ลบไม่สำเร็จ");
+  }
+}
+
+// ===== Indicator CRUD =====
+
+function openAddIndicatorModal(cat: PlanCategory) {
+  selectedCategoryForIndicator.value = cat;
+  editingIndicator.value = null;
+  indicatorForm.value = { code: "", name: "", targetValue: "", unit: "", indicatorType: "amount", description: "" };
+  showIndicatorModal.value = true;
+}
+
+function openEditIndicatorModal(ind: PlanIndicator) {
+  editingIndicator.value = ind;
+  const cat = plan.value?.categories?.find(c => c.indicators.some(i => i.id === ind.id));
+  selectedCategoryForIndicator.value = cat || null;
+  indicatorForm.value = {
+    code: ind.code,
+    name: ind.name,
+    targetValue: ind.targetValue,
+    unit: ind.unit || "",
+    indicatorType: ind.indicatorType,
+    description: ind.description || "",
+  };
+  showIndicatorModal.value = true;
+}
+
+async function handleSaveIndicator() {
+  if (!selectedCategoryForIndicator.value) return;
+  const planId = route.params.id as string;
+  const categoryId = selectedCategoryForIndicator.value.id;
+  if (!indicatorForm.value.code.trim() || !indicatorForm.value.name.trim() || !indicatorForm.value.targetValue) {
+    message.warning("กรุณากรอกข้อมูลให้ครบ");
+    return;
+  }
+  indicatorModalLoading.value = true;
+  try {
+    if (editingIndicator.value) {
+      await updateIndicator(planId, categoryId, editingIndicator.value.id, {
+        code: indicatorForm.value.code,
+        name: indicatorForm.value.name,
+        targetValue: indicatorForm.value.targetValue,
+        unit: indicatorForm.value.unit || undefined,
+        indicatorType: indicatorForm.value.indicatorType,
+        description: indicatorForm.value.description || undefined,
+      });
+      message.success("แก้ไขตัวชี้วัดสำเร็จ");
+    } else {
+      await createIndicator(categoryId, planId, {
+        code: indicatorForm.value.code,
+        name: indicatorForm.value.name,
+        targetValue: indicatorForm.value.targetValue,
+        unit: indicatorForm.value.unit || undefined,
+        indicatorType: indicatorForm.value.indicatorType,
+        description: indicatorForm.value.description || undefined,
+      });
+      message.success("เพิ่มตัวชี้วัดสำเร็จ");
+    }
+    showIndicatorModal.value = false;
+    await fetchPlan();
+  } catch (e) {
+    message.error("ไม่สำเร็จ");
+  } finally {
+    indicatorModalLoading.value = false;
+  }
+}
+
+function confirmDeleteIndicator(ind: PlanIndicator) {
+  if (window.confirm(`ยืนยันลบตัวชี้วัด "${ind.name}"?`)) {
+    handleDeleteIndicator(ind);
+  }
+}
+
+async function handleDeleteIndicator(ind: PlanIndicator) {
+  const planId = route.params.id as string;
+  const cat = plan.value?.categories?.find(c => c.indicators.some(i => i.id === ind.id));
+  if (!cat) return;
+  try {
+    await deleteIndicator(planId, cat.id, ind.id);
+    message.success("ลบตัวชี้วัดสำเร็จ");
+    await fetchPlan();
+  } catch (e) {
+    message.error("ลบไม่สำเร็จ");
+  }
+}
+
+onMounted(fetchPlan);
 </script>
 
 <template>
   <NSpin :show="loading">
-    <div class="plan-detail">
+    <div v-if="plan" class="plan-detail">
       <div class="page-header">
         <div class="header-left">
           <NButton quaternary circle @click="router.push({ name: 'plans' })">
             <template #icon><NIcon><ArrowBackOutline /></NIcon></template>
           </NButton>
           <div>
-            <h1 class="page-title">แผนปฏิบัติการบริการเช่าพื้นที่ 2569</h1>
-            <NText depth="3" class="page-subtitle">ปีงบประมาณ 2569 | 12 ตัวชี้วัด</NText>
+            <h1 class="page-title">{{ plan.name }}</h1>
+            <NText depth="3" class="page-subtitle">
+              ปีงบประมาณ {{ plan.year }} | {{ totalIndicators }} ตัวชี้วัด
+            </NText>
           </div>
         </div>
-        <NTag :bordered="false" type="info">กำลังดำเนินการ</NTag>
+        <NTag :bordered="false" :type="STATUS_CONFIG[plan.status]?.type || 'default'">
+          {{ STATUS_CONFIG[plan.status]?.label || plan.status }}
+        </NTag>
       </div>
 
       <!-- Overview Stats -->
@@ -127,7 +369,7 @@ function getStatusType(actual: number, target: number): "success" | "warning" | 
           <NIcon :size="20" color="var(--color-primary)"><TrendingUpOutline /></NIcon>
           <div>
             <NText depth="3" class="overview-label">ความคืบหน้ารวม</NText>
-            <div class="overview-value">65%</div>
+            <div class="overview-value">{{ progressData.progress }}%</div>
           </div>
         </div>
         <div class="overview-divider" />
@@ -135,7 +377,7 @@ function getStatusType(actual: number, target: number): "success" | "warning" | 
           <NIcon :size="20" color="var(--color-success)"><CheckmarkDoneOutline /></NIcon>
           <div>
             <NText depth="3" class="overview-label">ตัวชี้วัดที่ผ่านเป้า</NText>
-            <div class="overview-value">5 / 12</div>
+            <div class="overview-value">{{ passedIndicators }} / {{ totalIndicators }}</div>
           </div>
         </div>
         <div class="overview-divider" />
@@ -143,70 +385,84 @@ function getStatusType(actual: number, target: number): "success" | "warning" | 
           <NIcon :size="20" color="var(--color-warning)"><TimeOutline /></NIcon>
           <div>
             <NText depth="3" class="overview-label">ไตรมาสปัจจุบัน</NText>
-            <div class="overview-value">Q3 (เม.ย.-มิ.ย.)</div>
+            <div class="overview-value">{{ currentQuarter }}</div>
           </div>
         </div>
       </div>
 
       <!-- Overall Progress -->
       <NCard class="progress-card" :bordered="false">
-        <NText class="progress-title">ความคืบหน้ารวมทั้งแผน</NText>
-        <NProgress type="line" :percentage="65" :height="12" :border-radius="6" indicator-placement="inside">
-          65%
+        <div class="progress-header">
+          <NText class="progress-title">ความคืบหน้ารวมทั้งแผน</NText>
+          <NButton size="small" type="primary" @click="openAddCategoryModal">
+            <template #icon><NIcon><AddCircleOutline /></NIcon></template>
+            เพิ่มหมวดหมู่
+          </NButton>
+        </div>
+        <NProgress type="line" :percentage="progressData.progress" :height="12" :border-radius="6" indicator-placement="inside">
+          {{ progressData.progress }}%
         </NProgress>
       </NCard>
 
       <!-- Sections -->
-      <div v-for="section in sections" :key="section.id" class="plan-section">
+      <div v-for="(cat, catIdx) in plan.categories" :key="cat.id" class="plan-section">
         <NCard class="section-card" :bordered="false">
           <template #header>
             <div class="section-header">
               <div>
-                <NText class="section-title">{{ section.title }}</NText>
-                <NText depth="3" class="section-subtitle">{{ section.indicators.length }} ตัวชี้วัด</NText>
+                <NText class="section-title">{{ cat.code }}: {{ cat.name }}</NText>
+                <NText depth="3" class="section-subtitle">{{ cat.indicators.length }} ตัวชี้วัด</NText>
               </div>
-              <div class="section-progress">
-                <NProgress type="circle" :percentage="section.progress" :size="48" :stroke-width="6">
-                  {{ section.progress }}%
+              <NSpace :size="8" align="center">
+                <NProgress v-if="getCatProgress(cat.id) > 0" type="circle" :percentage="getCatProgress(cat.id)" :size="48" :stroke-width="4">
+                  {{ getCatProgress(cat.id) }}%
                 </NProgress>
-              </div>
+                <NButton size="tiny" quaternary @click="openAddIndicatorModal(cat)" :disabled="!plan || plan.status === 'completed'">
+                  <template #icon><NIcon><AddOutline /></NIcon></template>
+                </NButton>
+                <NButton size="tiny" quaternary @click="openEditCategoryModal(cat)">
+                  <template #icon><NIcon><CreateOutline /></NIcon></template>
+                </NButton>
+                <NButton size="tiny" quaternary type="error" @click="confirmDeleteCategory(cat)">
+                  <template #icon><NIcon><TrashOutline /></NIcon></template>
+                </NButton>
+              </NSpace>
             </div>
           </template>
           <div class="indicator-list">
-            <div v-for="ind in section.indicators" :key="ind.id" class="indicator-row">
+            <div v-for="(ind, indIdx) in cat.indicators" :key="ind.id" class="indicator-row">
               <div class="indicator-header">
-                <div class="indicator-id">{{ ind.id }}</div>
+                <div class="indicator-id">{{ ind.code }}</div>
                 <div class="indicator-info">
                   <div class="indicator-name">{{ ind.name }}</div>
                   <NText depth="3" class="indicator-target">
-                    เป้าหมาย: {{ ind.target }} {{ ind.unit }} | ผล: {{ ind.actual }} {{ ind.unit }}
+                    เป้าหมาย: {{ ind.targetValue }} {{ ind.unit || '' }}
                   </NText>
                 </div>
-                <NTag
-                  :bordered="false"
-                  size="small"
-                  :type="getStatusType(ind.actual, ind.target)"
-                >
-                  {{ getPercent(ind.actual, ind.target) }}%
-                </NTag>
+                <NSpace :size="4" no-wrap>
+                  <NButton size="small" quaternary @click="openUpdateModal(ind)">
+                    <template #icon><NIcon><AddOutline /></NIcon></template>
+                    รายงาน
+                  </NButton>
+                  <NButton size="small" quaternary @click="openEditIndicatorModal(ind)">
+                    <template #icon><NIcon><CreateOutline /></NIcon></template>
+                  </NButton>
+                  <NButton size="small" quaternary type="error" @click="confirmDeleteIndicator(ind)">
+                    <template #icon><NIcon><TrashOutline /></NIcon></template>
+                  </NButton>
+                </NSpace>
               </div>
-              <div class="quarter-grid">
-                <div v-for="q in ind.quarters" :key="q.quarter" class="quarter-cell">
-                  <div class="quarter-label">{{ q.quarter }}</div>
-                  <div class="quarter-values">
-                    <span class="quarter-target">เป้า {{ q.target }}</span>
-                    <span class="quarter-actual">ผล {{ q.actual }}</span>
-                  </div>
-                  <div class="quarter-bar">
-                    <div
-                      class="quarter-bar-fill"
-                      :style="{
-                        width: getPercent(q.actual, q.target) + '%',
-                        background: q.actual >= q.target ? 'var(--color-success)' : q.actual >= q.target * 0.5 ? 'var(--color-warning)' : 'var(--color-danger)',
-                      }"
-                    />
-                  </div>
+              <!-- Indicator updates -->
+              <div v-if="getIndicatorUpdates(ind.id).length > 0" class="update-list">
+                <div v-for="(upd, upIdx) in getIndicatorUpdates(ind.id)" :key="upIdx" class="update-item">
+                  <div class="update-period">เดือน {{ upd.reportedMonth }} / {{ upd.reportedYear }}</div>
+                  <div class="update-value">{{ upd.reportedValue }} {{ ind.unit || '' }}</div>
+                  <NProgress v-if="upd.progressPct" type="line" :percentage="parseFloat(upd.progressPct)" :height="6" :border-radius="3" :show-indicator="false" />
+                  <NText v-if="upd.progressPct" depth="3" class="update-pct">{{ upd.progressPct }}%</NText>
                 </div>
+              </div>
+              <div v-else class="quarter-placeholder">
+                <NText depth="3" class="placeholder-text">ยังไม่มีข้อมูลรายงานประจำไตรมาส</NText>
               </div>
             </div>
           </div>
@@ -214,6 +470,81 @@ function getStatusType(actual: number, target: number): "success" | "warning" | 
       </div>
     </div>
   </NSpin>
+
+  <!-- Update Modal -->
+  <NModal v-model:show="showUpdateModal" preset="card" :title="`รายงานความคืบหน้า: ${selectedIndicator?.name || ''}`" style="width: 480px">
+    <NForm label-placement="top">
+      <NFormItem label="เดือนที่รายงาน">
+        <NInputNumber v-model:value="updateForm.reportedMonth" :min="1" :max="12" style="width: 100%" />
+      </NFormItem>
+      <NFormItem label="ปีที่รายงาน (พ.ศ.)">
+        <NInputNumber v-model:value="updateForm.reportedYear" :min="2500" :max="2600" style="width: 100%" />
+      </NFormItem>
+      <NFormItem label="ค่าที่รายงาน">
+        <NInput v-model:value="updateForm.reportedValue" placeholder="เช่น 85" />
+      </NFormItem>
+      <NFormItem label="เปอร์เซ็นต์ความคืบหน้า">
+        <NInput v-model:value="updateForm.progressPct" placeholder="เช่น 75" />
+      </NFormItem>
+      <NFormItem label="หมายเหตุ">
+        <NInput v-model:value="updateForm.note" type="textarea" placeholder="รายละเอียดเพิ่มเติม" :rows="2" />
+      </NFormItem>
+    </NForm>
+    <template #footer>
+      <NSpace justify="end">
+        <NButton @click="showUpdateModal = false">ยกเลิก</NButton>
+        <NButton type="primary" :loading="updateModalLoading" @click="handleCreateUpdate">บันทึก</NButton>
+      </NSpace>
+    </template>
+  </NModal>
+
+  <!-- Category CRUD Modal -->
+  <NModal v-model:show="showCategoryModal" preset="card" :title="editingCategory ? 'แก้ไขหมวดหมู่' : 'เพิ่มหมวดหมู่ใหม่'" style="width: 420px">
+    <NForm label-placement="top">
+      <NFormItem label="รหัสหมวด">
+        <NInput v-model:value="categoryForm.code" placeholder="เช่น 1.1" />
+      </NFormItem>
+      <NFormItem label="ชื่อหมวดหมู่">
+        <NInput v-model:value="categoryForm.name" placeholder="เช่น การบริการวิชาการ" />
+      </NFormItem>
+    </NForm>
+    <template #footer>
+      <NSpace justify="end">
+        <NButton @click="showCategoryModal = false">ยกเลิก</NButton>
+        <NButton type="primary" :loading="categoryModalLoading" @click="handleSaveCategory">บันทึก</NButton>
+      </NSpace>
+    </template>
+  </NModal>
+
+  <!-- Indicator CRUD Modal -->
+  <NModal v-model:show="showIndicatorModal" preset="card" :title="editingIndicator ? 'แก้ไขตัวชี้วัด' : 'เพิ่มตัวชี้วัดใหม่'" style="width: 520px">
+    <NForm label-placement="top">
+      <NFormItem label="รหัสตัวชี้วัด">
+        <NInput v-model:value="indicatorForm.code" placeholder="เช่น 1.1.1" />
+      </NFormItem>
+      <NFormItem label="ชื่อตัวชี้วัด">
+        <NInput v-model:value="indicatorForm.name" placeholder="เช่น จำนวนผู้เช่าพื้นที่" />
+      </NFormItem>
+      <NFormItem label="เป้าหมาย">
+        <NInput v-model:value="indicatorForm.targetValue" placeholder="เช่น 30" />
+      </NFormItem>
+      <NFormItem label="หน่วย">
+        <NInput v-model:value="indicatorForm.unit" placeholder="เช่น ราย, ครั้ง, บาท" />
+      </NFormItem>
+      <NFormItem label="ประเภท">
+        <NSelect v-model:value="indicatorForm.indicatorType" :options="INDICATOR_TYPE_OPTIONS" />
+      </NFormItem>
+      <NFormItem label="รายละเอียด">
+        <NInput v-model:value="indicatorForm.description" type="textarea" placeholder="คำอธิบายตัวชี้วัด (ถ้ามี)" :rows="2" />
+      </NFormItem>
+    </NForm>
+    <template #footer>
+      <NSpace justify="end">
+        <NButton @click="showIndicatorModal = false">ยกเลิก</NButton>
+        <NButton type="primary" :loading="indicatorModalLoading" @click="handleSaveIndicator">บันทึก</NButton>
+      </NSpace>
+    </template>
+  </NModal>
 </template>
 
 <style scoped>
@@ -247,7 +578,6 @@ function getStatusType(actual: number, target: number): "success" | "warning" | 
   margin-top: var(--space-2xs);
 }
 
-/* ── Overview Bar ── */
 .overview-bar {
   display: flex;
   align-items: center;
@@ -281,20 +611,24 @@ function getStatusType(actual: number, target: number): "success" | "warning" | 
   background: var(--color-border);
 }
 
-/* ── Progress Card ── */
 .progress-card {
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-sm);
 }
 
+.progress-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--space-md);
+}
+
 .progress-title {
   font-size: var(--text-sm);
   font-weight: 500;
-  margin-bottom: var(--space-md);
   display: block;
 }
 
-/* ── Section Card ── */
 .section-card {
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-sm);
@@ -318,7 +652,6 @@ function getStatusType(actual: number, target: number): "success" | "warning" | 
   margin-top: 2px;
 }
 
-/* ── Indicator List ── */
 .indicator-list {
   display: flex;
   flex-direction: column;
@@ -368,52 +701,50 @@ function getStatusType(actual: number, target: number): "success" | "warning" | 
   font-size: var(--text-xs);
 }
 
-/* ── Quarter Grid ── */
-.quarter-grid {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
+.update-list {
+  display: flex;
+  flex-direction: column;
   gap: var(--space-sm);
+  margin-top: var(--space-sm);
 }
 
-.quarter-cell {
+.update-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+  padding: var(--space-sm) var(--space-md);
+  background: var(--color-surface-variant);
+  border-radius: var(--radius-sm);
+}
+
+.update-period {
+  font-size: var(--text-xs);
+  color: var(--color-text-secondary);
+  min-width: 80px;
+}
+
+.update-value {
+  font-size: var(--text-sm);
+  font-weight: 500;
+  flex: 1;
+}
+
+.update-pct {
+  font-size: var(--text-xs);
+  min-width: 40px;
+  text-align: right;
+}
+
+.quarter-placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
   padding: var(--space-sm);
   background: var(--color-surface-variant);
   border-radius: var(--radius-sm);
 }
 
-.quarter-label {
+.placeholder-text {
   font-size: var(--text-xs);
-  font-weight: 600;
-  color: var(--color-text-secondary);
-  margin-bottom: var(--space-xs);
-}
-
-.quarter-values {
-  display: flex;
-  justify-content: space-between;
-  font-size: var(--text-xs);
-  margin-bottom: var(--space-xs);
-}
-
-.quarter-target {
-  color: var(--color-text-secondary);
-}
-
-.quarter-actual {
-  font-weight: 600;
-  color: var(--color-text);
-}
-
-.quarter-bar {
-  height: 4px;
-  background: var(--color-border-light);
-  border-radius: var(--radius-full);
-  overflow: hidden;
-}
-
-.quarter-bar-fill {
-  height: 100%;
-  border-radius: var(--radius-full);
-  transition: width var(--duration-slow) var(--ease-out);
 }
 </style>

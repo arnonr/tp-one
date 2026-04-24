@@ -64,6 +64,13 @@
       "when": 1776928916542,
       "tag": "0008_regular_nick_fury",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1776935721798,
+      "tag": "0009_flat_scarlet_witch",
+      "breakpoints": true
     }
   ]
 }

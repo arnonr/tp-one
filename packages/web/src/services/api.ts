@@ -14,12 +14,18 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
+const AUTH_ENDPOINTS = ['/auth/me', '/auth/refresh', '/auth/logout'];
+
 api.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
-      localStorage.removeItem("token");
-      window.location.href = "/login";
+      const url = error.config?.url || '';
+      const isAuthEndpoint = AUTH_ENDPOINTS.some(ep => url.includes(ep));
+      if (!isAuthEndpoint) {
+        localStorage.removeItem("token");
+        window.location.href = "/login";
+      }
     }
     return Promise.reject(error);
   }
