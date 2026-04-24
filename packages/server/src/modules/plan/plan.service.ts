@@ -62,6 +62,26 @@ async function resolveIndicator(indicatorId: string) {
   return i;
 }
 
+function getPeriodKey(date: Date, period: 'weekly' | 'monthly' | 'quarterly' | 'yearly'): string {
+  const y = date.getFullYear();
+  if (period === 'weekly') {
+    const startOfYear = new Date(y, 0, 1);
+    const dayOfYear = Math.floor((date.getTime() - startOfYear.getTime()) / (1000 * 60 * 60 * 24));
+    const week = Math.ceil((dayOfYear + startOfYear.getDay() + 1) / 7);
+    return `${y}-W${String(week).padStart(2, '0')}`;
+  }
+  if (period === 'monthly') {
+    const m = date.getMonth() + 1;
+    return `${y}-${String(m).padStart(2, '0')}`;
+  }
+  if (period === 'quarterly') {
+    const q = getFiscalQuarter(date);
+    return `${y}-Q${q}`;
+  }
+  // yearly
+  return `${y}`;
+}
+
 // ===== auto-code generators =====
 
 async function generateStrategyCode(planId: string): Promise<string> {
@@ -470,41 +490,47 @@ export const planService = {
         const indicatorProgressList: IndicatorProgress[] = [];
 
         for (const ind of indRows) {
-          // pick the latest update within each period
-          let periodLabel: string;
-          let periodStart: Date;
-          let periodEnd: Date;
-          let fiscalYear: number;
-
-          // fetch latest update for this indicator
-          const [latestUpdate] = await db
+          // fetch all updates for this indicator within the plan year
+          const allUpdates = await db
             .select()
             .from(indicatorUpdates)
             .where(eq(indicatorUpdates.indicatorId, ind.id))
-            .orderBy(desc(indicatorUpdates.reportedDate))
-            .limit(1);
+            .orderBy(desc(indicatorUpdates.reportedDate));
 
-          if (latestUpdate) {
-            const updateDate = latestUpdate.reportedDate;
-            fiscalYear = getFiscalYear(updateDate);
+          // group updates by period and pick the latest within each group
+          const updatesByPeriod = new Map<string, typeof allUpdates[0]>();
+          for (const upd of allUpdates) {
+            const key = getPeriodKey(upd.reportedDate, period);
+            if (!updatesByPeriod.has(key)) {
+              updatesByPeriod.set(key, upd);
+            }
+          }
 
+          // derive period metadata from the first update in the first group (oldest period)
+          const firstGroupKey = [...updatesByPeriod.keys()].sort()[0];
+          const firstUpdate = firstGroupKey ? updatesByPeriod.get(firstGroupKey)! : null;
+          let periodLabel = '';
+          let periodStart = new Date();
+          let periodEnd = new Date();
+          const fiscalYear = firstUpdate ? getFiscalYear(firstUpdate.reportedDate) : getFiscalYear(new Date());
+
+          if (firstUpdate) {
+            const d = firstUpdate.reportedDate;
             if (period === 'weekly') {
-              const startOfYear = new Date(updateDate.getFullYear(), 0, 1);
-              const dayOfYear = Math.floor((updateDate.getTime() - startOfYear.getTime()) / (1000 * 60 * 60 * 24));
+              const startOfYear = new Date(d.getFullYear(), 0, 1);
+              const dayOfYear = Math.floor((d.getTime() - startOfYear.getTime()) / (1000 * 60 * 60 * 24));
               const week = Math.ceil((dayOfYear + startOfYear.getDay() + 1) / 7);
-              periodStart = new Date(`${updateDate.getFullYear()}-${String(week).padStart(2, '0')}-01`);
+              periodStart = new Date(d.getFullYear(), 0, 1 + (week - 1) * 7);
               periodEnd = new Date(periodStart);
               periodEnd.setDate(periodEnd.getDate() + 6);
               periodLabel = `สัปดาห์ที่ ${week}`;
             } else if (period === 'monthly') {
-              const month = updateDate.getMonth() + 1;
-              fiscalYear = getFiscalYear(updateDate);
-              periodStart = new Date(`${updateDate.getFullYear()}-${String(month).padStart(2, '0')}-01`);
-              periodEnd = new Date(updateDate.getFullYear(), month, 0);
+              const month = d.getMonth() + 1;
+              periodStart = new Date(d.getFullYear(), month - 1, 1);
+              periodEnd = new Date(d.getFullYear(), month, 0);
               periodLabel = `${THAI_MONTHS_SHORT[month - 1]} ${fiscalYear}`;
             } else if (period === 'quarterly') {
-              const q = getFiscalQuarter(updateDate);
-              fiscalYear = getFiscalYear(updateDate);
+              const q = getFiscalQuarter(d);
               const qRanges: Record<number, { s: number; e: number }> = {
                 1: { s: 10, e: 12 },
                 2: { s: 1, e: 3 },
@@ -512,24 +538,18 @@ export const planService = {
                 4: { s: 7, e: 9 },
               };
               const r = qRanges[q];
-              periodStart = new Date(`${updateDate.getFullYear()}-${String(r.s).padStart(2, '0')}-01`);
-              periodEnd = new Date(updateDate.getFullYear(), r.e, 0);
+              periodStart = new Date(d.getFullYear(), r.s - 1, 1);
+              periodEnd = new Date(d.getFullYear(), r.e, 0);
               periodLabel = `ไตรมาสที่ ${q}`;
             } else {
               // yearly
-              fiscalYear = getFiscalYear(updateDate);
-              periodStart = new Date(`${updateDate.getFullYear() - 1}-10-01`);
-              periodEnd = new Date(`${updateDate.getFullYear()}-09-30`);
+              periodStart = new Date(d.getFullYear() - 1, 9, 1); // Oct 1 of prev calendar year
+              periodEnd = new Date(d.getFullYear(), 8, 30); // Sep 30 of current calendar year
               periodLabel = `ปีงบ ${fiscalYear}`;
             }
-          } else {
-            // no updates yet
-            const now = new Date();
-            fiscalYear = getFiscalYear(now);
-            periodStart = now;
-            periodEnd = now;
           }
 
+          const latestUpdate = firstUpdate;
           const weight = parseFloat(String(ind.weight ?? '1'));
           const pct = latestUpdate?.progressPct
             ? parseFloat(String(latestUpdate.progressPct))
