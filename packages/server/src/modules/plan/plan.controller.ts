@@ -1,129 +1,206 @@
 import type { GlobalRole } from '../../shared/constants';
+import type {
+  CreateStrategyInput,
+  UpdateStrategyInput,
+  CreateGoalInput,
+  UpdateGoalInput,
+  CreateIndicatorInput,
+  UpdateIndicatorInput,
+  CreateIndicatorUpdateInput,
+  ProgressPeriod,
+} from './types';
 
 function parseParams(params: Record<string, string | undefined>) {
   return {
     planId: params.planId,
-    categoryId: params.categoryId,
+    strategyId: params.strategyId,
+    goalId: params.goalId,
     indicatorId: params.indicatorId,
-    updateId: params.updateId,
+    userId: params.userId,
   };
 }
 
 export const planController = {
-  // Plan
-  async list(_user: { id: string; role: GlobalRole }, query: { fiscalYear?: number; status?: string }) {
-    const { planService } = await import('./plan.service');
-    return planService.list(query.fiscalYear, query.status);
-  },
+  // Strategy CRUD
 
-  async getById(_user: { id: string; role: GlobalRole }, params: Record<string, string>) {
+  async listStrategies(
+    _user: { id: string; role: GlobalRole },
+    params: Record<string, string>,
+  ) {
     const { planId } = parseParams(params);
     const { planService } = await import('./plan.service');
-    return planService.getById(planId!);
+    return planService.listStrategies(planId!);
   },
 
-  async create(user: { id: string; role: GlobalRole }, body: { year: number; name: string; description?: string; status?: string }) {
-    const { planService } = await import('./plan.service');
-    return planService.create({ ...body, createdById: user.id });
-  },
-
-  async update(_user: { id: string; role: GlobalRole }, params: Record<string, string>, body: { name?: string; description?: string; status?: string }) {
+  async createStrategy(
+    _user: { id: string; role: GlobalRole },
+    params: Record<string, string>,
+    body: CreateStrategyInput,
+  ) {
     const { planId } = parseParams(params);
     const { planService } = await import('./plan.service');
-    return planService.update(planId!, body);
+    return planService.createStrategy(planId!, body, _user.id);
   },
 
-  async delete(user: { id: string; role: GlobalRole }, params: Record<string, string>) {
-    const { planId } = parseParams(params);
+  async updateStrategy(
+    _user: { id: string; role: GlobalRole },
+    params: Record<string, string>,
+    body: UpdateStrategyInput,
+  ) {
+    const { strategyId } = parseParams(params);
     const { planService } = await import('./plan.service');
-    return planService.delete(planId!, user.role);
+    return planService.updateStrategy(strategyId!, body);
   },
 
-  // Category
-  async getCategories(_user: { id: string; role: GlobalRole }, params: Record<string, string>) {
-    const { planId } = parseParams(params);
+  async deleteStrategy(
+    _user: { id: string; role: GlobalRole },
+    params: Record<string, string>,
+  ) {
+    const { strategyId } = parseParams(params);
     const { planService } = await import('./plan.service');
-    return planService.getCategories(planId!);
+    return planService.deleteStrategy(strategyId!);
   },
 
-  async createCategory(_user: { id: string; role: GlobalRole }, params: Record<string, string>, body: { code: string; name: string; sortOrder?: number }) {
-    const { planId } = parseParams(params);
+  // Goal CRUD
+
+  async listGoals(
+    _user: { id: string; role: GlobalRole },
+    params: Record<string, string>,
+  ) {
+    const { strategyId } = parseParams(params);
     const { planService } = await import('./plan.service');
-    return planService.createCategory(planId!, body);
+    return planService.listGoals(strategyId!);
   },
 
-  async updateCategory(_user: { id: string; role: GlobalRole }, params: Record<string, string>, body: { code?: string; name?: string; sortOrder?: number }) {
-    const { categoryId } = parseParams(params);
+  async createGoal(
+    _user: { id: string; role: GlobalRole },
+    params: Record<string, string>,
+    body: CreateGoalInput,
+  ) {
+    const { strategyId } = parseParams(params);
     const { planService } = await import('./plan.service');
-    return planService.updateCategory(categoryId!, body);
+    return planService.createGoal(strategyId!, body);
   },
 
-  async deleteCategory(_user: { id: string; role: GlobalRole }, params: Record<string, string>) {
-    const { categoryId } = parseParams(params);
+  async updateGoal(
+    _user: { id: string; role: GlobalRole },
+    params: Record<string, string>,
+    body: UpdateGoalInput,
+  ) {
+    const { goalId } = parseParams(params);
     const { planService } = await import('./plan.service');
-    return planService.deleteCategory(categoryId!);
+    return planService.updateGoal(goalId!, body);
   },
 
-  // Indicator
-  async getIndicators(_user: { id: string; role: GlobalRole }, params: Record<string, string>) {
-    const { categoryId } = parseParams(params);
+  async deleteGoal(
+    _user: { id: string; role: GlobalRole },
+    params: Record<string, string>,
+  ) {
+    const { goalId } = parseParams(params);
     const { planService } = await import('./plan.service');
-    return planService.getIndicators(categoryId!);
+    return planService.deleteGoal(goalId!);
   },
 
-  async getIndicatorById(_user: { id: string; role: GlobalRole }, params: Record<string, string>) {
-    const { indicatorId } = parseParams(params);
+  // Indicator CRUD
+
+  async listIndicators(
+    _user: { id: string; role: GlobalRole },
+    params: Record<string, string>,
+  ) {
+    const { goalId } = parseParams(params);
     const { planService } = await import('./plan.service');
-    return planService.getIndicatorById(indicatorId!);
+    return planService.listIndicators(goalId!);
   },
 
-  async createIndicator(_user: { id: string; role: GlobalRole }, params: Record<string, string>, body: {
-    code: string; name: string; description?: string; targetValue: string; unit?: string; indicatorType?: string; assigneeId?: string; sortOrder?: number;
-  }) {
-    const { categoryId } = parseParams(params);
+  async createIndicator(
+    _user: { id: string; role: GlobalRole },
+    params: Record<string, string>,
+    body: CreateIndicatorInput,
+  ) {
+    const { goalId } = parseParams(params);
     const { planService } = await import('./plan.service');
-    return planService.createIndicator(categoryId!, body);
+    return planService.createIndicator(goalId!, body);
   },
 
-  async updateIndicator(_user: { id: string; role: GlobalRole }, params: Record<string, string>, body: {
-    code?: string; name?: string; description?: string; targetValue?: string; unit?: string; indicatorType?: string; assigneeId?: string; sortOrder?: number;
-  }) {
+  async updateIndicator(
+    _user: { id: string; role: GlobalRole },
+    params: Record<string, string>,
+    body: UpdateIndicatorInput,
+  ) {
     const { indicatorId } = parseParams(params);
     const { planService } = await import('./plan.service');
     return planService.updateIndicator(indicatorId!, body);
   },
 
-  async deleteIndicator(_user: { id: string; role: GlobalRole }, params: Record<string, string>) {
+  async deleteIndicator(
+    _user: { id: string; role: GlobalRole },
+    params: Record<string, string>,
+  ) {
     const { indicatorId } = parseParams(params);
     const { planService } = await import('./plan.service');
     return planService.deleteIndicator(indicatorId!);
   },
 
-  // Indicator Update
-  async getUpdates(_user: { id: string; role: GlobalRole }, params: Record<string, string>) {
+  // Assignee management
+
+  async getIndicatorAssignees(
+    _user: { id: string; role: GlobalRole },
+    params: Record<string, string>,
+  ) {
     const { indicatorId } = parseParams(params);
     const { planService } = await import('./plan.service');
-    return planService.getUpdates(indicatorId!);
+    return planService.getIndicatorAssignees(indicatorId!);
   },
 
-  async createUpdate(user: { id: string; role: GlobalRole }, params: Record<string, string>, body: {
-    reportedValue: string; reportedMonth: number; reportedYear: number; progressPct?: string; note?: string; evidenceUrl?: string;
-  }) {
+  async addIndicatorAssignee(
+    _user: { id: string; role: GlobalRole },
+    params: Record<string, string>,
+    body: { userId: string },
+  ) {
     const { indicatorId } = parseParams(params);
     const { planService } = await import('./plan.service');
-    return planService.createUpdate(indicatorId!, user.id, body);
+    return planService.addIndicatorAssignee(indicatorId!, body.userId);
   },
 
-  async deleteUpdate(user: { id: string; role: GlobalRole }, params: Record<string, string>) {
-    const { updateId } = parseParams(params);
+  async removeIndicatorAssignee(
+    _user: { id: string; role: GlobalRole },
+    params: Record<string, string>,
+  ) {
+    const { indicatorId, userId } = parseParams(params);
     const { planService } = await import('./plan.service');
-    return planService.deleteUpdate(updateId!, user.id, user.role);
+    return planService.removeIndicatorAssignee(indicatorId!, userId!);
+  },
+
+  // Indicator Updates
+
+  async getIndicatorUpdates(
+    _user: { id: string; role: GlobalRole },
+    params: Record<string, string>,
+  ) {
+    const { indicatorId } = parseParams(params);
+    const { planService } = await import('./plan.service');
+    return planService.getIndicatorUpdates(indicatorId!);
+  },
+
+  async createIndicatorUpdate(
+    user: { id: string; role: GlobalRole },
+    params: Record<string, string>,
+    body: CreateIndicatorUpdateInput,
+  ) {
+    const { indicatorId } = parseParams(params);
+    const { planService } = await import('./plan.service');
+    return planService.createIndicatorUpdate(indicatorId!, user.id, body);
   },
 
   // Progress
-  async getProgress(_user: { id: string; role: GlobalRole }, params: Record<string, string>) {
-    const { planId } = parseParams(params);
+
+  async getPlanProgress(
+    _user: { id: string; role: GlobalRole },
+    params: Record<string, string>,
+    query: { planId?: string; period?: ProgressPeriod },
+  ) {
+    const planId = query.planId ?? params.planId;
     const { planService } = await import('./plan.service');
-    return planService.calculatePlanProgress(planId!);
+    return planService.getPlanProgress(planId!, query.period ?? 'monthly');
   },
 };

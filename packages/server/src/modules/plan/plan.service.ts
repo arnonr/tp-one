@@ -1,16 +1,40 @@
 import { db } from '../../config/database';
 import {
-  annualPlans,
-  planCategories,
-  planIndicators,
+  strategies,
+} from '../../db/schema/strategies';
+import {
+  goals,
+} from '../../db/schema/goals';
+import {
+  indicators,
+  indicatorAssignees,
+} from '../../db/schema/indicators';
+import {
   indicatorUpdates,
-  planStatusEnum,
-  indicatorTypeEnum,
-} from '../../db/schema/annual-plans';
+} from '../../db/schema/indicator-updates';
+import { annualPlans } from '../../db/schema/annual-plans';
 import { users } from '../../db/schema/users';
-import { eq, and, desc, asc, count, sql, inArray } from 'drizzle-orm';
-import { NotFoundError, ValidationError, ForbiddenError } from '../../shared/errors';
-import type { GlobalRole } from '../../shared/constants';
+import { eq, and, desc, asc, count, inArray, sql } from 'drizzle-orm';
+import { NotFoundError, ValidationError } from '../../shared/errors';
+import {
+  getFiscalYear,
+  getFiscalQuarter,
+  THAI_MONTHS_SHORT,
+} from '../../shared/thai.utils';
+import type {
+  CreateStrategyInput,
+  UpdateStrategyInput,
+  CreateGoalInput,
+  UpdateGoalInput,
+  CreateIndicatorInput,
+  UpdateIndicatorInput,
+  CreateIndicatorUpdateInput,
+  ProgressPeriod,
+  PlanProgress,
+  StrategyProgress,
+  GoalProgress,
+  IndicatorProgress,
+} from './types';
 
 // ===== helpers =====
 
@@ -20,315 +44,362 @@ async function resolvePlan(planId: string) {
   return p;
 }
 
-async function resolveCategory(categoryId: string) {
-  const [c] = await db.select().from(planCategories).where(eq(planCategories.id, categoryId)).limit(1);
-  if (!c) throw new NotFoundError('Category', categoryId);
-  return c;
+async function resolveStrategy(strategyId: string) {
+  const [s] = await db.select().from(strategies).where(eq(strategies.id, strategyId)).limit(1);
+  if (!s) throw new NotFoundError('Strategy', strategyId);
+  return s;
 }
 
-// ===== Plan =====
+async function resolveGoal(goalId: string) {
+  const [g] = await db.select().from(goals).where(eq(goals.id, goalId)).limit(1);
+  if (!g) throw new NotFoundError('Goal', goalId);
+  return g;
+}
+
+async function resolveIndicator(indicatorId: string) {
+  const [i] = await db.select().from(indicators).where(eq(indicators.id, indicatorId)).limit(1);
+  if (!i) throw new NotFoundError('Indicator', indicatorId);
+  return i;
+}
+
+// ===== auto-code generators =====
+
+async function generateStrategyCode(planId: string): Promise<string> {
+  const result = await db
+    .select({ cnt: count() })
+    .from(strategies)
+    .where(eq(strategies.planId, planId));
+  const cnt = result[0]?.cnt ?? 0;
+  return `S${Number(cnt) + 1}`;
+}
+
+async function generateGoalCode(strategyId: string): Promise<string> {
+  const [strategy] = await db
+    .select()
+    .from(strategies)
+    .where(eq(strategies.id, strategyId))
+    .limit(1);
+  if (!strategy) throw new NotFoundError('Strategy', strategyId);
+
+  const result = await db
+    .select({ cnt: count() })
+    .from(goals)
+    .where(eq(goals.strategyId, strategyId));
+  const cnt = result[0]?.cnt ?? 0;
+  return `${strategy.code}-G${Number(cnt) + 1}`;
+}
+
+async function generateIndicatorCode(goalId: string): Promise<string> {
+  const [goal] = await db.select().from(goals).where(eq(goals.id, goalId)).limit(1);
+  if (!goal) throw new NotFoundError('Goal', goalId);
+
+  const [strategy] = await db
+    .select()
+    .from(strategies)
+    .where(eq(strategies.id, goal.strategyId))
+    .limit(1);
+  if (!strategy) throw new NotFoundError('Strategy', goal.strategyId);
+
+  const result = await db
+    .select({ cnt: count() })
+    .from(indicators)
+    .where(eq(indicators.goalId, goalId));
+  const cnt = result[0]?.cnt ?? 0;
+  return `${strategy.code}-${goal.code}-K${String(Number(cnt) + 1).padStart(2, '0')}`;
+}
+
+// ===== Strategy =====
 
 export const planService = {
-  async list(fiscalYear?: number, status?: string) {
-    const conditions = [];
-    if (fiscalYear) conditions.push(eq(annualPlans.year, fiscalYear));
-    if (status) conditions.push(eq(annualPlans.status, status as any));
+  // Strategy CRUD
 
-    const data = await db
+  async listStrategies(planId: string) {
+    await resolvePlan(planId);
+    return db
       .select({
-        id: annualPlans.id,
-        year: annualPlans.year,
-        name: annualPlans.name,
-        description: annualPlans.description,
-        status: annualPlans.status,
-        createdById: annualPlans.createdById,
-        createdAt: annualPlans.createdAt,
-        updatedAt: annualPlans.updatedAt,
-        creatorName: users.name,
+        id: strategies.id,
+        planId: strategies.planId,
+        code: strategies.code,
+        name: strategies.name,
+        description: strategies.description,
+        sortOrder: strategies.sortOrder,
+        createdAt: strategies.createdAt,
+        updatedAt: strategies.updatedAt,
       })
-      .from(annualPlans)
-      .leftJoin(users, eq(annualPlans.createdById, users.id))
-      .where(conditions.length ? and(...conditions) : undefined)
-      .orderBy(desc(annualPlans.year));
-
-    // count categories + indicators per plan
-    const planIds = data.map(p => p.id);
-    const categoryCounts = await db
-      .select({ planId: planCategories.planId, cnt: count() })
-      .from(planCategories)
-      .where(inArray(planCategories.planId, planIds))
-      .groupBy(planCategories.planId);
-
-    const indicatorCounts = await db
-      .select({ planId: planCategories.planId, cnt: count() })
-      .from(planIndicators)
-      .innerJoin(planCategories, eq(planIndicators.categoryId, planCategories.id))
-      .where(inArray(planCategories.planId, planIds))
-      .groupBy(planCategories.planId);
-
-    const catCountMap = Object.fromEntries(categoryCounts.map(r => [r.planId, Number(r.cnt)]));
-    const indCountMap = Object.fromEntries(indicatorCounts.map(r => [r.planId, Number(r.cnt)]));
-
-    return data.map(p => ({
-      ...p,
-      categoryCount: catCountMap[p.id] || 0,
-      indicatorCount: indCountMap[p.id] || 0,
-    }));
+      .from(strategies)
+      .where(eq(strategies.planId, planId))
+      .orderBy(asc(strategies.sortOrder), asc(strategies.createdAt));
   },
 
-  async getById(planId: string) {
-    const [plan] = await db
-      .select({
-        id: annualPlans.id,
-        year: annualPlans.year,
-        name: annualPlans.name,
-        description: annualPlans.description,
-        status: annualPlans.status,
-        createdById: annualPlans.createdById,
-        createdAt: annualPlans.createdAt,
-        updatedAt: annualPlans.updatedAt,
-        creatorName: users.name,
-      })
-      .from(annualPlans)
-      .leftJoin(users, eq(annualPlans.createdById, users.id))
-      .where(eq(annualPlans.id, planId))
-      .limit(1);
+  async createStrategy(planId: string, data: CreateStrategyInput, createdById: string) {
+    await resolvePlan(planId);
+    if (!data.name?.trim()) throw new ValidationError('name is required');
 
-    if (!plan) throw new NotFoundError('Plan', planId);
-
-    const categories = await db
-      .select({
-        id: planCategories.id,
-        planId: planCategories.planId,
-        code: planCategories.code,
-        name: planCategories.name,
-        sortOrder: planCategories.sortOrder,
-      })
-      .from(planCategories)
-      .where(eq(planCategories.planId, planId))
-      .orderBy(asc(planCategories.sortOrder));
-
-    const categoryIds = categories.map(c => c.id);
-
-    // fetch indicators per category
-    const indicatorsByCategory: Record<string, unknown[]> = {};
-    if (categoryIds.length > 0) {
-      const indRows = await db
-        .select({
-          id: planIndicators.id,
-          categoryId: planIndicators.categoryId,
-          code: planIndicators.code,
-          name: planIndicators.name,
-          description: planIndicators.description,
-          targetValue: planIndicators.targetValue,
-          unit: planIndicators.unit,
-          indicatorType: planIndicators.indicatorType,
-          assigneeId: planIndicators.assigneeId,
-          assigneeName: users.name,
-          sortOrder: planIndicators.sortOrder,
-        })
-        .from(planIndicators)
-        .leftJoin(users, eq(planIndicators.assigneeId, users.id))
-        .where(inArray(planIndicators.categoryId, categoryIds))
-        .orderBy(asc(planIndicators.sortOrder));
-
-      for (const ind of indRows) {
-        if (!indicatorsByCategory[ind.categoryId]) indicatorsByCategory[ind.categoryId] = [];
-        indicatorsByCategory[ind.categoryId].push(ind);
-      }
-    }
-
-    return {
-      ...plan,
-      categories: categories.map(c => ({
-        ...c,
-        indicators: indicatorsByCategory[c.id] || [],
-      })),
-    };
-  },
-
-  async create(data: { year: number; name: string; description?: string; status?: string; createdById: string }) {
-    if (!data.year || !data.name) throw new ValidationError('year และ name จำเป็น');
-    const [plan] = await db
-      .insert(annualPlans)
+    const code = await generateStrategyCode(planId);
+    const [strategy] = await db
+      .insert(strategies)
       .values({
-        year: data.year,
-        name: data.name,
-        description: data.description,
-        status: (data.status || 'draft') as any,
-        createdById: data.createdById,
+        planId,
+        code,
+        name: data.name.trim(),
+        description: data.description?.trim(),
+        sortOrder: data.sortOrder ?? 0,
       })
       .returning();
-    return plan;
+    return strategy;
   },
 
-  async update(planId: string, data: { name?: string; description?: string; status?: string }) {
-    await resolvePlan(planId);
+  async updateStrategy(strategyId: string, data: UpdateStrategyInput) {
+    await resolveStrategy(strategyId);
     const [updated] = await db
-      .update(annualPlans)
-      .set({ ...data, updatedAt: new Date() })
-      .where(eq(annualPlans.id, planId))
+      .update(strategies)
+      .set({
+        ...(data.name !== undefined && { name: data.name.trim() }),
+        ...(data.description !== undefined && { description: data.description?.trim() }),
+        ...(data.sortOrder !== undefined && { sortOrder: data.sortOrder }),
+        updatedAt: new Date(),
+      })
+      .where(eq(strategies.id, strategyId))
       .returning();
     return updated;
   },
 
-  async delete(planId: string, userRole: GlobalRole) {
-    const plan = await resolvePlan(planId);
-    if (plan.status !== 'draft' && userRole !== 'admin') {
-      throw new ForbiddenError('เฉพาะสถานะ draft หรือ admin เท่านั้นที่ลบได้');
+  async deleteStrategy(strategyId: string) {
+    const strategy = await resolveStrategy(strategyId);
+
+    // cascade delete: goals -> indicators -> updates -> assignees -> goals
+    const goalRows = await db
+      .select({ id: goals.id })
+      .from(goals)
+      .where(eq(goals.strategyId, strategyId));
+    const goalIds = goalRows.map(g => g.id);
+
+    if (goalIds.length > 0) {
+      // get all indicators under these goals
+      const indRows = await db
+        .select({ id: indicators.id })
+        .from(indicators)
+        .where(inArray(indicators.goalId, goalIds));
+      const indIds = indRows.map(i => i.id);
+
+      if (indIds.length > 0) {
+        // delete updates first
+        await db.delete(indicatorUpdates).where(inArray(indicatorUpdates.indicatorId, indIds));
+        // delete assignees
+        await db.delete(indicatorAssignees).where(inArray(indicatorAssignees.indicatorId, indIds));
+        // delete indicators
+        await db.delete(indicators).where(inArray(indicators.goalId, goalIds));
+      }
+      // delete goals
+      await db.delete(goals).where(inArray(goals.strategyId, strategyId));
     }
-    // cascade delete indicators then categories then plan
-    const cats = await db.select({ id: planCategories.id }).from(planCategories).where(eq(planCategories.planId, planId));
-    const catIds = cats.map(c => c.id);
-    if (catIds.length) {
-      const inds = await db.select({ id: planIndicators.id }).from(planIndicators).where(inArray(planIndicators.categoryId, catIds));
-      const indIds = inds.map(i => i.id);
-      if (indIds.length) await db.delete(indicatorUpdates).where(inArray(indicatorUpdates.indicatorId, indIds));
-      if (catIds.length) await db.delete(planIndicators).where(inArray(planIndicators.categoryId, catIds));
-    }
-    if (catIds.length) await db.delete(planCategories).where(inArray(planCategories.planId, planId));
-    await db.delete(annualPlans).where(eq(annualPlans.id, planId));
+
+    await db.delete(strategies).where(eq(strategies.id, strategyId));
     return { success: true };
   },
 
-  // ===== Category =====
+  // Goal CRUD
 
-  async getCategories(planId: string) {
-    await resolvePlan(planId);
+  async listGoals(strategyId: string) {
+    await resolveStrategy(strategyId);
     return db
-      .select({ id: planCategories.id, planId: planCategories.planId, code: planCategories.code, name: planCategories.name, sortOrder: planCategories.sortOrder })
-      .from(planCategories)
-      .where(eq(planCategories.planId, planId))
-      .orderBy(asc(planCategories.sortOrder));
+      .select({
+        id: goals.id,
+        strategyId: goals.strategyId,
+        code: goals.code,
+        name: goals.name,
+        description: goals.description,
+        sortOrder: goals.sortOrder,
+        createdAt: goals.createdAt,
+        updatedAt: goals.updatedAt,
+      })
+      .from(goals)
+      .where(eq(goals.strategyId, strategyId))
+      .orderBy(asc(goals.sortOrder), asc(goals.createdAt));
   },
 
-  async createCategory(planId: string, data: { code: string; name: string; sortOrder?: number }) {
-    await resolvePlan(planId);
-    const [cat] = await db.insert(planCategories).values({ planId, code: data.code, name: data.name, sortOrder: data.sortOrder ?? 0 }).returning();
-    return cat;
+  async createGoal(strategyId: string, data: CreateGoalInput) {
+    await resolveStrategy(strategyId);
+    if (!data.name?.trim()) throw new ValidationError('name is required');
+
+    const code = await generateGoalCode(strategyId);
+    const [goal] = await db
+      .insert(goals)
+      .values({
+        strategyId,
+        code,
+        name: data.name.trim(),
+        description: data.description?.trim(),
+        sortOrder: data.sortOrder ?? 0,
+      })
+      .returning();
+    return goal;
   },
 
-  async updateCategory(categoryId: string, data: { code?: string; name?: string; sortOrder?: number }) {
-    await resolveCategory(categoryId);
-    const [updated] = await db.update(planCategories).set(data).where(eq(planCategories.id, categoryId)).returning();
+  async updateGoal(goalId: string, data: UpdateGoalInput) {
+    await resolveGoal(goalId);
+    const [updated] = await db
+      .update(goals)
+      .set({
+        ...(data.name !== undefined && { name: data.name.trim() }),
+        ...(data.description !== undefined && { description: data.description?.trim() }),
+        ...(data.sortOrder !== undefined && { sortOrder: data.sortOrder }),
+        updatedAt: new Date(),
+      })
+      .where(eq(goals.id, goalId))
+      .returning();
     return updated;
   },
 
-  async deleteCategory(categoryId: string) {
-    await resolveCategory(categoryId);
-    const inds = await db.select({ id: planIndicators.id }).from(planIndicators).where(eq(planIndicators.categoryId, categoryId));
-    const indIds = inds.map(i => i.id);
-    if (indIds.length) await db.delete(indicatorUpdates).where(inArray(indicatorUpdates.indicatorId, indIds));
-    await db.delete(planIndicators).where(eq(planIndicators.categoryId, categoryId));
-    await db.delete(planCategories).where(eq(planCategories.id, categoryId));
+  async deleteGoal(goalId: string) {
+    const goal = await resolveGoal(goalId);
+
+    // cascade delete: indicators -> updates -> assignees -> goal
+    const indRows = await db
+      .select({ id: indicators.id })
+      .from(indicators)
+      .where(eq(indicators.goalId, goalId));
+    const indIds = indRows.map(i => i.id);
+
+    if (indIds.length > 0) {
+      await db.delete(indicatorUpdates).where(inArray(indicatorUpdates.indicatorId, indIds));
+      await db.delete(indicatorAssignees).where(inArray(indicatorAssignees.indicatorId, indIds));
+      await db.delete(indicators).where(inArray(indicators.goalId, goalId));
+    }
+
+    await db.delete(goals).where(eq(goals.id, goalId));
     return { success: true };
   },
 
-  // ===== Indicator =====
+  // Indicator CRUD
 
-  async getIndicators(categoryId: string) {
-    await resolveCategory(categoryId);
+  async listIndicators(goalId: string) {
+    await resolveGoal(goalId);
     return db
       .select({
-        id: planIndicators.id,
-        categoryId: planIndicators.categoryId,
-        code: planIndicators.code,
-        name: planIndicators.name,
-        description: planIndicators.description,
-        targetValue: planIndicators.targetValue,
-        unit: planIndicators.unit,
-        indicatorType: planIndicators.indicatorType,
-        assigneeId: planIndicators.assigneeId,
-        assigneeName: users.name,
-        sortOrder: planIndicators.sortOrder,
+        id: indicators.id,
+        goalId: indicators.goalId,
+        code: indicators.code,
+        name: indicators.name,
+        description: indicators.description,
+        targetValue: indicators.targetValue,
+        unit: indicators.unit,
+        indicatorType: indicators.indicatorType,
+        weight: indicators.weight,
+        sortOrder: indicators.sortOrder,
+        createdAt: indicators.createdAt,
+        updatedAt: indicators.updatedAt,
       })
-      .from(planIndicators)
-      .leftJoin(users, eq(planIndicators.assigneeId, users.id))
-      .where(eq(planIndicators.categoryId, categoryId))
-      .orderBy(asc(planIndicators.sortOrder));
+      .from(indicators)
+      .where(eq(indicators.goalId, goalId))
+      .orderBy(asc(indicators.sortOrder), asc(indicators.createdAt));
   },
 
-  async getIndicatorById(indicatorId: string) {
-    const [ind] = await db
-      .select({
-        id: planIndicators.id,
-        categoryId: planIndicators.categoryId,
-        code: planIndicators.code,
-        name: planIndicators.name,
-        description: planIndicators.description,
-        targetValue: planIndicators.targetValue,
-        unit: planIndicators.unit,
-        indicatorType: planIndicators.indicatorType,
-        assigneeId: planIndicators.assigneeId,
-        assigneeName: users.name,
-        sortOrder: planIndicators.sortOrder,
+  async createIndicator(goalId: string, data: CreateIndicatorInput) {
+    await resolveGoal(goalId);
+    if (!data.name?.trim()) throw new ValidationError('name is required');
+    if (!data.targetValue?.trim()) throw new ValidationError('targetValue is required');
+
+    const code = await generateIndicatorCode(goalId);
+    const [indicator] = await db
+      .insert(indicators)
+      .values({
+        goalId,
+        code,
+        name: data.name.trim(),
+        description: data.description?.trim(),
+        targetValue: data.targetValue,
+        unit: data.unit,
+        indicatorType: (data.indicatorType as any) ?? 'amount',
+        weight: data.weight ?? '1',
+        sortOrder: data.sortOrder ?? 0,
       })
-      .from(planIndicators)
-      .leftJoin(users, eq(planIndicators.assigneeId, users.id))
-      .where(eq(planIndicators.id, indicatorId))
-      .limit(1);
-    if (!ind) throw new NotFoundError('Indicator', indicatorId);
-    return ind;
+      .returning();
+    return indicator;
   },
 
-  async createIndicator(categoryId: string, data: {
-    code: string;
-    name: string;
-    description?: string;
-    targetValue: string;
-    unit?: string;
-    indicatorType?: string;
-    assigneeId?: string;
-    sortOrder?: number;
-  }) {
-    await resolveCategory(categoryId);
-    const [ind] = await db.insert(planIndicators).values({
-      categoryId,
-      code: data.code,
-      name: data.name,
-      description: data.description,
-      targetValue: data.targetValue,
-      unit: data.unit,
-      indicatorType: (data.indicatorType || 'amount') as any,
-      assigneeId: data.assigneeId,
-      sortOrder: data.sortOrder ?? 0,
-    }).returning();
-    return ind;
-  },
-
-  async updateIndicator(indicatorId: string, data: {
-    code?: string;
-    name?: string;
-    description?: string;
-    targetValue?: string;
-    unit?: string;
-    indicatorType?: string;
-    assigneeId?: string;
-    sortOrder?: number;
-  }) {
-    await this.getIndicatorById(indicatorId);
-    const [updated] = await db.update(planIndicators).set(data).where(eq(planIndicators.id, indicatorId)).returning();
+  async updateIndicator(indicatorId: string, data: UpdateIndicatorInput) {
+    await resolveIndicator(indicatorId);
+    const [updated] = await db
+      .update(indicators)
+      .set({
+        ...(data.name !== undefined && { name: data.name.trim() }),
+        ...(data.description !== undefined && { description: data.description?.trim() }),
+        ...(data.targetValue !== undefined && { targetValue: data.targetValue }),
+        ...(data.unit !== undefined && { unit: data.unit }),
+        ...(data.indicatorType !== undefined && { indicatorType: data.indicatorType as any }),
+        ...(data.weight !== undefined && { weight: data.weight }),
+        ...(data.sortOrder !== undefined && { sortOrder: data.sortOrder }),
+        updatedAt: new Date(),
+      })
+      .where(eq(indicators.id, indicatorId))
+      .returning();
     return updated;
   },
 
   async deleteIndicator(indicatorId: string) {
-    await this.getIndicatorById(indicatorId);
+    const indicator = await resolveIndicator(indicatorId);
+
+    // delete updates first, then assignees, then indicator
     await db.delete(indicatorUpdates).where(eq(indicatorUpdates.indicatorId, indicatorId));
-    await db.delete(planIndicators).where(eq(planIndicators.id, indicatorId));
+    await db.delete(indicatorAssignees).where(eq(indicatorAssignees.indicatorId, indicatorId));
+    await db.delete(indicators).where(eq(indicators.id, indicatorId));
     return { success: true };
   },
 
-  // ===== Indicator Update =====
+  // Assignee management
 
-  async getUpdates(indicatorId: string) {
-    await this.getIndicatorById(indicatorId);
+  async getIndicatorAssignees(indicatorId: string) {
+    await resolveIndicator(indicatorId);
+    return db
+      .select({
+        id: indicatorAssignees.id,
+        indicatorId: indicatorAssignees.indicatorId,
+        userId: indicatorAssignees.userId,
+        userName: users.name,
+        userEmail: users.email,
+      })
+      .from(indicatorAssignees)
+      .leftJoin(users, eq(indicatorAssignees.userId, users.id))
+      .where(eq(indicatorAssignees.indicatorId, indicatorId));
+  },
+
+  async addIndicatorAssignee(indicatorId: string, userId: string) {
+    await resolveIndicator(indicatorId);
+
+    // check for duplicate
+    const [existing] = await db
+      .select()
+      .from(indicatorAssignees)
+      .where(and(eq(indicatorAssignees.indicatorId, indicatorId), eq(indicatorAssignees.userId, userId)))
+      .limit(1);
+    if (existing) return { success: true, alreadyExists: true };
+
+    const [assignee] = await db
+      .insert(indicatorAssignees)
+      .values({ indicatorId, userId })
+      .returning();
+    return assignee;
+  },
+
+  async removeIndicatorAssignee(indicatorId: string, userId: string) {
+    await resolveIndicator(indicatorId);
+    await db
+      .delete(indicatorAssignees)
+      .where(and(eq(indicatorAssignees.indicatorId, indicatorId), eq(indicatorAssignees.userId, userId)));
+    return { success: true };
+  },
+
+  // Update tracking
+
+  async getIndicatorUpdates(indicatorId: string) {
+    await resolveIndicator(indicatorId);
     return db
       .select({
         id: indicatorUpdates.id,
         indicatorId: indicatorUpdates.indicatorId,
+        reportedDate: indicatorUpdates.reportedDate,
         reportedValue: indicatorUpdates.reportedValue,
-        reportedMonth: indicatorUpdates.reportedMonth,
-        reportedYear: indicatorUpdates.reportedYear,
         progressPct: indicatorUpdates.progressPct,
         note: indicatorUpdates.note,
         evidenceUrl: indicatorUpdates.evidenceUrl,
@@ -339,78 +410,188 @@ export const planService = {
       .from(indicatorUpdates)
       .leftJoin(users, eq(indicatorUpdates.reportedBy, users.id))
       .where(eq(indicatorUpdates.indicatorId, indicatorId))
-      .orderBy(asc(indicatorUpdates.reportedYear), asc(indicatorUpdates.reportedMonth));
+      .orderBy(desc(indicatorUpdates.reportedDate));
   },
 
-  async createUpdate(indicatorId: string, reportedBy: string, data: {
-    reportedValue: string;
-    reportedMonth: number;
-    reportedYear: number;
-    progressPct?: string;
-    note?: string;
-    evidenceUrl?: string;
-  }) {
-    await this.getIndicatorById(indicatorId);
-    const [upd] = await db.insert(indicatorUpdates).values({
-      indicatorId,
-      reportedBy,
-      reportedValue: data.reportedValue,
-      reportedMonth: data.reportedMonth,
-      reportedYear: data.reportedYear,
-      progressPct: data.progressPct,
-      note: data.note,
-      evidenceUrl: data.evidenceUrl,
-    }).returning();
-    return upd;
+  async createIndicatorUpdate(indicatorId: string, reportedBy: string, data: CreateIndicatorUpdateInput) {
+    await resolveIndicator(indicatorId);
+    if (!data.reportedDate?.trim()) throw new ValidationError('reportedDate is required');
+    if (!data.reportedValue?.trim()) throw new ValidationError('reportedValue is required');
+
+    const [update] = await db
+      .insert(indicatorUpdates)
+      .values({
+        indicatorId,
+        reportedBy,
+        reportedDate: new Date(data.reportedDate),
+        reportedValue: data.reportedValue,
+        progressPct: data.progressPct,
+        note: data.note,
+        evidenceUrl: data.evidenceUrl,
+      })
+      .returning();
+    return update;
   },
 
-  async deleteUpdate(updateId: string, userId: string, userRole: GlobalRole) {
-    const [upd] = await db.select().from(indicatorUpdates).where(eq(indicatorUpdates.id, updateId)).limit(1);
-    if (!upd) throw new NotFoundError('IndicatorUpdate', updateId);
-    if (upd.reportedBy !== userId && userRole !== 'admin') {
-      throw new ForbiddenError('ไม่สามารถลบรายงานของผู้อื่น');
-    }
-    await db.delete(indicatorUpdates).where(eq(indicatorUpdates.id, updateId));
-    return { success: true };
-  },
+  // Progress aggregation
 
-  // ===== Progress Calculation =====
+  async getPlanProgress(planId: string, period: ProgressPeriod = 'monthly') {
+    const plan = await resolvePlan(planId);
 
-  async calculatePlanProgress(planId: string) {
-    const plan = await this.getById(planId);
-    let totalWeight = 0;
-    let totalWeightedPct = 0;
-    const byCategory: Record<string, number> = {};
+    // fetch all strategies for this plan
+    const strategyRows = await db
+      .select()
+      .from(strategies)
+      .where(eq(strategies.planId, planId))
+      .orderBy(asc(strategies.sortOrder));
 
-    for (const cat of plan.categories) {
-      let catWeight = 0;
-      let catWeightedPct = 0;
+    const strategyProgressList: StrategyProgress[] = [];
+    let totalWeightSum = 0;
+    let totalWeightedProgressSum = 0;
 
-      for (const ind of cat.indicators as any[]) {
-        // get latest update ordered by year desc, month desc
-        const [latest] = await db
-          .select({ progressPct: indicatorUpdates.progressPct })
-          .from(indicatorUpdates)
-          .where(eq(indicatorUpdates.indicatorId, ind.id))
-          .orderBy(desc(indicatorUpdates.reportedYear), desc(indicatorUpdates.reportedMonth))
-          .limit(1);
+    for (const strat of strategyRows) {
+      // fetch all goals for this strategy
+      const goalRows = await db
+        .select()
+        .from(goals)
+        .where(eq(goals.strategyId, strat.id))
+        .orderBy(asc(goals.sortOrder));
 
-        const weight = parseFloat(String(ind.weight || '1'));
-        const pct = latest ? parseFloat(latest.progressPct || '0') : 0;
-        catWeight += weight;
-        catWeightedPct += pct * weight;
+      const goalProgressList: GoalProgress[] = [];
+
+      for (const g of goalRows) {
+        // fetch all indicators for this goal
+        const indRows = await db
+          .select()
+          .from(indicators)
+          .where(eq(indicators.goalId, g.id))
+          .orderBy(asc(indicators.sortOrder));
+
+        const indicatorProgressList: IndicatorProgress[] = [];
+
+        for (const ind of indRows) {
+          // pick the latest update within each period
+          let periodLabel: string;
+          let periodStart: Date;
+          let periodEnd: Date;
+          let fiscalYear: number;
+
+          // fetch latest update for this indicator
+          const [latestUpdate] = await db
+            .select()
+            .from(indicatorUpdates)
+            .where(eq(indicatorUpdates.indicatorId, ind.id))
+            .orderBy(desc(indicatorUpdates.reportedDate))
+            .limit(1);
+
+          if (latestUpdate) {
+            const updateDate = latestUpdate.reportedDate;
+            fiscalYear = getFiscalYear(updateDate);
+
+            if (period === 'weekly') {
+              const startOfYear = new Date(updateDate.getFullYear(), 0, 1);
+              const dayOfYear = Math.floor((updateDate.getTime() - startOfYear.getTime()) / (1000 * 60 * 60 * 24));
+              const week = Math.ceil((dayOfYear + startOfYear.getDay() + 1) / 7);
+              periodStart = new Date(`${updateDate.getFullYear()}-${String(week).padStart(2, '0')}-01`);
+              periodEnd = new Date(periodStart);
+              periodEnd.setDate(periodEnd.getDate() + 6);
+              periodLabel = `สัปดาห์ที่ ${week}`;
+            } else if (period === 'monthly') {
+              const month = updateDate.getMonth() + 1;
+              fiscalYear = getFiscalYear(updateDate);
+              periodStart = new Date(`${updateDate.getFullYear()}-${String(month).padStart(2, '0')}-01`);
+              periodEnd = new Date(updateDate.getFullYear(), month, 0);
+              periodLabel = `${THAI_MONTHS_SHORT[month - 1]} ${fiscalYear}`;
+            } else if (period === 'quarterly') {
+              const q = getFiscalQuarter(updateDate);
+              fiscalYear = getFiscalYear(updateDate);
+              const qRanges: Record<number, { s: number; e: number }> = {
+                1: { s: 10, e: 12 },
+                2: { s: 1, e: 3 },
+                3: { s: 4, e: 6 },
+                4: { s: 7, e: 9 },
+              };
+              const r = qRanges[q];
+              periodStart = new Date(`${updateDate.getFullYear()}-${String(r.s).padStart(2, '0')}-01`);
+              periodEnd = new Date(updateDate.getFullYear(), r.e, 0);
+              periodLabel = `ไตรมาสที่ ${q}`;
+            } else {
+              // yearly
+              fiscalYear = getFiscalYear(updateDate);
+              periodStart = new Date(`${updateDate.getFullYear() - 1}-10-01`);
+              periodEnd = new Date(`${updateDate.getFullYear()}-09-30`);
+              periodLabel = `ปีงบ ${fiscalYear}`;
+            }
+          } else {
+            // no updates yet
+            const now = new Date();
+            fiscalYear = getFiscalYear(now);
+            periodStart = now;
+            periodEnd = now;
+          }
+
+          const weight = parseFloat(String(ind.weight ?? '1'));
+          const pct = latestUpdate?.progressPct
+            ? parseFloat(String(latestUpdate.progressPct))
+            : latestUpdate ? parseFloat(String(latestUpdate.reportedValue)) / parseFloat(String(ind.targetValue)) * 100 : 0;
+
+          indicatorProgressList.push({
+            indicatorId: ind.id,
+            indicatorCode: ind.code,
+            indicatorName: ind.name,
+            targetValue: String(ind.targetValue),
+            unit: ind.unit ?? undefined,
+            weight: String(ind.weight ?? '1'),
+            latestValue: latestUpdate ? String(latestUpdate.reportedValue) : undefined,
+            latestProgressPct: pct,
+            periodLabel,
+            periodStart,
+            periodEnd,
+          });
+        }
+
+        const goalWeightSum = indicatorProgressList.reduce((s, i) => s + parseFloat(i.weight), 0);
+        const goalWeightedSum = indicatorProgressList.reduce(
+          (s, i) => s + (i.latestProgressPct ?? 0) * parseFloat(i.weight),
+          0,
+        );
+
+        goalProgressList.push({
+          goalId: g.id,
+          goalCode: g.code,
+          goalName: g.name,
+          indicators: indicatorProgressList,
+          weightedProgress: goalWeightSum > 0 ? Math.round(goalWeightedSum / goalWeightSum) : 0,
+          totalWeight: goalWeightSum,
+        });
+
+        totalWeightSum += goalWeightSum;
+        totalWeightedProgressSum += goalWeightedSum;
       }
 
-      if (catWeight > 0) {
-        byCategory[cat.id] = Math.round(catWeightedPct / catWeight);
-        totalWeight += catWeight;
-        totalWeightedPct += catWeightedPct;
-      }
+      const stratWeightSum = goalProgressList.reduce((s, g) => s + g.totalWeight, 0);
+      const stratWeightedSum = goalProgressList.reduce(
+        (s, g) => s + g.weightedProgress * g.totalWeight,
+        0,
+      );
+
+      strategyProgressList.push({
+        strategyId: strat.id,
+        strategyCode: strat.code,
+        strategyName: strat.name,
+        goals: goalProgressList,
+        weightedProgress: stratWeightSum > 0 ? Math.round(stratWeightedSum / stratWeightSum) : 0,
+        totalWeight: stratWeightSum,
+      });
     }
 
     return {
-      progress: totalWeight > 0 ? Math.round(totalWeightedPct / totalWeight) : 0,
-      byCategory,
-    };
+      planId,
+      planYear: plan.year,
+      period,
+      strategies: strategyProgressList,
+      overallProgress: totalWeightSum > 0 ? Math.round(totalWeightedProgressSum / totalWeightSum) : 0,
+      totalWeight: totalWeightSum,
+    } satisfies PlanProgress;
   },
 };
