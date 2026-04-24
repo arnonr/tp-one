@@ -208,7 +208,7 @@ export const planService = {
         // delete assignees
         await db.delete(indicatorAssignees).where(inArray(indicatorAssignees.indicatorId, indIds));
         // delete indicators
-        await db.delete(indicators).where(inArray(indicators.goalId, goalIds));
+        await db.delete(indicators).where(inArray(indicators.id, indIds));
       }
       // delete goals
       await db.delete(goals).where(inArray(goals.strategyId, strategyId));
@@ -506,16 +506,17 @@ export const planService = {
             }
           }
 
-          // derive period metadata from the first update in the first group (oldest period)
-          const firstGroupKey = [...updatesByPeriod.keys()].sort()[0];
-          const firstUpdate = firstGroupKey ? updatesByPeriod.get(firstGroupKey)! : null;
+          // derive period metadata from the latest update in the most recent period
+          const sortedKeys = [...updatesByPeriod.keys()].sort();
+          const latestGroupKey = sortedKeys[sortedKeys.length - 1];
+          const latestUpdate = latestGroupKey ? updatesByPeriod.get(latestGroupKey)! : null;
           let periodLabel = '';
           let periodStart = new Date();
           let periodEnd = new Date();
-          const fiscalYear = firstUpdate ? getFiscalYear(firstUpdate.reportedDate) : getFiscalYear(new Date());
+          const fiscalYear = latestUpdate ? getFiscalYear(latestUpdate.reportedDate) : getFiscalYear(new Date());
 
-          if (firstUpdate) {
-            const d = firstUpdate.reportedDate;
+          if (latestUpdate) {
+            const d = latestUpdate.reportedDate;
             if (period === 'weekly') {
               const startOfYear = new Date(d.getFullYear(), 0, 1);
               const dayOfYear = Math.floor((d.getTime() - startOfYear.getTime()) / (1000 * 60 * 60 * 24));
@@ -549,7 +550,6 @@ export const planService = {
             }
           }
 
-          const latestUpdate = firstUpdate;
           const weight = parseFloat(String(ind.weight ?? '1'));
           const pct = latestUpdate?.progressPct
             ? parseFloat(String(latestUpdate.progressPct))
