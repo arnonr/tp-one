@@ -34,7 +34,6 @@ export const indicatorAssignees = pgTable('indicator_assignees', {
 export const indicatorRelations = relations(indicators, ({ one, many }) => ({
   goal: one(goals, { fields: [indicators.goalId], references: [goals.id] }),
   assignees: many(indicatorAssignees),
-  updates: many(indicatorUpdates),
 }));
 
 export const indicatorAssigneeRelations = relations(indicatorAssignees, ({ one }) => ({

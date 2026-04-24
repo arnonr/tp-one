@@ -1,5 +1,16 @@
 import { db } from '../config/database';
-import { users, workspaces, workspaceStatuses, workspaceMembers } from './schema';
+import {
+  users,
+  workspaces,
+  workspaceStatuses,
+  workspaceMembers,
+  annualPlans,
+  strategies,
+  goals,
+  indicators,
+  indicatorAssignees,
+  indicatorUpdates,
+} from './schema';
 import { taskTemplates, taskTemplateItems } from './schema/templates';
 import { DEFAULT_WORKSPACE_STATUSES } from '../shared/constants';
 
@@ -112,6 +123,140 @@ async function seed() {
       })),
     );
     console.log(`Created template: ${tmpl.name} (${tmpl.items.length} items)`);
+  }
+
+  // Seed annual plan with strategies, goals, indicators
+  const [plan] = await db.insert(annualPlans).values({
+    year: 2569,
+    name: 'แผนปฏิบัติการ ประจำปีงบประมาณ 2569',
+    description: 'แผนปฏิบัติการประจำปีงบประมาณ พ.ศ. 2569 อุทยานเทคโนโลยี',
+    status: 'active',
+    createdById: admin.id,
+  }).returning();
+
+  const strategyData = [
+    { code: 'S1', name: 'ยกระดับคุณภาพบริการเช่าพื้นที่และห้องประชุม', description: 'พัฒนาสิ่งอำนวยความสะดวกและระบบจองที่ทันสมัย' },
+    { code: 'S2', name: 'ขยายงานที่ปรึกษาและวิจัย', description: 'เพิ่มจำนวนโครงการที่ปรึกษาและวิจัยให้ได้ตามเป้าหมาย' },
+    { code: 'S3', name: 'เพิ่มประสิทธิภาพการจัดอบรม/สัมนา', description: 'พัฒนาหลักสูตรและกระบวนการจัดอบรมให้มีคุณภาพสูงขึ้น' },
+    { code: 'S4', name: 'ส่งเสริมการบ่มเพาะสตาร์ทอัพ', description: 'รับและดูแลสตาร์ทอัพให้เติบโตอย่างยั่งยืน' },
+  ];
+
+  const createdStrategies = [];
+  for (const s of strategyData) {
+    const [strategy] = await db.insert(strategies).values({
+      planId: plan.id,
+      ...s,
+    }).returning();
+    createdStrategies.push(strategy);
+  }
+  console.log(`Created ${createdStrategies.length} strategies`);
+
+  // Seed goals and indicators for each strategy
+  const goalIndicatorsData = [
+    {
+      strategyIdx: 0,
+      goals: [
+        {
+          code: 'G1-1', name: 'เพิ่มอัตราการใช้พื้นที่', description: 'เพิ่มอัตราการใช้พื้นที่ให้ไม่ต่ำกว่า 70%',
+          indicators: [
+            { code: 'I1-1-1', name: 'อัตราการใช้พื้นที่ (%)', targetValue: '70', unit: '%', indicatorType: 'percentage', weight: '1.0' },
+            { code: 'I1-1-2', name: 'จำนวนผู้ใช้บริการ (คน)', targetValue: '5000', unit: 'คน', indicatorType: 'count', weight: '1.0' },
+          ],
+        },
+        {
+          code: 'G1-2', name: 'ลดระยะเวลาจองห้อง', description: 'ลดระยะเวลาการจองห้องให้ไม่เกิน 3 วันทำการ',
+          indicators: [
+            { code: 'I1-2-1', name: 'ระยะเวลาจองเฉลี่ย (วัน)', targetValue: '3', unit: 'วัน', indicatorType: 'amount', weight: '0.8' },
+          ],
+        },
+      ],
+    },
+    {
+      strategyIdx: 1,
+      goals: [
+        {
+          code: 'G2-1', name: 'รับโครงการที่ปรึกษา/วิจัยตามเป้า', description: 'รับโครงการที่ปรึกษาและวิจัยไม่น้อยกว่า 15 โครงการ',
+          indicators: [
+            { code: 'I2-1-1', name: 'จำนวนโครงการที่ปรึกษา (โครงการ)', targetValue: '15', unit: 'โครงการ', indicatorType: 'count', weight: '1.0' },
+            { code: 'I2-1-2', name: 'มูลค่าสัญญารวม (ล้านบาท)', targetValue: '10', unit: 'ล้านบาท', indicatorType: 'amount', weight: '1.0' },
+          ],
+        },
+      ],
+    },
+    {
+      strategyIdx: 2,
+      goals: [
+        {
+          code: 'G3-1', name: 'พัฒนาหลักสูตรใหม่', description: 'พัฒนาหลักสูตรอบรมใหม่ไม่น้อยกว่า 5 หลักสูตร',
+          indicators: [
+            { code: 'I3-1-1', name: 'จำนวนหลักสูตรใหม่ (หลักสูตร)', targetValue: '5', unit: 'หลักสูตร', indicatorType: 'count', weight: '1.0' },
+            { code: 'I3-1-2', name: 'จำนวนผู้เข้าอบรม (คน)', targetValue: '1000', unit: 'คน', indicatorType: 'count', weight: '1.0' },
+          ],
+        },
+      ],
+    },
+    {
+      strategyIdx: 3,
+      goals: [
+        {
+          code: 'G4-1', name: 'รับสตาร์ทอัพเข้าร่วมโครงการ', description: 'รับสตาร์ทอัพเข้าร่วมโครงการบ่มเพาะไม่น้อยกว่า 10 ราย',
+          indicators: [
+            { code: 'I4-1-1', name: 'จำนวนสตาร์ทอัพที่รับ (ราย)', targetValue: '10', unit: 'ราย', indicatorType: 'count', weight: '1.0' },
+            { code: 'I4-1-2', name: 'อัตราการสำเร็จโครงการ (%)', targetValue: '70', unit: '%', indicatorType: 'percentage', weight: '1.0' },
+          ],
+        },
+      ],
+    },
+  ];
+
+  let totalIndicators = 0;
+  for (const sd of goalIndicatorsData) {
+    const strategy = createdStrategies[sd.strategyIdx];
+    for (const g of sd.goals) {
+      const [goal] = await db.insert(goals).values({
+        strategyId: strategy.id,
+        code: g.code,
+        name: g.name,
+        description: g.description,
+      }).returning();
+
+      for (let i = 0; i < g.indicators.length; i++) {
+        const ind = g.indicators[i];
+        const [indicator] = await db.insert(indicators).values({
+          goalId: goal.id,
+          code: ind.code,
+          name: ind.name,
+          targetValue: ind.targetValue,
+          unit: ind.unit,
+          indicatorType: ind.indicatorType,
+          weight: ind.weight,
+          sortOrder: i,
+        }).returning();
+
+        // Assign admin as responsible
+        await db.insert(indicatorAssignees).values({
+          indicatorId: indicator.id,
+          userId: admin.id,
+        });
+
+        totalIndicators++;
+      }
+    }
+  }
+  console.log(`Created goals and ${totalIndicators} indicators`);
+
+  // Seed sample indicator update
+  const allIndicators = await db.query.indicators.findMany({ limit: 2 });
+  if (allIndicators.length > 0) {
+    await db.insert(indicatorUpdates).values({
+      indicatorId: allIndicators[0].id,
+      reportedDate: new Date('2026-01-15'),
+      reportedValue: '45',
+      progressPct: '64',
+      note: 'ดำเนินการตามแผน คาดว่าจะเสร็จสิ้นภายในไตรมาส 2',
+      reportedBy: admin.id,
+    });
+    console.log('Created sample indicator update');
   }
 
   console.log('Seed data created successfully!');

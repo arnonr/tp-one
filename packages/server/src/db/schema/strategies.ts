@@ -15,7 +15,6 @@ export const strategies = pgTable('strategies', {
   index('idx_strategies_plan').on(table.planId),
 ]);
 
-export const strategyRelations = relations(strategies, ({ one, many }) => ({
+export const strategyRelations = relations(strategies, ({ one }) => ({
   plan: one(annualPlans, { fields: [strategies.planId], references: [annualPlans.id] }),
-  goals: many(goals),
 }));
