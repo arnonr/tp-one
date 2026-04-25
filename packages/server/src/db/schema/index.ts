@@ -13,3 +13,4 @@ export * from "./templates";
 export * from "./quick-notes";
 export * from "./snapshots";
 export * from "./kpi-audit-logs";
+export * from "./plan-indicator-audit-logs";

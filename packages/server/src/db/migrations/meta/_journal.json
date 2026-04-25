@@ -71,6 +71,13 @@
       "when": 1776935721798,
       "tag": "0009_flat_scarlet_witch",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1776947220000,
+      "tag": "0010_add_plan_indicator_audit_logs",
+      "breakpoints": true
     }
   ]
 }
