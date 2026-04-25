@@ -124,3 +124,26 @@ export interface RevertInput {
   auditLogId: string;
   reason: string;
 }
+
+// ===== Export =====
+
+export interface PlanExportData {
+  plan: { id: string; year: number; name: string; description?: string; status: string };
+  progress: PlanProgress;
+  monthlyUpdates: MonthlyIndicatorUpdate[];
+}
+
+export interface MonthlyIndicatorUpdate {
+  indicatorId: string;
+  indicatorCode: string;
+  indicatorName: string;
+  month: number; // 1-12 (fiscal year: 10=Oct..12=Dec, 1=Jan..9=Sep)
+  fiscalYear: number;
+  reportedValue: number;
+  targetValue: number;
+  progressPct: number;
+}
+
+export interface PlanExportQuery {
+  period?: ProgressPeriod;
+}

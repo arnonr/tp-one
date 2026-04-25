@@ -64,24 +64,14 @@ function handleClose() {
 </script>
 
 <template>
-  <NModal
-    :show="show"
-    preset="card"
-    :title="strategy ? 'แก้ไขกลยุทธ์' : 'เพิ่มกลยุทธ์ใหม่'"
-    style="width: 480px"
-    @update:show="emit('update:show', $event)"
-  >
+  <NModal :show="show" preset="card" :title="strategy ? 'แก้ไขยุทธศาสตร์' : 'เพิ่มยุทธศาสตร์'" style="width: 480px"
+    @update:show="emit('update:show', $event)">
     <NForm label-placement="top">
-      <NFormItem label="ชื่อกลยุทธ์" required>
+      <NFormItem label="ชื่อยุทธศาสตร์" required>
         <NInput v-model:value="form.name" placeholder="เช่น พัฒนาระบบบริการ" />
       </NFormItem>
       <NFormItem label="รายละเอียด">
-        <NInput
-          v-model:value="form.description"
-          type="textarea"
-          placeholder="คำอธิบายกลยุทธ์ (ถ้ามี)"
-          :rows="3"
-        />
+        <NInput v-model:value="form.description" type="textarea" placeholder="คำอธิบายกลยุทธ์ (ถ้ามี)" :rows="3" />
       </NFormItem>
       <NFormItem label="ลำดับการแสดง">
         <NInputNumber v-model:value="form.sortOrder" :min="0" :max="999" style="width: 100%" />

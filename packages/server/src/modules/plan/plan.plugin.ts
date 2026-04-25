@@ -103,4 +103,12 @@ export const planPlugin = new Elysia({ prefix: '/api/plans' })
   // Reports
   .get('/reports/plan-progress', async ({ user, query }) => planController.getPlanProgress(user, {}, query as any), {
     detail: { summary: 'Get plan progress aggregation' },
+  })
+
+  // Plan Report Export
+  .get('/:planId/export/pdf', async ({ user, params, query }) => planController.exportPlanPDF(user, params, query as any), {
+    detail: { summary: 'Export plan progress as PDF' },
+  })
+  .get('/:planId/export/excel', async ({ user, params, query }) => planController.exportPlanExcel(user, params, query as any), {
+    detail: { summary: 'Export plan progress as Excel' },
   });

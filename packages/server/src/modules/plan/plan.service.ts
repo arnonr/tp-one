@@ -15,7 +15,7 @@ import {
 import { annualPlans } from '../../db/schema/annual-plans';
 import { users } from '../../db/schema/users';
 import { planIndicatorAuditLogs } from '../../db/schema/plan-indicator-audit-logs';
-import { eq, and, desc, asc, count, inArray, sql } from 'drizzle-orm';
+import { eq, and, desc, asc, count, inArray, sql, gte, lte } from 'drizzle-orm';
 import ExcelJS from 'exceljs';
 import { NotFoundError, ValidationError } from '../../shared/errors';
 import {
@@ -36,7 +36,11 @@ import type {
   StrategyProgress,
   GoalProgress,
   IndicatorProgress,
+  PlanExportData,
+  MonthlyIndicatorUpdate,
 } from './types';
+import { generatePlanPDF } from './plan-pdf.service';
+import { generatePlanExcel } from './plan-excel.service';
 
 // ===== helpers =====
 
@@ -954,5 +958,99 @@ export const planService = {
       overallProgress: totalWeightSum > 0 ? Math.round(totalWeightedProgressSum / totalWeightSum) : 0,
       totalWeight: totalWeightSum,
     } satisfies PlanProgress;
+  },
+
+  async getPlanExportData(planId: string, period: ProgressPeriod = 'monthly'): Promise<PlanExportData> {
+    const plan = await resolvePlan(planId);
+    const progress = await planService.getPlanProgress(planId, period);
+
+    // Collect indicator IDs from progress data (plan-scoped)
+    const indicatorIds = progress.strategies.flatMap(s =>
+      s.goals.flatMap(g => g.indicators.map(i => i.indicatorId)),
+    );
+
+    if (indicatorIds.length === 0) {
+      return {
+        plan: { id: plan.id, year: plan.year, name: plan.name, description: plan.description ?? undefined, status: plan.status },
+        progress,
+        monthlyUpdates: [],
+      };
+    }
+
+    // Fiscal year date range (CE)
+    const ceYear = plan.year - 543;
+    const fyStartCE = new Date(ceYear - 1, 9, 1);  // Oct 1
+    const fyEndCE = new Date(ceYear, 8, 30);        // Sep 30
+
+    const allUpdates = await db
+      .select({
+        indicatorId: indicatorUpdates.indicatorId,
+        reportedDate: indicatorUpdates.reportedDate,
+        reportedValue: indicatorUpdates.reportedValue,
+        progressPct: indicatorUpdates.progressPct,
+      })
+      .from(indicatorUpdates)
+      .where(
+        and(
+          inArray(indicatorUpdates.indicatorId, indicatorIds),
+          gte(indicatorUpdates.reportedDate, fyStartCE),
+          lte(indicatorUpdates.reportedDate, fyEndCE),
+        ),
+      )
+      .orderBy(desc(indicatorUpdates.reportedDate));
+
+    // Build indicator lookup from progress data
+    const indMap = new Map<string, { code: string; name: string; targetValue: string }>();
+    for (const strat of progress.strategies) {
+      for (const goal of strat.goals) {
+        for (const ind of goal.indicators) {
+          indMap.set(ind.indicatorId, {
+            code: ind.indicatorCode,
+            name: ind.indicatorName,
+            targetValue: ind.targetValue,
+          });
+        }
+      }
+    }
+
+    // Group by indicator+month, keep latest per group
+    const monthlyMap = new Map<string, MonthlyIndicatorUpdate>();
+    for (const upd of allUpdates) {
+      const ind = indMap.get(upd.indicatorId);
+      if (!ind) continue;
+      const reportedDate = typeof upd.reportedDate === 'string' ? new Date(upd.reportedDate) : upd.reportedDate;
+      const month = reportedDate.getMonth() + 1;
+      const key = `${upd.indicatorId}-${month}`;
+      if (!monthlyMap.has(key)) {
+        const target = parseFloat(ind.targetValue) || 0;
+        const reported = parseFloat(upd.reportedValue) || 0;
+        monthlyMap.set(key, {
+          indicatorId: upd.indicatorId,
+          indicatorCode: ind.code,
+          indicatorName: ind.name,
+          month,
+          fiscalYear: plan.year,
+          reportedValue: reported,
+          targetValue: target,
+          progressPct: upd.progressPct ? parseFloat(upd.progressPct) : (target > 0 ? Math.round((reported / target) * 100) : 0),
+        });
+      }
+    }
+
+    return {
+      plan: { id: plan.id, year: plan.year, name: plan.name, description: plan.description ?? undefined, status: plan.status },
+      progress,
+      monthlyUpdates: [...monthlyMap.values()],
+    };
+  },
+
+  async exportPlanPDF(planId: string, period: ProgressPeriod = 'monthly'): Promise<Buffer> {
+    const data = await planService.getPlanExportData(planId, period);
+    return generatePlanPDF(data);
+  },
+
+  async exportPlanExcel(planId: string, period: ProgressPeriod = 'monthly'): Promise<Buffer> {
+    const data = await planService.getPlanExportData(planId, period);
+    return generatePlanExcel(data);
   },
 };

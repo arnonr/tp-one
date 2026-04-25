@@ -292,4 +292,38 @@ export const planController = {
     const { planService } = await import('./plan.service');
     return planService.getPlanProgress(planId!, query.period ?? 'monthly');
   },
+
+  // Plan Report Export
+
+  async exportPlanPDF(
+    _user: { id: string; role: GlobalRole },
+    params: Record<string, string>,
+    query: Record<string, string>,
+  ) {
+    const { planId } = parseParams(params);
+    const { planService } = await import('./plan.service');
+    const buffer = await planService.exportPlanPDF(planId!, query.period as ProgressPeriod);
+    return new Response(buffer, {
+      headers: {
+        'Content-Type': 'application/pdf',
+        'Content-Disposition': `attachment; filename=plan-report-${planId}.pdf`,
+      },
+    });
+  },
+
+  async exportPlanExcel(
+    _user: { id: string; role: GlobalRole },
+    params: Record<string, string>,
+    query: Record<string, string>,
+  ) {
+    const { planId } = parseParams(params);
+    const { planService } = await import('./plan.service');
+    const buffer = await planService.exportPlanExcel(planId!, query.period as ProgressPeriod);
+    return new Response(buffer, {
+      headers: {
+        'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        'Content-Disposition': `attachment; filename=plan-report-${planId}.xlsx`,
+      },
+    });
+  },
 };

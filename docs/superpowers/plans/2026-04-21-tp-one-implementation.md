@@ -2124,12 +2124,12 @@ git commit -m "feat: add task list view with Thai dates, priority badges, and fi
 
 **สิ่งที่ต้องเพิ่ม:**
 
-| ส่วน | รายละเอียด |
-|------|------------|
-| `packages/web/src/services/task.ts` | เพิ่ม `getTags()`, `createTag()`, `setTaskTags()`, `createSubtask()`, `updateSubtask()`, `deleteSubtask()` |
-| `packages/web/src/stores/task.ts` | เพิ่ม state `tags: Tag[]` + actions `fetchTags()`, `addSubtask()`, `toggleSubtask()`, `deleteSubtask()` |
-| `packages/web/src/components/task/TaskForm.vue` | เพิ่ม `NSelect` เลือก tags (multiple, พร้อม option สร้างใหม่) |
-| `packages/web/src/components/task/TaskDetail.vue` | แสดง tag badges, ปุ่ม "เพิ่มงานย่อย" + inline input, checkbox/toggle บน subtask, ปุ่มลบ subtask |
+| ส่วน                                              | รายละเอียด                                                                                                 |
+| ------------------------------------------------- | ---------------------------------------------------------------------------------------------------------- |
+| `packages/web/src/services/task.ts`               | เพิ่ม `getTags()`, `createTag()`, `setTaskTags()`, `createSubtask()`, `updateSubtask()`, `deleteSubtask()` |
+| `packages/web/src/stores/task.ts`                 | เพิ่ม state `tags: Tag[]` + actions `fetchTags()`, `addSubtask()`, `toggleSubtask()`, `deleteSubtask()`    |
+| `packages/web/src/components/task/TaskForm.vue`   | เพิ่ม `NSelect` เลือก tags (multiple, พร้อม option สร้างใหม่)                                              |
+| `packages/web/src/components/task/TaskDetail.vue` | แสดง tag badges, ปุ่ม "เพิ่มงานย่อย" + inline input, checkbox/toggle บน subtask, ปุ่มลบ subtask            |
 
 **Files:**
 
@@ -2360,7 +2360,7 @@ git commit -m "feat: add copy-to-clipboard with Thai Telegram format"
 - Category progress bar
 - Plan overview with fiscal year filter
 
-### Task 7.4: Plan Audit Trail
+### 1
 
 - plan_indicator_audit_logs table
 - Every indicator change tracked

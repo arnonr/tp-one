@@ -2,20 +2,28 @@
 import { ref, onMounted, computed } from 'vue'
 import {
   NCard,
-  NText,
   NIcon,
   NButton,
   NSpin,
   NTag,
   NProgress,
-  NSpace,
+  NSelect,
+  NButtonGroup,
   useMessage,
+  NStatistic,
+  NGrid,
+  NGi,
+  NDivider,
 } from 'naive-ui'
 import {
   ArrowBackOutline,
   TrendingUpOutline,
   CheckmarkDoneOutline,
   TimeOutline,
+  DocumentTextOutline,
+  GridOutline,
+  AnalyticsOutline,
+  GitNetworkOutline,
 } from '@vicons/ionicons5'
 import { useRoute, useRouter } from 'vue-router'
 import {
@@ -32,12 +40,14 @@ import {
   createIndicatorUpdate,
   getPlanProgress,
   getPlan,
+  exportPlanPDF,
+  exportPlanExcel,
 } from '@/services/planApi'
 import type { AnnualPlan, Strategy, Goal, Indicator, PlanProgress } from '@/types/plan'
 import StrategyList from '@/components/plan/strategy/StrategyList.vue'
 import IndicatorForm from '@/components/plan/indicator/IndicatorForm.vue'
 import IndicatorUpdateForm from '@/components/plan/indicator/IndicatorUpdateForm.vue'
-import { getFiscalYear, getFiscalQuarter, FISCAL_QUARTER_LABELS } from '@/utils/thai'
+import { getFiscalQuarter, FISCAL_QUARTER_LABELS } from '@/utils/thai'
 
 const route = useRoute()
 const router = useRouter()
@@ -58,13 +68,51 @@ const showUpdateForm = ref(false)
 const updateFormLoading = ref(false)
 const selectedIndicatorForUpdate = ref<Indicator | null>(null)
 
-const currentFY = getFiscalYear()
 const currentQ = getFiscalQuarter()
+
+// Export
+const exportPeriod = ref('monthly')
+const periodOptions = [
+  { label: 'รายเดือน', value: 'monthly' },
+  { label: 'รายไตรมาส', value: 'quarterly' },
+  { label: 'รายปี', value: 'yearly' },
+]
+const exporting = ref(false)
+
+async function handleExportPDF() {
+  if (!plan.value) return
+  exporting.value = true
+  try {
+    await exportPlanPDF(plan.value.id, exportPeriod.value)
+    message.success('ส่งออก PDF สำเร็จ')
+  } catch {
+    message.error('ส่งออก PDF ไม่สำเร็จ')
+  } finally {
+    exporting.value = false
+  }
+}
+
+async function handleExportExcel() {
+  if (!plan.value) return
+  exporting.value = true
+  try {
+    await exportPlanExcel(plan.value.id, exportPeriod.value)
+    message.success('ส่งออก Excel สำเร็จ')
+  } catch {
+    message.error('ส่งออก Excel ไม่สำเร็จ')
+  } finally {
+    exporting.value = false
+  }
+}
 
 const totalIndicators = computed(() => {
   return strategies.value.reduce((sum, s) =>
     sum + (s.goals?.reduce((gs, g) => gs + (g.indicators?.length || 0), 0) || 0)
-  , 0)
+    , 0)
+})
+
+const totalGoals = computed(() => {
+  return strategies.value.reduce((sum, s) => sum + (s.goals?.length || 0), 0)
 })
 
 const passedIndicators = computed(() => 0)
@@ -98,7 +146,7 @@ onMounted(fetchPlan)
 async function handleAddStrategy(planId: string, payload: { name: string; description?: string; sortOrder?: number }) {
   try {
     await createStrategy(planId, payload)
-    message.success('เพิ่มกลยุทธ์สำเร็จ')
+    message.success('เพิ่มยุทธศาสตร์สำเร็จ')
     await fetchPlan()
   } catch (e) {
     message.error('ไม่สำเร็จ')
@@ -302,163 +350,374 @@ async function handleSaveUpdate(payload: {
   }
 }
 
-const STATUS_CONFIG: Record<string, { label: string; type: 'success' | 'warning' | 'info' | 'default' }> = {
-  active: { label: 'กำลังดำเนินการ', type: 'info' },
-  draft: { label: 'ร่าง', type: 'warning' },
-  completed: { label: 'เสร็จสิ้น', type: 'success' },
+const STATUS_CONFIG: Record<string, { label: string; type: 'success' | 'warning' | 'info' | 'default'; color: string }> = {
+  active: { label: 'กำลังดำเนินการ', type: 'info', color: '#18A058' },
+  draft: { label: 'ร่าง', type: 'warning', color: '#F0A020' },
+  completed: { label: 'เสร็จสิ้น', type: 'success', color: '#18A058' },
 }
+
+const progressColor = computed(() => {
+  const pct = progressData.value?.overallProgress || 0
+  if (pct >= 80) return '#18A058'
+  if (pct >= 50) return '#F0A020'
+  return '#D03050'
+})
 </script>
 
 <template>
   <NSpin :show="loading">
     <div v-if="plan" class="plan-detail">
-      <div class="page-header">
-        <div class="header-left">
-          <NButton quaternary circle @click="router.push({ name: 'plans' })">
-            <template #icon><NIcon><ArrowBackOutline /></NIcon></template>
-          </NButton>
-          <div>
-            <h1 class="page-title">{{ plan.name }}</h1>
-            <NText depth="3" class="page-subtitle">
-              ปีงบประมาณ {{ plan.year }} | {{ totalIndicators }} ตัวชี้วัด
-            </NText>
+      <!-- Hero Header -->
+      <div class="plan-hero">
+        <div class="hero-content">
+          <div class="hero-top">
+            <NButton quaternary circle @click="router.push({ name: 'plans' })" class="back-btn">
+              <template #icon>
+                <NIcon>
+                  <ArrowBackOutline />
+                </NIcon>
+              </template>
+            </NButton>
+            <NTag :bordered="false" :type="STATUS_CONFIG[plan.status]?.type || 'default'" size="large" round>
+              {{ STATUS_CONFIG[plan.status]?.label || plan.status }}
+            </NTag>
+          </div>
+          <h1 class="plan-title">{{ plan.name }}</h1>
+          <div class="plan-meta">
+            <span class="meta-item">
+              <NIcon :size="16">
+                <TimeOutline />
+              </NIcon>
+              ปีงบประมาณ {{ plan.year }}
+            </span>
+            <span class="meta-sep">|</span>
+            <span class="meta-item">
+              <NIcon :size="16">
+                <GitNetworkOutline />
+              </NIcon>
+              {{ strategies.length }} กลยุทธ์
+            </span>
+            <span class="meta-sep">|</span>
+            <span class="meta-item">
+              <NIcon :size="16">
+                <TrendingUpOutline />
+              </NIcon>
+              {{ totalGoals }} เป้าหมาย
+            </span>
+            <span class="meta-sep">|</span>
+            <span class="meta-item">
+              <NIcon :size="16">
+                <AnalyticsOutline />
+              </NIcon>
+              {{ totalIndicators }} ตัวชี้วัด
+            </span>
           </div>
         </div>
-        <NTag :bordered="false" :type="STATUS_CONFIG[plan.status]?.type || 'default'">
-          {{ STATUS_CONFIG[plan.status]?.label || plan.status }}
-        </NTag>
       </div>
 
-      <!-- Overview Stats -->
-      <div class="overview-bar">
-        <div class="overview-stat">
-          <NIcon :size="20" color="var(--color-primary)"><TrendingUpOutline /></NIcon>
-          <div>
-            <NText depth="3" class="overview-label">ความคืบหน้ารวม</NText>
-            <div class="overview-value">{{ progressData?.overallProgress || 0 }}%</div>
-          </div>
-        </div>
-        <div class="overview-divider" />
-        <div class="overview-stat">
-          <NIcon :size="20" color="var(--color-success)"><CheckmarkDoneOutline /></NIcon>
-          <div>
-            <NText depth="3" class="overview-label">ตัวชี้วัดที่ผ่านเป้า</NText>
-            <div class="overview-value">{{ passedIndicators }} / {{ totalIndicators }}</div>
-          </div>
-        </div>
-        <div class="overview-divider" />
-        <div class="overview-stat">
-          <NIcon :size="20" color="var(--color-warning)"><TimeOutline /></NIcon>
-          <div>
-            <NText depth="3" class="overview-label">ไตรมาสปัจจุบัน</NText>
-            <div class="overview-value">{{ FISCAL_QUARTER_LABELS[currentQ] }}</div>
-          </div>
-        </div>
-      </div>
+      <!-- Stats Cards -->
+      <NGrid :cols="4" :x-gap="16" :y-gap="16" responsive="screen" :item-responsive="true" class="stats-grid">
+        <NGi :span="1">
+          <NCard class="stat-card stat-progress" embedded>
+            <div class="stat-inner">
+              <div class="stat-header">
+                <NIcon :size="20" color="#FF6600">
+                  <TrendingUpOutline />
+                </NIcon>
+                <span class="stat-label">ความคืบหน้ารวม</span>
+              </div>
+              <div class="stat-value-row">
+                <NStatistic tabular-nums>
+                  <template #default>
+                    <span class="stat-value" :style="{ color: progressColor }">
+                      {{ progressData?.overallProgress || 0 }}%
+                    </span>
+                  </template>
+                </NStatistic>
+              </div>
+              <NProgress type="line" :percentage="progressData?.overallProgress || 0" :color="progressColor"
+                :show-indicator="false" :height="6" :border-radius="3" class="stat-progress-bar" />
+            </div>
+          </NCard>
+        </NGi>
+        <NGi :span="1">
+          <NCard class="stat-card stat-indicators" embedded>
+            <div class="stat-inner">
+              <div class="stat-header">
+                <NIcon :size="20" color="#18A058">
+                  <CheckmarkDoneOutline />
+                </NIcon>
+                <span class="stat-label">ตัวชี้วัดที่ผ่านเป้า</span>
+              </div>
+              <div class="stat-value-row">
+                <NStatistic tabular-nums>
+                  <template #default>
+                    <span class="stat-value success">{{ passedIndicators }}</span>
+                  </template>
+                </NStatistic>
+                <span class="stat-divider">/</span>
+                <span class="stat-total">{{ totalIndicators }}</span>
+              </div>
+            </div>
+          </NCard>
+        </NGi>
+        <NGi :span="1">
+          <NCard class="stat-card stat-quarter" embedded>
+            <div class="stat-inner">
+              <div class="stat-header">
+                <NIcon :size="20" color="#F0A020">
+                  <TimeOutline />
+                </NIcon>
+                <span class="stat-label">ไตรมาสปัจจุบัน</span>
+              </div>
+              <div class="stat-value-row">
+                <NStatistic tabular-nums>
+                  <template #default>
+                    <span class="stat-value warning">{{ FISCAL_QUARTER_LABELS[currentQ] }}</span>
+                  </template>
+                </NStatistic>
+              </div>
+            </div>
+          </NCard>
+        </NGi>
+        <NGi :span="1">
+          <NCard class="stat-card stat-export" embedded>
+            <div class="stat-inner">
+              <div class="stat-header">
+                <span class="stat-label">ส่งออกรายงาน</span>
+              </div>
+              <div class="export-controls">
+                <NSelect v-model:value="exportPeriod" :options="periodOptions" size="small" class="period-select" />
+                <NButtonGroup size="small">
+                  <NButton :loading="exporting" @click="handleExportPDF" class="export-btn">
+                    <template #icon>
+                      <NIcon>
+                        <DocumentTextOutline />
+                      </NIcon>
+                    </template>
+                    PDF
+                  </NButton>
+                  <NButton :loading="exporting" @click="handleExportExcel" class="export-btn">
+                    <template #icon>
+                      <NIcon>
+                        <GridOutline />
+                      </NIcon>
+                    </template>
+                    Excel
+                  </NButton>
+                </NButtonGroup>
+              </div>
+            </div>
+          </NCard>
+        </NGi>
+      </NGrid>
+
+      <NDivider />
 
       <!-- 4-Level Hierarchy: Strategy → Goal → Indicator -->
-      <StrategyList
-        :plan-id="plan.id"
-        :plan-status="plan.status"
-        :strategies="strategies"
-        :loading="loading"
-        @refresh="fetchPlan"
-        @add-strategy="handleAddStrategy"
-        @edit-strategy="handleEditStrategy"
-        @delete-strategy="handleDeleteStrategy"
-        @add-goal="handleAddGoal"
-        @edit-goal="handleEditGoal"
-        @delete-goal="confirmDeleteGoal"
-        @add-indicator="openAddIndicator"
-        @edit-indicator="openEditIndicator"
-        @delete-indicator="confirmDeleteIndicator"
-        @add-update="openAddUpdate"
-        @reverted="fetchPlan"
-      />
+      <div class="strategy-section">
+        <h2 class="section-title">
+          <NIcon :size="20" color="#FF6600">
+            <GitNetworkOutline />
+          </NIcon>
+          โครงสร้างแผนงาน
+        </h2>
+        <StrategyList :plan-id="plan.id" :plan-status="plan.status" :strategies="strategies" :loading="loading"
+          @refresh="fetchPlan" @add-strategy="handleAddStrategy" @edit-strategy="handleEditStrategy"
+          @delete-strategy="confirmDeleteStrategy" @add-goal="handleAddGoal" @edit-goal="handleEditGoal"
+          @delete-goal="confirmDeleteGoal" @add-indicator="openAddIndicator" @edit-indicator="openEditIndicator"
+          @delete-indicator="confirmDeleteIndicator" @add-update="openAddUpdate" @reverted="fetchPlan" />
+      </div>
     </div>
   </NSpin>
 
   <!-- Indicator Form Modal -->
-  <IndicatorForm
-    v-model:show="showIndicatorForm"
-    :indicator="editingIndicator"
-    :loading="indicatorFormLoading"
-    @save="handleSaveIndicator"
-  />
+  <IndicatorForm v-model:show="showIndicatorForm" :indicator="editingIndicator" :loading="indicatorFormLoading"
+    @save="handleSaveIndicator" />
 
   <!-- Indicator Update Form Modal -->
-  <IndicatorUpdateForm
-    v-if="selectedIndicatorForUpdate"
-    v-model:show="showUpdateForm"
-    :indicator-id="selectedIndicatorForUpdate.id"
-    :indicator-name="selectedIndicatorForUpdate.name"
-    :target-value="selectedIndicatorForUpdate.targetValue"
-    :loading="updateFormLoading"
-    @save="handleSaveUpdate"
-  />
+  <IndicatorUpdateForm v-if="selectedIndicatorForUpdate" v-model:show="showUpdateForm"
+    :indicator-id="selectedIndicatorForUpdate.id" :indicator-name="selectedIndicatorForUpdate.name"
+    :target-value="selectedIndicatorForUpdate.targetValue" :loading="updateFormLoading" @save="handleSaveUpdate" />
 </template>
 
 <style scoped>
 .plan-detail {
   display: flex;
   flex-direction: column;
-  gap: var(--space-lg);
+  gap: var(--space-md);
 }
 
-.page-header {
+/* Hero Header */
+.plan-hero {
+  background: linear-gradient(135deg, #FF6600 0%, #FF8533 100%);
+  border-radius: var(--radius-xl);
+  padding: var(--space-lg);
+  color: white;
+}
+
+.hero-content {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+}
+
+.hero-top {
   display: flex;
   justify-content: space-between;
-  align-items: flex-start;
+  align-items: center;
 }
 
-.header-left {
+.back-btn {
+  color: white !important;
+  --n-text-color-hover: rgba(255, 255, 255, 0.85) !important;
+  --n-text-color-pressed: rgba(255, 255, 255, 0.7) !important;
+}
+
+.plan-title {
+  font-size: var(--text-2xl);
+  font-weight: 700;
+  color: white;
+  line-height: var(--leading-tight);
+  margin: 0;
+}
+
+.plan-meta {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   gap: var(--space-sm);
+  flex-wrap: wrap;
+  opacity: 0.9;
+  font-size: var(--text-sm);
 }
 
-.page-title {
+.meta-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2xs);
+}
+
+.meta-sep {
+  opacity: 0.5;
+}
+
+/* Stats Cards - Equal Height Grid */
+.stats-grid {
+  display: flex;
+}
+
+.stats-grid>* {
+  display: flex;
+}
+
+.stat-card {
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  cursor: default;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.stat-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+}
+
+.stat-inner {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+  flex: 1;
+}
+
+.stat-header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+}
+
+.stat-label {
+  font-size: var(--text-xs);
+  color: var(--color-text-secondary, #666);
+  font-weight: 500;
+}
+
+.stat-value-row {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2xs);
+}
+
+.stat-value {
   font-size: var(--text-xl);
   font-weight: 700;
-  color: var(--color-text);
-  line-height: var(--leading-tight);
 }
 
-.page-subtitle {
-  font-size: var(--text-sm);
-  margin-top: var(--space-2xs);
+.stat-value.success {
+  color: #18A058;
 }
 
-.overview-bar {
+.stat-value.warning {
+  color: #F0A020;
+}
+
+.stat-divider {
+  font-size: var(--text-lg);
+  color: var(--color-text-secondary, #666);
+}
+
+.stat-total {
+  font-size: var(--text-md);
+  color: var(--color-text-secondary, #666);
+}
+
+.stat-progress-bar {
+  margin-top: auto;
+  /* Push to bottom for alignment */
+}
+
+/* Export Controls */
+.export-controls {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+}
+
+.period-select {
+  width: 100%;
+}
+
+.export-btn {
+  flex: 1;
+}
+
+/* Section */
+.strategy-section {
+  margin-top: var(--space-sm);
+}
+
+.section-title {
   display: flex;
   align-items: center;
-  gap: var(--space-lg);
-  padding: var(--space-md) var(--space-lg);
-  background: var(--color-surface);
-  border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-sm);
-}
-
-.overview-stat {
-  display: flex;
-  align-items: center;
-  gap: var(--space-sm);
-}
-
-.overview-label {
-  font-size: var(--text-xs);
-  display: block;
-}
-
-.overview-value {
+  gap: var(--space-xs);
   font-size: var(--text-md);
   font-weight: 600;
   color: var(--color-text);
+  margin-bottom: var(--space-md);
 }
 
-.overview-divider {
-  width: 1px;
-  height: 36px;
-  background: var(--color-border);
+/* Responsive */
+@media (max-width: 768px) {
+  .plan-hero {
+    padding: var(--space-md);
+  }
+
+  .plan-title {
+    font-size: var(--text-lg);
+  }
+
+  .plan-meta {
+    font-size: var(--text-xs);
+  }
 }
 </style>

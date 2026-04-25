@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, watch } from 'vue'
 import { NCollapse, NCollapseItem, NButton, NIcon, useMessage } from 'naive-ui'
 import { AddOutline } from '@vicons/ionicons5'
 import type { Strategy, Goal } from '@/types/plan'
@@ -42,9 +42,17 @@ const goalFormLoading = ref(false)
 
 const expandedStrategies = ref<string[]>([])
 
+// Expand all strategies by default
 if (props.strategies.length > 0 && expandedStrategies.value.length === 0) {
-  expandedStrategies.value = [props.strategies[0].id]
+  expandedStrategies.value = props.strategies.map(s => s.id)
 }
+
+// Watch for strategies changes and expand all
+watch(() => props.strategies, (newStrategies) => {
+  if (newStrategies.length > 0 && expandedStrategies.value.length === 0) {
+    expandedStrategies.value = newStrategies.map(s => s.id)
+  }
+}, { immediate: true })
 
 function openAddStrategy() {
   editingStrategy.value = null
@@ -158,68 +166,43 @@ function handleAddIndicatorFromCard(goalId: string, payload: any) {
 <template>
   <div class="strategy-list">
     <div class="strategy-list-header">
-      <NButton
-        v-if="planStatus !== 'completed'"
-        type="primary"
-        size="small"
-        @click="openAddStrategy"
-      >
-        <template #icon><NIcon><AddOutline /></NIcon></template>
-        เพิ่มกลยุทธ์
+      <NButton v-if="planStatus !== 'completed'" type="primary" size="small" @click="openAddStrategy">
+        <template #icon>
+          <NIcon>
+            <AddOutline />
+          </NIcon>
+        </template>
+        เพิ่มยุทธศาสตร์
       </NButton>
     </div>
 
-    <NCollapse
-      v-if="strategies.length > 0"
-      :expanded-names="expandedStrategies"
-      @update:expanded-names="(val) => (expandedStrategies = val)"
-    >
-      <NCollapseItem
-        v-for="strategy in strategies"
-        :key="strategy.id"
-        :name="strategy.id"
-      >
+    <NCollapse v-if="strategies.length > 0" :expanded-names="expandedStrategies"
+      @update:expanded-names="(val) => (expandedStrategies = val)">
+      <NCollapseItem v-for="strategy in strategies" :key="strategy.id" :name="strategy.id">
         <template #header>
           <div class="collapse-header">
             <span class="strategy-code-badge">{{ strategy.code }}</span>
             <span class="strategy-label">{{ strategy.name }}</span>
           </div>
         </template>
-        <StrategyCard
-          :strategy="strategy"
-          :plan-status="planStatus"
-          @edit="handleEditFromCard"
-          @delete="handleDeleteFromCard"
-          @add-goal="handleAddGoalFromCard"
-          @edit-goal="(_id, _payload) => openEditGoalViaGoalId(_id)"
-          @delete-goal="confirmDeleteGoal"
-          @add-indicator="handleAddIndicatorFromCard"
-          @edit-indicator="(_id) => openEditIndicator(_id)"
-          @delete-indicator="confirmDeleteIndicator"
-          @add-update="(_id) => emit('addUpdate', _id)"
-          @reverted="emit('reverted')"
-        />
+        <StrategyCard :strategy="strategy" :plan-status="planStatus" @edit="handleEditFromCard"
+          @delete="handleDeleteFromCard" @add-goal="handleAddGoalFromCard"
+          @edit-goal="(_id, _payload) => openEditGoalViaGoalId(_id)" @delete-goal="confirmDeleteGoal"
+          @add-indicator="handleAddIndicatorFromCard" @edit-indicator="(_id) => openEditIndicator(_id)"
+          @delete-indicator="confirmDeleteIndicator" @add-update="(_id) => emit('addUpdate', _id)"
+          @reverted="emit('reverted')" />
       </NCollapseItem>
     </NCollapse>
     <div v-else class="empty-state">
-      <p>ยังไม่มีกลยุทธ์ในแผนนี้</p>
-      <NButton size="small" @click="openAddStrategy">เพิ่มกลยุทธ์แรก</NButton>
+      <p>ยังไม่มียุทธศาสตร์ในแผนนี้</p>
+      <NButton size="small" @click="openAddStrategy">เพิ่มยุทธศาสตร์แรก</NButton>
     </div>
   </div>
 
-  <StrategyForm
-    v-model:show="showStrategyForm"
-    :strategy="editingStrategy"
-    :loading="strategyFormLoading"
-    @save="handleSaveStrategy"
-  />
+  <StrategyForm v-model:show="showStrategyForm" :strategy="editingStrategy" :loading="strategyFormLoading"
+    @save="handleSaveStrategy" />
 
-  <GoalForm
-    v-model:show="showGoalForm"
-    :goal="editingGoal"
-    :loading="goalFormLoading"
-    @save="handleSaveGoal"
-  />
+  <GoalForm v-model:show="showGoalForm" :goal="editingGoal" :loading="goalFormLoading" @save="handleSaveGoal" />
 </template>
 
 <style scoped>
@@ -238,8 +221,8 @@ function handleAddIndicatorFromCard(goalId: string, payload: any) {
 .strategy-code-badge {
   font-size: var(--text-xs);
   font-weight: 600;
-  background: var(--color-primary-bg);
-  color: var(--color-primary);
+  background: #FFF0E6;
+  color: #FF6600;
   padding: 2px 8px;
   border-radius: var(--radius-sm);
 }

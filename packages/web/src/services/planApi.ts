@@ -191,3 +191,35 @@ export async function exportIndicatorAuditLogs(indicatorId: string) {
   link.remove()
   window.URL.revokeObjectURL(url)
 }
+
+// ========== Plan Report Export ==========
+
+export async function exportPlanPDF(planId: string, period = 'monthly') {
+  const response = await api.get(`/plans/${planId}/export/pdf`, {
+    params: { period },
+    responseType: 'blob',
+  })
+  const url = window.URL.createObjectURL(new Blob([response.data]))
+  const link = document.createElement('a')
+  link.href = url
+  link.setAttribute('download', `plan-report-${planId}.pdf`)
+  document.body.appendChild(link)
+  link.click()
+  link.remove()
+  window.URL.revokeObjectURL(url)
+}
+
+export async function exportPlanExcel(planId: string, period = 'monthly') {
+  const response = await api.get(`/plans/${planId}/export/excel`, {
+    params: { period },
+    responseType: 'blob',
+  })
+  const url = window.URL.createObjectURL(new Blob([response.data]))
+  const link = document.createElement('a')
+  link.href = url
+  link.setAttribute('download', `plan-report-${planId}.xlsx`)
+  document.body.appendChild(link)
+  link.click()
+  link.remove()
+  window.URL.revokeObjectURL(url)
+}
