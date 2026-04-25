@@ -116,3 +116,26 @@ export interface PlanListItem {
   updatedAt: string;
   creatorName?: string;
 }
+
+// ===== Audit Trail =====
+
+export interface IndicatorAuditLogEntry {
+  id: string;
+  indicatorId: string;
+  changedBy: string;
+  changedByName?: string;
+  changedAt: string;
+  action: 'created' | 'updated' | 'deleted' | 'reverted';
+  fieldName?: string;
+  oldValue?: string;
+  newValue?: string;
+  reason?: string;
+}
+
+export interface IndicatorAuditLogResponse {
+  data: IndicatorAuditLogEntry[];
+  total: number;
+  page: number;
+  pageSize: number;
+  totalPages: number;
+}

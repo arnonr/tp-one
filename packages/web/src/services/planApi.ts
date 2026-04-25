@@ -161,3 +161,33 @@ export async function getPlanProgress(planId: string) {
   const { data } = await api.get(`/plans/${planId}/progress`)
   return data as PlanProgress
 }
+
+// ========== Indicator Audit Trail ==========
+export async function getIndicatorAuditLogs(indicatorId: string, page = 1, pageSize = 20) {
+  const { data } = await api.get(`/plans/indicators/${indicatorId}/audit-logs`, {
+    params: { page, pageSize },
+  })
+  return data as import('@/types/plan').IndicatorAuditLogResponse
+}
+
+export async function revertIndicator(indicatorId: string, auditLogId: string, reason: string) {
+  const { data } = await api.post(`/plans/indicators/${indicatorId}/revert`, {
+    auditLogId,
+    reason,
+  })
+  return data
+}
+
+export async function exportIndicatorAuditLogs(indicatorId: string) {
+  const response = await api.get(`/plans/indicators/${indicatorId}/audit-logs/export`, {
+    responseType: 'blob',
+  })
+  const url = window.URL.createObjectURL(new Blob([response.data]))
+  const link = document.createElement('a')
+  link.href = url
+  link.setAttribute('download', 'indicator-audit-log.xlsx')
+  document.body.appendChild(link)
+  link.click()
+  link.remove()
+  window.URL.revokeObjectURL(url)
+}
