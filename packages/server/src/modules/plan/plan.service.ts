@@ -14,6 +14,7 @@ import {
 } from '../../db/schema/indicator-updates';
 import { annualPlans } from '../../db/schema/annual-plans';
 import { users } from '../../db/schema/users';
+import { planIndicatorAuditLogs } from '../../db/schema/plan-indicator-audit-logs';
 import { eq, and, desc, asc, count, inArray, sql } from 'drizzle-orm';
 import { NotFoundError, ValidationError } from '../../shared/errors';
 import {
@@ -437,7 +438,7 @@ export const planService = {
       .orderBy(asc(indicators.sortOrder), asc(indicators.createdAt));
   },
 
-  async createIndicator(goalId: string, data: CreateIndicatorInput) {
+  async createIndicator(goalId: string, data: CreateIndicatorInput, createdById: string) {
     await resolveGoal(goalId);
     if (!data.name?.trim()) throw new ValidationError('name is required');
     if (!data.targetValue?.trim()) throw new ValidationError('targetValue is required');
@@ -457,30 +458,81 @@ export const planService = {
         sortOrder: data.sortOrder ?? 0,
       })
       .returning();
+
+    await db.insert(planIndicatorAuditLogs).values({
+      indicatorId: indicator.id,
+      changedBy: createdById,
+      action: 'created',
+      newValue: JSON.stringify({
+        name: indicator.name,
+        description: indicator.description,
+        targetValue: indicator.targetValue,
+        unit: indicator.unit,
+        indicatorType: indicator.indicatorType,
+        weight: indicator.weight,
+        sortOrder: indicator.sortOrder,
+      }),
+    });
+
     return indicator;
   },
 
-  async updateIndicator(indicatorId: string, data: UpdateIndicatorInput) {
-    await resolveIndicator(indicatorId);
+  async updateIndicator(indicatorId: string, data: UpdateIndicatorInput, updatedById: string) {
+    const current = await resolveIndicator(indicatorId);
+
+    const updates: Record<string, unknown> = {
+      ...(data.name !== undefined && { name: data.name.trim() }),
+      ...(data.description !== undefined && { description: data.description?.trim() }),
+      ...(data.targetValue !== undefined && { targetValue: data.targetValue }),
+      ...(data.unit !== undefined && { unit: data.unit }),
+      ...(data.indicatorType !== undefined && { indicatorType: data.indicatorType as any }),
+      ...(data.weight !== undefined && { weight: data.weight }),
+      ...(data.sortOrder !== undefined && { sortOrder: data.sortOrder }),
+      updatedAt: new Date(),
+    };
+
     const [updated] = await db
       .update(indicators)
-      .set({
-        ...(data.name !== undefined && { name: data.name.trim() }),
-        ...(data.description !== undefined && { description: data.description?.trim() }),
-        ...(data.targetValue !== undefined && { targetValue: data.targetValue }),
-        ...(data.unit !== undefined && { unit: data.unit }),
-        ...(data.indicatorType !== undefined && { indicatorType: data.indicatorType as any }),
-        ...(data.weight !== undefined && { weight: data.weight }),
-        ...(data.sortOrder !== undefined && { sortOrder: data.sortOrder }),
-        updatedAt: new Date(),
-      })
+      .set(updates)
       .where(eq(indicators.id, indicatorId))
       .returning();
+
+    const trackableFields = ['name', 'description', 'targetValue', 'unit', 'indicatorType', 'weight', 'sortOrder'] as const;
+    const auditEntries = trackableFields
+      .filter((field) => data[field as keyof UpdateIndicatorInput] !== undefined)
+      .map((field) => ({
+        indicatorId,
+        changedBy: updatedById,
+        action: 'updated' as const,
+        fieldName: field,
+        oldValue: String(current[field as keyof typeof current] ?? ''),
+        newValue: String(updated[field as keyof typeof updated] ?? ''),
+      }));
+
+    if (auditEntries.length > 0) {
+      await db.insert(planIndicatorAuditLogs).values(auditEntries);
+    }
+
     return updated;
   },
 
-  async deleteIndicator(indicatorId: string) {
+  async deleteIndicator(indicatorId: string, deletedById: string) {
     const indicator = await resolveIndicator(indicatorId);
+
+    await db.insert(planIndicatorAuditLogs).values({
+      indicatorId,
+      changedBy: deletedById,
+      action: 'deleted',
+      oldValue: JSON.stringify({
+        name: indicator.name,
+        description: indicator.description,
+        targetValue: indicator.targetValue,
+        unit: indicator.unit,
+        indicatorType: indicator.indicatorType,
+        weight: indicator.weight,
+        sortOrder: indicator.sortOrder,
+      }),
+    });
 
     // delete updates first, then assignees, then indicator
     await db.delete(indicatorUpdates).where(eq(indicatorUpdates.indicatorId, indicatorId));

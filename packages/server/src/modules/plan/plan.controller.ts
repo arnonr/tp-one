@@ -161,32 +161,32 @@ export const planController = {
   },
 
   async createIndicator(
-    _user: { id: string; role: GlobalRole },
+    user: { id: string; role: GlobalRole },
     params: Record<string, string>,
     body: CreateIndicatorInput,
   ) {
     const { goalId } = parseParams(params);
     const { planService } = await import('./plan.service');
-    return planService.createIndicator(goalId!, body);
+    return planService.createIndicator(goalId!, body, user.id);
   },
 
   async updateIndicator(
-    _user: { id: string; role: GlobalRole },
+    user: { id: string; role: GlobalRole },
     params: Record<string, string>,
     body: UpdateIndicatorInput,
   ) {
     const { indicatorId } = parseParams(params);
     const { planService } = await import('./plan.service');
-    return planService.updateIndicator(indicatorId!, body);
+    return planService.updateIndicator(indicatorId!, body, user.id);
   },
 
   async deleteIndicator(
-    _user: { id: string; role: GlobalRole },
+    user: { id: string; role: GlobalRole },
     params: Record<string, string>,
   ) {
     const { indicatorId } = parseParams(params);
     const { planService } = await import('./plan.service');
-    return planService.deleteIndicator(indicatorId!);
+    return planService.deleteIndicator(indicatorId!, user.id);
   },
 
   // Assignee management
