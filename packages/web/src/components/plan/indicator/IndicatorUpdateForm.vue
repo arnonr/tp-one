@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, watch, computed } from 'vue'
+import { ref, watch } from 'vue'
 import {
   NModal,
   NCard,
@@ -12,8 +12,6 @@ import {
   NSpace,
   useMessage,
 } from 'naive-ui'
-import { formatThaiDate } from '@/utils/thai'
-import type { IndicatorUpdate } from '@/types/plan'
 
 const props = defineProps<{
   show: boolean
@@ -27,8 +25,7 @@ const emit = defineEmits<{
   'update:show': [value: boolean]
   save: [payload: {
     reportedValue: string
-    reportedMonth: number
-    reportedYear: number
+    reportedDate: string
     progressPct?: string
     note?: string
     evidenceUrl?: string
@@ -37,9 +34,7 @@ const emit = defineEmits<{
 
 const message = useMessage()
 
-// Display year in Buddhist Era (CE + 543)
 const now = new Date()
-const currentYear = now.getFullYear() + 543
 
 const form = ref({
   reportedDate: now.getTime(),
@@ -58,15 +53,6 @@ watch(() => props.show, (val) => {
       note: '',
       evidenceUrl: '',
     }
-  }
-})
-
-const selectedDate = computed(() => {
-  if (!form.value.reportedDate) return { month: 0, year: currentYear }
-  const d = new Date(form.value.reportedDate)
-  return {
-    month: d.getMonth() + 1,
-    year: d.getFullYear() + 543,
   }
 })
 
@@ -92,8 +78,7 @@ function handleSave() {
   }
   emit('save', {
     reportedValue: form.value.reportedValue.toString(),
-    reportedMonth: selectedDate.value.month,
-    reportedYear: selectedDate.value.year,
+    reportedDate: new Date(form.value.reportedDate).toISOString(),
     progressPct: form.value.progressPct?.toString(),
     note: form.value.note || undefined,
     evidenceUrl: form.value.evidenceUrl || undefined,

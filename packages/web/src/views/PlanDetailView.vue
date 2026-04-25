@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, computed } from "vue";
+import { ref, onMounted, computed } from 'vue'
 import {
   NCard,
   NText,
@@ -9,338 +9,304 @@ import {
   NTag,
   NProgress,
   NSpace,
-  NModal,
-  NForm,
-  NFormItem,
-  NInput,
-  NInputNumber,
-  NSelect,
   useMessage,
-} from "naive-ui";
+} from 'naive-ui'
 import {
   ArrowBackOutline,
   TrendingUpOutline,
   CheckmarkDoneOutline,
   TimeOutline,
-  AddOutline,
-  CreateOutline,
-  TrashOutline,
-  AddCircleOutline,
-} from "@vicons/ionicons5";
-import { useRoute, useRouter } from "vue-router";
-import { getPlan, getPlanProgress, createUpdate, createCategory, updateCategory, deleteCategory, createIndicator, updateIndicator, deleteIndicator, type AnnualPlan, type PlanCategory, type PlanIndicator } from "@/services/plan";
+} from '@vicons/ionicons5'
+import { useRoute, useRouter } from 'vue-router'
+import {
+  listStrategies,
+  createStrategy,
+  updateStrategy,
+  deleteStrategy,
+  createGoal,
+  updateGoal,
+  deleteGoal,
+  createIndicator,
+  updateIndicator,
+  deleteIndicator,
+  createIndicatorUpdate,
+  getPlanProgress,
+  getPlan,
+} from '@/services/planApi'
+import type { AnnualPlan, Strategy, Goal, Indicator, PlanProgress } from '@/types/plan'
+import StrategyList from '@/components/plan/strategy/StrategyList.vue'
+import IndicatorForm from '@/components/plan/indicator/IndicatorForm.vue'
+import IndicatorUpdateForm from '@/components/plan/indicator/IndicatorUpdateForm.vue'
+import { getFiscalYear, getFiscalQuarter, FISCAL_QUARTER_LABELS } from '@/utils/thai'
 
-const route = useRoute();
-const router = useRouter();
-const message = useMessage();
-const loading = ref(false);
+const route = useRoute()
+const router = useRouter()
+const message = useMessage()
+const loading = ref(false)
 
-const plan = ref<AnnualPlan | null>(null);
-const progressData = ref<{ progress: number; byCategory: Record<string, number> }>({ progress: 0, byCategory: {} });
-const totalIndicators = ref(0);
-const passedIndicators = ref(0);
+const plan = ref<AnnualPlan | null>(null)
+const strategies = ref<Strategy[]>([])
+const progressData = ref<PlanProgress | null>(null)
 
-// Update modal state
-const showUpdateModal = ref(false);
-const updateModalLoading = ref(false);
-const selectedIndicator = ref<PlanIndicator | null>(null);
-const updateForm = ref({ reportedMonth: 1, reportedYear: 2569, reportedValue: "", progressPct: "", note: "" });
-const indicatorUpdates = ref<Record<string, { reportedMonth: number; reportedYear: number; reportedValue: string; progressPct: string | null }[]>>({});
+// Form modals
+const showIndicatorForm = ref(false)
+const indicatorFormLoading = ref(false)
+const editingIndicator = ref<Indicator | null>(null)
+const selectedGoalForIndicator = ref<Goal | null>(null)
 
-// Category CRUD modal state
-const showCategoryModal = ref(false);
-const categoryModalLoading = ref(false);
-const editingCategory = ref<PlanCategory | null>(null);
-const categoryForm = ref({ code: "", name: "" });
+const showUpdateForm = ref(false)
+const updateFormLoading = ref(false)
+const selectedIndicatorForUpdate = ref<Indicator | null>(null)
 
-// Indicator CRUD modal state
-const showIndicatorModal = ref(false);
-const indicatorModalLoading = ref(false);
-const editingIndicator = ref<PlanIndicator | null>(null);
-const selectedCategoryForIndicator = ref<PlanCategory | null>(null);
-const indicatorForm = ref({ code: "", name: "", targetValue: "", unit: "", indicatorType: "amount", description: "" });
+const currentFY = getFiscalYear()
+const currentQ = getFiscalQuarter()
 
-const INDICATOR_TYPE_OPTIONS = [
-  { label: "จำนวน (amount)", value: "amount" },
-  { label: "จำนวนนับ (count)", value: "count" },
-  { label: "เปอร์เซ็นต์ (%)", value: "percentage" },
-];
+const totalIndicators = computed(() => {
+  return strategies.value.reduce((sum, s) =>
+    sum + (s.goals?.reduce((gs, g) => gs + (g.indicators?.length || 0), 0) || 0)
+  , 0)
+})
 
-const currentQuarter = computed(() => {
-  const m = new Date().getMonth() + 1;
-  if (m >= 10) return "Q1";
-  if (m >= 1 && m <= 3) return "Q2";
-  if (m >= 4 && m <= 6) return "Q3";
-  return "Q4";
-});
-
-const currentMonth = computed(() => new Date().getMonth() + 1);
-const currentYear = new Date().getFullYear() + 543;
-
-const STATUS_CONFIG: Record<string, { label: string; type: "success" | "warning" | "info" | "default" }> = {
-  active: { label: "กำลังดำเนินการ", type: "info" },
-  draft: { label: "ร่าง", type: "warning" },
-  completed: { label: "เสร็จสิ้น", type: "success" },
-};
-
-function getPercent(actual: number, target: number): number {
-  if (target === 0) return 0;
-  return Math.min(Math.round((actual / target) * 100), 100);
-}
-
-function getStatusType(actual: number, target: number): "success" | "warning" | "error" {
-  const pct = getPercent(actual, target);
-  if (pct >= 80) return "success";
-  if (pct >= 50) return "warning";
-  return "error";
-}
-
-function getCatProgress(catId: string): number {
-  return progressData.value.byCategory[catId] || 0;
-}
-
-function getIndicatorUpdates(indId: string) {
-  return indicatorUpdates.value[indId] || [];
-}
-
-async function fetchUpdatesForIndicator(planId: string, categoryId: string, indicatorId: string) {
-  try {
-    const { listUpdates } = await import("@/services/plan");
-    const updates = await listUpdates(planId, categoryId, indicatorId);
-    indicatorUpdates.value[indicatorId] = updates.map(u => ({
-      reportedMonth: u.reportedMonth,
-      reportedYear: u.reportedYear,
-      reportedValue: u.reportedValue,
-      progressPct: u.progressPct,
-    }));
-  } catch (e) {
-    // ignore
-  }
-}
+const passedIndicators = computed(() => 0)
 
 async function fetchPlan() {
-  loading.value = true;
+  loading.value = true
   try {
-    const id = route.params.id as string;
-    plan.value = await getPlan(id);
-    document.title = `${plan.value.name} — TP-One`;
+    const planId = route.params.id as string
+    plan.value = await getPlan(planId)
+    document.title = `${plan.value.name} — TP-One`
 
-    // fetch progress
+    strategies.value = await listStrategies(planId)
+
     try {
-      progressData.value = await getPlanProgress(id);
+      progressData.value = await getPlanProgress(planId)
     } catch (e) {
       // no progress yet
     }
+  } catch (e) {
+    message.error('โหลดแผนไม่สำเร็จ')
+    router.push({ name: 'plans' })
+  } finally {
+    loading.value = false
+  }
+}
 
-    // count indicators + fetch updates
-    let total = 0;
-    let passed = 0;
-    for (const cat of plan.value.categories || []) {
-      for (const ind of cat.indicators || []) {
-        total++;
-        await fetchUpdates(id, cat.id, ind);
+onMounted(fetchPlan)
+
+// ========== Strategy CRUD ==========
+
+async function handleAddStrategy(planId: string, payload: { name: string; description?: string; sortOrder?: number }) {
+  try {
+    await createStrategy(planId, payload)
+    message.success('เพิ่มกลยุทธ์สำเร็จ')
+    await fetchPlan()
+  } catch (e) {
+    message.error('ไม่สำเร็จ')
+  }
+}
+
+async function handleEditStrategy(strategyId: string, payload: { name?: string; description?: string; sortOrder?: number }) {
+  try {
+    await updateStrategy(strategyId, payload)
+    message.success('แก้ไขกลยุทธ์สำเร็จ')
+    await fetchPlan()
+  } catch (e) {
+    message.error('ไม่สำเร็จ')
+  }
+}
+
+function confirmDeleteStrategy(strategyId: string) {
+  const strategy = strategies.value.find(s => s.id === strategyId)
+  if (strategy && window.confirm(`ยืนยันลบกลยุทธ์ "${strategy.name}" และเป้าหมายภายใน?`)) {
+    handleDeleteStrategy(strategyId)
+  }
+}
+
+async function handleDeleteStrategy(strategyId: string) {
+  try {
+    await deleteStrategy(strategyId)
+    message.success('ลบกลยุทธ์สำเร็จ')
+    await fetchPlan()
+  } catch (e) {
+    message.error('ลบไม่สำเร็จ')
+  }
+}
+
+// ========== Goal CRUD ==========
+
+async function handleAddGoal(strategyId: string, payload: { name: string; description?: string; sortOrder?: number }) {
+  try {
+    await createGoal(strategyId, payload)
+    message.success('เพิ่มเป้าหมายสำเร็จ')
+    await fetchPlan()
+  } catch (e) {
+    message.error('ไม่สำเร็จ')
+  }
+}
+
+async function handleEditGoal(goalId: string, payload: { name?: string; description?: string; sortOrder?: number }) {
+  try {
+    await updateGoal(goalId, payload)
+    message.success('แก้ไขเป้าหมายสำเร็จ')
+    await fetchPlan()
+  } catch (e) {
+    message.error('ไม่สำเร็จ')
+  }
+}
+
+function confirmDeleteGoal(goalId: string) {
+  // Find goal name for confirmation
+  let goalName = ''
+  for (const strategy of strategies.value) {
+    const goal = strategy.goals?.find(g => g.id === goalId)
+    if (goal) {
+      goalName = goal.name
+      break
+    }
+  }
+  if (window.confirm(`ยืนยันลบเป้าหมาย "${goalName}" และตัวชี้วัดภายใน?`)) {
+    handleDeleteGoal(goalId)
+  }
+}
+
+async function handleDeleteGoal(goalId: string) {
+  try {
+    await deleteGoal(goalId)
+    message.success('ลบเป้าหมายสำเร็จ')
+    await fetchPlan()
+  } catch (e) {
+    message.error('ลบไม่สำเร็จ')
+  }
+}
+
+// ========== Indicator CRUD ==========
+
+function openAddIndicator(goalId: string, _payload: any) {
+  // Find goal across all strategies
+  for (const strategy of strategies.value) {
+    const goal = strategy.goals?.find(g => g.id === goalId)
+    if (goal) {
+      editingIndicator.value = null
+      selectedGoalForIndicator.value = goal
+      showIndicatorForm.value = true
+      return
+    }
+  }
+}
+
+function openEditIndicator(indicatorId: string) {
+  // Find indicator across all strategies/goals
+  for (const strategy of strategies.value) {
+    for (const goal of strategy.goals || []) {
+      const indicator = goal.indicators?.find(i => i.id === indicatorId)
+      if (indicator) {
+        editingIndicator.value = indicator
+        selectedGoalForIndicator.value = goal
+        showIndicatorForm.value = true
+        return
       }
     }
-    totalIndicators.value = total;
-    passedIndicators.value = passed;
-  } catch (e) {
-    message.error("โหลดแผนไม่สำเร็จ");
-    router.push({ name: "plans" });
-  } finally {
-    loading.value = false;
   }
 }
 
-async function fetchUpdates(planId: string, categoryId: string, ind: PlanIndicator) {
-  try {
-    const { listUpdates } = await import("@/services/plan");
-    const updates = await listUpdates(planId, categoryId, ind.id);
-    indicatorUpdates.value[ind.id] = updates.map(u => ({
-      reportedMonth: u.reportedMonth,
-      reportedYear: u.reportedYear,
-      reportedValue: u.reportedValue,
-      progressPct: u.progressPct,
-    }));
-    // check if passed
-    const latest = updates[updates.length - 1];
-    if (latest && parseFloat(latest.progressPct || '0') >= 80) passedIndicators.value++;
-  } catch (e) {
-    // ignore
-  }
-}
-
-function openUpdateModal(ind: PlanIndicator) {
-  selectedIndicator.value = ind;
-  updateForm.value = { reportedMonth: currentMonth.value, reportedYear: currentYear - 543, reportedValue: "", progressPct: "", note: "" };
-  showUpdateModal.value = true;
-}
-
-async function handleCreateUpdate() {
-  if (!selectedIndicator.value || !updateForm.value.reportedValue) {
-    message.warning("กรุณากรอกข้อมูลให้ครบ");
-    return;
-  }
-  updateModalLoading.value = true;
-  try {
-    const planId = route.params.id as string;
-    const cat = plan.value?.categories?.find(c => c.indicators.some(i => i.id === selectedIndicator.value?.id));
-    if (!cat) return;
-    await createUpdate(planId, cat.id, selectedIndicator.value.id, {
-      reportedMonth: updateForm.value.reportedMonth,
-      reportedYear: updateForm.value.reportedYear,
-      reportedValue: updateForm.value.reportedValue,
-      progressPct: updateForm.value.progressPct || undefined,
-      note: updateForm.value.note || undefined,
-    });
-    message.success("บันทึกรายงานสำเร็จ");
-    showUpdateModal.value = false;
-    await fetchPlan();
-  } catch (e) {
-    message.error("บันทึกไม่สำเร็จ");
-  } finally {
-    updateModalLoading.value = false;
-  }
-}
-
-// ===== Category CRUD =====
-
-function openAddCategoryModal() {
-  editingCategory.value = null;
-  categoryForm.value = { code: "", name: "" };
-  showCategoryModal.value = true;
-}
-
-function openEditCategoryModal(cat: PlanCategory) {
-  editingCategory.value = cat;
-  categoryForm.value = { code: cat.code, name: cat.name };
-  showCategoryModal.value = true;
-}
-
-async function handleSaveCategory() {
-  const planId = route.params.id as string;
-  if (!categoryForm.value.code.trim() || !categoryForm.value.name.trim()) {
-    message.warning("กรุณากรอกข้อมูลให้ครบ");
-    return;
-  }
-  categoryModalLoading.value = true;
-  try {
-    if (editingCategory.value) {
-      await updateCategory(editingCategory.value.id, { code: categoryForm.value.code, name: categoryForm.value.name }, planId);
-      message.success("แก้ไขหมวดหมู่สำเร็จ");
-    } else {
-      await createCategory(planId, { code: categoryForm.value.code, name: categoryForm.value.name });
-      message.success("เพิ่มหมวดหมู่สำเร็จ");
+function confirmDeleteIndicator(indicatorId: string) {
+  // Find indicator name for confirmation
+  let indicatorName = ''
+  for (const strategy of strategies.value) {
+    for (const goal of strategy.goals || []) {
+      const indicator = goal.indicators?.find(i => i.id === indicatorId)
+      if (indicator) {
+        indicatorName = indicator.name
+        break
+      }
     }
-    showCategoryModal.value = false;
-    await fetchPlan();
-  } catch (e) {
-    message.error("ไม่สำเร็จ");
-  } finally {
-    categoryModalLoading.value = false;
+  }
+  if (window.confirm(`ยืนยันลบตัวชี้วัด "${indicatorName}"?`)) {
+    handleDeleteIndicator(indicatorId)
   }
 }
 
-function confirmDeleteCategory(cat: PlanCategory) {
-  if (window.confirm(`ยืนยันลบหมวดหมู่ "${cat.name}" และตัวชี้วัดภายในหมวดนี้?`)) {
-    handleDeleteCategory(cat.id);
-  }
-}
+async function handleSaveIndicator(payload: {
+  name: string
+  description?: string
+  targetValue: string
+  unit?: string
+  indicatorType?: 'amount' | 'count' | 'percentage'
+  weight?: number
+}) {
+  if (!selectedGoalForIndicator.value) return
 
-async function handleDeleteCategory(categoryId: string) {
-  const planId = route.params.id as string;
-  try {
-    await deleteCategory(categoryId, planId);
-    message.success("ลบหมวดหมู่สำเร็จ");
-    await fetchPlan();
-  } catch (e) {
-    message.error("ลบไม่สำเร็จ");
-  }
-}
-
-// ===== Indicator CRUD =====
-
-function openAddIndicatorModal(cat: PlanCategory) {
-  selectedCategoryForIndicator.value = cat;
-  editingIndicator.value = null;
-  indicatorForm.value = { code: "", name: "", targetValue: "", unit: "", indicatorType: "amount", description: "" };
-  showIndicatorModal.value = true;
-}
-
-function openEditIndicatorModal(ind: PlanIndicator) {
-  editingIndicator.value = ind;
-  const cat = plan.value?.categories?.find(c => c.indicators.some(i => i.id === ind.id));
-  selectedCategoryForIndicator.value = cat || null;
-  indicatorForm.value = {
-    code: ind.code,
-    name: ind.name,
-    targetValue: ind.targetValue,
-    unit: ind.unit || "",
-    indicatorType: ind.indicatorType,
-    description: ind.description || "",
-  };
-  showIndicatorModal.value = true;
-}
-
-async function handleSaveIndicator() {
-  if (!selectedCategoryForIndicator.value) return;
-  const planId = route.params.id as string;
-  const categoryId = selectedCategoryForIndicator.value.id;
-  if (!indicatorForm.value.code.trim() || !indicatorForm.value.name.trim() || !indicatorForm.value.targetValue) {
-    message.warning("กรุณากรอกข้อมูลให้ครบ");
-    return;
-  }
-  indicatorModalLoading.value = true;
+  indicatorFormLoading.value = true
   try {
     if (editingIndicator.value) {
-      await updateIndicator(planId, categoryId, editingIndicator.value.id, {
-        code: indicatorForm.value.code,
-        name: indicatorForm.value.name,
-        targetValue: indicatorForm.value.targetValue,
-        unit: indicatorForm.value.unit || undefined,
-        indicatorType: indicatorForm.value.indicatorType,
-        description: indicatorForm.value.description || undefined,
-      });
-      message.success("แก้ไขตัวชี้วัดสำเร็จ");
+      await updateIndicator(editingIndicator.value.id, payload)
+      message.success('แก้ไขตัวชี้วัดสำเร็จ')
     } else {
-      await createIndicator(categoryId, planId, {
-        code: indicatorForm.value.code,
-        name: indicatorForm.value.name,
-        targetValue: indicatorForm.value.targetValue,
-        unit: indicatorForm.value.unit || undefined,
-        indicatorType: indicatorForm.value.indicatorType,
-        description: indicatorForm.value.description || undefined,
-      });
-      message.success("เพิ่มตัวชี้วัดสำเร็จ");
+      await createIndicator(selectedGoalForIndicator.value.id, payload)
+      message.success('เพิ่มตัวชี้วัดสำเร็จ')
     }
-    showIndicatorModal.value = false;
-    await fetchPlan();
+    showIndicatorForm.value = false
+    await fetchPlan()
   } catch (e) {
-    message.error("ไม่สำเร็จ");
+    message.error('ไม่สำเร็จ')
   } finally {
-    indicatorModalLoading.value = false;
+    indicatorFormLoading.value = false
   }
 }
 
-function confirmDeleteIndicator(ind: PlanIndicator) {
-  if (window.confirm(`ยืนยันลบตัวชี้วัด "${ind.name}"?`)) {
-    handleDeleteIndicator(ind);
-  }
-}
-
-async function handleDeleteIndicator(ind: PlanIndicator) {
-  const planId = route.params.id as string;
-  const cat = plan.value?.categories?.find(c => c.indicators.some(i => i.id === ind.id));
-  if (!cat) return;
+async function handleDeleteIndicator(indicatorId: string) {
   try {
-    await deleteIndicator(planId, cat.id, ind.id);
-    message.success("ลบตัวชี้วัดสำเร็จ");
-    await fetchPlan();
+    await deleteIndicator(indicatorId)
+    message.success('ลบตัวชี้วัดสำเร็จ')
+    await fetchPlan()
   } catch (e) {
-    message.error("ลบไม่สำเร็จ");
+    message.error('ลบไม่สำเร็จ')
   }
 }
 
-onMounted(fetchPlan);
+// ========== Indicator Update ==========
+
+function openAddUpdate(indicatorId: string) {
+  // Find indicator
+  for (const strategy of strategies.value) {
+    for (const goal of strategy.goals || []) {
+      const indicator = goal.indicators?.find(i => i.id === indicatorId)
+      if (indicator) {
+        selectedIndicatorForUpdate.value = indicator
+        showUpdateForm.value = true
+        return
+      }
+    }
+  }
+}
+
+async function handleSaveUpdate(payload: {
+  reportedValue: string
+  reportedDate: string
+  progressPct?: string
+  note?: string
+  evidenceUrl?: string
+}) {
+  if (!selectedIndicatorForUpdate.value) return
+
+  updateFormLoading.value = true
+  try {
+    await createIndicatorUpdate(selectedIndicatorForUpdate.value.id, payload)
+    message.success('บันทึกรายงานสำเร็จ')
+    showUpdateForm.value = false
+    await fetchPlan()
+  } catch (e) {
+    message.error('บันทึกไม่สำเร็จ')
+  } finally {
+    updateFormLoading.value = false
+  }
+}
+
+const STATUS_CONFIG: Record<string, { label: string; type: 'success' | 'warning' | 'info' | 'default' }> = {
+  active: { label: 'กำลังดำเนินการ', type: 'info' },
+  draft: { label: 'ร่าง', type: 'warning' },
+  completed: { label: 'เสร็จสิ้น', type: 'success' },
+}
 </script>
 
 <template>
@@ -369,7 +335,7 @@ onMounted(fetchPlan);
           <NIcon :size="20" color="var(--color-primary)"><TrendingUpOutline /></NIcon>
           <div>
             <NText depth="3" class="overview-label">ความคืบหน้ารวม</NText>
-            <div class="overview-value">{{ progressData.progress }}%</div>
+            <div class="overview-value">{{ progressData?.overallProgress || 0 }}%</div>
           </div>
         </div>
         <div class="overview-divider" />
@@ -385,166 +351,50 @@ onMounted(fetchPlan);
           <NIcon :size="20" color="var(--color-warning)"><TimeOutline /></NIcon>
           <div>
             <NText depth="3" class="overview-label">ไตรมาสปัจจุบัน</NText>
-            <div class="overview-value">{{ currentQuarter }}</div>
+            <div class="overview-value">{{ FISCAL_QUARTER_LABELS[currentQ] }}</div>
           </div>
         </div>
       </div>
 
-      <!-- Overall Progress -->
-      <NCard class="progress-card" :bordered="false">
-        <div class="progress-header">
-          <NText class="progress-title">ความคืบหน้ารวมทั้งแผน</NText>
-          <NButton size="small" type="primary" @click="openAddCategoryModal">
-            <template #icon><NIcon><AddCircleOutline /></NIcon></template>
-            เพิ่มหมวดหมู่
-          </NButton>
-        </div>
-        <NProgress type="line" :percentage="progressData.progress" :height="12" :border-radius="6" indicator-placement="inside">
-          {{ progressData.progress }}%
-        </NProgress>
-      </NCard>
-
-      <!-- Sections -->
-      <div v-for="(cat, catIdx) in plan.categories" :key="cat.id" class="plan-section">
-        <NCard class="section-card" :bordered="false">
-          <template #header>
-            <div class="section-header">
-              <div>
-                <NText class="section-title">{{ cat.code }}: {{ cat.name }}</NText>
-                <NText depth="3" class="section-subtitle">{{ cat.indicators.length }} ตัวชี้วัด</NText>
-              </div>
-              <NSpace :size="8" align="center">
-                <NProgress v-if="getCatProgress(cat.id) > 0" type="circle" :percentage="getCatProgress(cat.id)" :size="48" :stroke-width="4">
-                  {{ getCatProgress(cat.id) }}%
-                </NProgress>
-                <NButton size="tiny" quaternary @click="openAddIndicatorModal(cat)" :disabled="!plan || plan.status === 'completed'">
-                  <template #icon><NIcon><AddOutline /></NIcon></template>
-                </NButton>
-                <NButton size="tiny" quaternary @click="openEditCategoryModal(cat)">
-                  <template #icon><NIcon><CreateOutline /></NIcon></template>
-                </NButton>
-                <NButton size="tiny" quaternary type="error" @click="confirmDeleteCategory(cat)">
-                  <template #icon><NIcon><TrashOutline /></NIcon></template>
-                </NButton>
-              </NSpace>
-            </div>
-          </template>
-          <div class="indicator-list">
-            <div v-for="(ind, indIdx) in cat.indicators" :key="ind.id" class="indicator-row">
-              <div class="indicator-header">
-                <div class="indicator-id">{{ ind.code }}</div>
-                <div class="indicator-info">
-                  <div class="indicator-name">{{ ind.name }}</div>
-                  <NText depth="3" class="indicator-target">
-                    เป้าหมาย: {{ ind.targetValue }} {{ ind.unit || '' }}
-                  </NText>
-                </div>
-                <NSpace :size="4" no-wrap>
-                  <NButton size="small" quaternary @click="openUpdateModal(ind)">
-                    <template #icon><NIcon><AddOutline /></NIcon></template>
-                    รายงาน
-                  </NButton>
-                  <NButton size="small" quaternary @click="openEditIndicatorModal(ind)">
-                    <template #icon><NIcon><CreateOutline /></NIcon></template>
-                  </NButton>
-                  <NButton size="small" quaternary type="error" @click="confirmDeleteIndicator(ind)">
-                    <template #icon><NIcon><TrashOutline /></NIcon></template>
-                  </NButton>
-                </NSpace>
-              </div>
-              <!-- Indicator updates -->
-              <div v-if="getIndicatorUpdates(ind.id).length > 0" class="update-list">
-                <div v-for="(upd, upIdx) in getIndicatorUpdates(ind.id)" :key="upIdx" class="update-item">
-                  <div class="update-period">เดือน {{ upd.reportedMonth }} / {{ upd.reportedYear }}</div>
-                  <div class="update-value">{{ upd.reportedValue }} {{ ind.unit || '' }}</div>
-                  <NProgress v-if="upd.progressPct" type="line" :percentage="parseFloat(upd.progressPct)" :height="6" :border-radius="3" :show-indicator="false" />
-                  <NText v-if="upd.progressPct" depth="3" class="update-pct">{{ upd.progressPct }}%</NText>
-                </div>
-              </div>
-              <div v-else class="quarter-placeholder">
-                <NText depth="3" class="placeholder-text">ยังไม่มีข้อมูลรายงานประจำไตรมาส</NText>
-              </div>
-            </div>
-          </div>
-        </NCard>
-      </div>
+      <!-- 4-Level Hierarchy: Strategy → Goal → Indicator -->
+      <StrategyList
+        :plan-id="plan.id"
+        :plan-status="plan.status"
+        :strategies="strategies"
+        :loading="loading"
+        @refresh="fetchPlan"
+        @add-strategy="handleAddStrategy"
+        @edit-strategy="handleEditStrategy"
+        @delete-strategy="handleDeleteStrategy"
+        @add-goal="handleAddGoal"
+        @edit-goal="handleEditGoal"
+        @delete-goal="confirmDeleteGoal"
+        @add-indicator="openAddIndicator"
+        @edit-indicator="openEditIndicator"
+        @delete-indicator="confirmDeleteIndicator"
+        @add-update="openAddUpdate"
+      />
     </div>
   </NSpin>
 
-  <!-- Update Modal -->
-  <NModal v-model:show="showUpdateModal" preset="card" :title="`รายงานความคืบหน้า: ${selectedIndicator?.name || ''}`" style="width: 480px">
-    <NForm label-placement="top">
-      <NFormItem label="เดือนที่รายงาน">
-        <NInputNumber v-model:value="updateForm.reportedMonth" :min="1" :max="12" style="width: 100%" />
-      </NFormItem>
-      <NFormItem label="ปีที่รายงาน (พ.ศ.)">
-        <NInputNumber v-model:value="updateForm.reportedYear" :min="2500" :max="2600" style="width: 100%" />
-      </NFormItem>
-      <NFormItem label="ค่าที่รายงาน">
-        <NInput v-model:value="updateForm.reportedValue" placeholder="เช่น 85" />
-      </NFormItem>
-      <NFormItem label="เปอร์เซ็นต์ความคืบหน้า">
-        <NInput v-model:value="updateForm.progressPct" placeholder="เช่น 75" />
-      </NFormItem>
-      <NFormItem label="หมายเหตุ">
-        <NInput v-model:value="updateForm.note" type="textarea" placeholder="รายละเอียดเพิ่มเติม" :rows="2" />
-      </NFormItem>
-    </NForm>
-    <template #footer>
-      <NSpace justify="end">
-        <NButton @click="showUpdateModal = false">ยกเลิก</NButton>
-        <NButton type="primary" :loading="updateModalLoading" @click="handleCreateUpdate">บันทึก</NButton>
-      </NSpace>
-    </template>
-  </NModal>
+  <!-- Indicator Form Modal -->
+  <IndicatorForm
+    v-model:show="showIndicatorForm"
+    :indicator="editingIndicator"
+    :loading="indicatorFormLoading"
+    @save="handleSaveIndicator"
+  />
 
-  <!-- Category CRUD Modal -->
-  <NModal v-model:show="showCategoryModal" preset="card" :title="editingCategory ? 'แก้ไขหมวดหมู่' : 'เพิ่มหมวดหมู่ใหม่'" style="width: 420px">
-    <NForm label-placement="top">
-      <NFormItem label="รหัสหมวด">
-        <NInput v-model:value="categoryForm.code" placeholder="เช่น 1.1" />
-      </NFormItem>
-      <NFormItem label="ชื่อหมวดหมู่">
-        <NInput v-model:value="categoryForm.name" placeholder="เช่น การบริการวิชาการ" />
-      </NFormItem>
-    </NForm>
-    <template #footer>
-      <NSpace justify="end">
-        <NButton @click="showCategoryModal = false">ยกเลิก</NButton>
-        <NButton type="primary" :loading="categoryModalLoading" @click="handleSaveCategory">บันทึก</NButton>
-      </NSpace>
-    </template>
-  </NModal>
-
-  <!-- Indicator CRUD Modal -->
-  <NModal v-model:show="showIndicatorModal" preset="card" :title="editingIndicator ? 'แก้ไขตัวชี้วัด' : 'เพิ่มตัวชี้วัดใหม่'" style="width: 520px">
-    <NForm label-placement="top">
-      <NFormItem label="รหัสตัวชี้วัด">
-        <NInput v-model:value="indicatorForm.code" placeholder="เช่น 1.1.1" />
-      </NFormItem>
-      <NFormItem label="ชื่อตัวชี้วัด">
-        <NInput v-model:value="indicatorForm.name" placeholder="เช่น จำนวนผู้เช่าพื้นที่" />
-      </NFormItem>
-      <NFormItem label="เป้าหมาย">
-        <NInput v-model:value="indicatorForm.targetValue" placeholder="เช่น 30" />
-      </NFormItem>
-      <NFormItem label="หน่วย">
-        <NInput v-model:value="indicatorForm.unit" placeholder="เช่น ราย, ครั้ง, บาท" />
-      </NFormItem>
-      <NFormItem label="ประเภท">
-        <NSelect v-model:value="indicatorForm.indicatorType" :options="INDICATOR_TYPE_OPTIONS" />
-      </NFormItem>
-      <NFormItem label="รายละเอียด">
-        <NInput v-model:value="indicatorForm.description" type="textarea" placeholder="คำอธิบายตัวชี้วัด (ถ้ามี)" :rows="2" />
-      </NFormItem>
-    </NForm>
-    <template #footer>
-      <NSpace justify="end">
-        <NButton @click="showIndicatorModal = false">ยกเลิก</NButton>
-        <NButton type="primary" :loading="indicatorModalLoading" @click="handleSaveIndicator">บันทึก</NButton>
-      </NSpace>
-    </template>
-  </NModal>
+  <!-- Indicator Update Form Modal -->
+  <IndicatorUpdateForm
+    v-if="selectedIndicatorForUpdate"
+    v-model:show="showUpdateForm"
+    :indicator-id="selectedIndicatorForUpdate.id"
+    :indicator-name="selectedIndicatorForUpdate.name"
+    :target-value="selectedIndicatorForUpdate.targetValue"
+    :loading="updateFormLoading"
+    @save="handleSaveUpdate"
+  />
 </template>
 
 <style scoped>
@@ -609,142 +459,5 @@ onMounted(fetchPlan);
   width: 1px;
   height: 36px;
   background: var(--color-border);
-}
-
-.progress-card {
-  border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-sm);
-}
-
-.progress-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: var(--space-md);
-}
-
-.progress-title {
-  font-size: var(--text-sm);
-  font-weight: 500;
-  display: block;
-}
-
-.section-card {
-  border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-sm);
-}
-
-.section-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  width: 100%;
-}
-
-.section-title {
-  font-size: var(--text-md);
-  font-weight: 600;
-}
-
-.section-subtitle {
-  font-size: var(--text-xs);
-  display: block;
-  margin-top: 2px;
-}
-
-.indicator-list {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-md);
-}
-
-.indicator-row {
-  padding: var(--space-md);
-  border: 1px solid var(--color-border-light);
-  border-radius: var(--radius-md);
-  transition: border-color var(--duration-fast) var(--ease-out);
-}
-
-.indicator-row:hover {
-  border-color: var(--color-border);
-}
-
-.indicator-header {
-  display: flex;
-  align-items: center;
-  gap: var(--space-sm);
-  margin-bottom: var(--space-sm);
-}
-
-.indicator-id {
-  font-size: var(--text-xs);
-  font-weight: 600;
-  color: var(--color-primary);
-  background: var(--color-primary-bg);
-  padding: 2px 8px;
-  border-radius: var(--radius-sm);
-  flex-shrink: 0;
-}
-
-.indicator-info {
-  flex: 1;
-  min-width: 0;
-}
-
-.indicator-name {
-  font-size: var(--text-sm);
-  font-weight: 500;
-  color: var(--color-text);
-}
-
-.indicator-target {
-  font-size: var(--text-xs);
-}
-
-.update-list {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-sm);
-  margin-top: var(--space-sm);
-}
-
-.update-item {
-  display: flex;
-  align-items: center;
-  gap: var(--space-md);
-  padding: var(--space-sm) var(--space-md);
-  background: var(--color-surface-variant);
-  border-radius: var(--radius-sm);
-}
-
-.update-period {
-  font-size: var(--text-xs);
-  color: var(--color-text-secondary);
-  min-width: 80px;
-}
-
-.update-value {
-  font-size: var(--text-sm);
-  font-weight: 500;
-  flex: 1;
-}
-
-.update-pct {
-  font-size: var(--text-xs);
-  min-width: 40px;
-  text-align: right;
-}
-
-.quarter-placeholder {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: var(--space-sm);
-  background: var(--color-surface-variant);
-  border-radius: var(--radius-sm);
-}
-
-.placeholder-text {
-  font-size: var(--text-xs);
 }
 </style>

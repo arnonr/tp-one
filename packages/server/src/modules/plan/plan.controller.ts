@@ -21,6 +21,54 @@ function parseParams(params: Record<string, string | undefined>) {
 }
 
 export const planController = {
+  // Annual Plans
+
+  async listPlans(
+    _user: { id: string; role: GlobalRole },
+    _params: Record<string, string>,
+    query: { fiscalYear?: string; status?: string },
+  ) {
+    const { planService } = await import('./plan.service');
+    return planService.listPlans(query.fiscalYear ? parseInt(query.fiscalYear) : undefined, query.status);
+  },
+
+  async getPlan(
+    _user: { id: string; role: GlobalRole },
+    params: Record<string, string>,
+  ) {
+    const { planId } = parseParams(params);
+    const { planService } = await import('./plan.service');
+    return planService.getPlan(planId!);
+  },
+
+  async createPlan(
+    user: { id: string; role: GlobalRole },
+    _params: Record<string, string>,
+    body: { year: number; name: string; description?: string },
+  ) {
+    const { planService } = await import('./plan.service');
+    return planService.createPlan(body, user.userId);
+  },
+
+  async updatePlan(
+    _user: { id: string; role: GlobalRole },
+    params: Record<string, string>,
+    body: { name?: string; description?: string; status?: string },
+  ) {
+    const { planId } = parseParams(params);
+    const { planService } = await import('./plan.service');
+    return planService.updatePlan(planId!, body);
+  },
+
+  async deletePlan(
+    _user: { id: string; role: GlobalRole },
+    params: Record<string, string>,
+  ) {
+    const { planId } = parseParams(params);
+    const { planService } = await import('./plan.service');
+    return planService.deletePlan(planId!);
+  },
+
   // Strategy CRUD
 
   async listStrategies(
@@ -39,7 +87,7 @@ export const planController = {
   ) {
     const { planId } = parseParams(params);
     const { planService } = await import('./plan.service');
-    return planService.createStrategy(planId!, body, _user.id);
+    return planService.createStrategy(planId!, body, _user.userId);
   },
 
   async updateStrategy(
@@ -189,7 +237,7 @@ export const planController = {
   ) {
     const { indicatorId } = parseParams(params);
     const { planService } = await import('./plan.service');
-    return planService.createIndicatorUpdate(indicatorId!, user.id, body);
+    return planService.createIndicatorUpdate(indicatorId!, user.userId, body);
   },
 
   // Progress

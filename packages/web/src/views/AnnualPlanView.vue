@@ -15,21 +15,26 @@ import {
   NForm,
   NFormItem,
   NInput,
+  NTabs,
+  NTabPane,
+  NStatistic,
   useMessage,
 } from "naive-ui";
 import {
   AddCircleOutline,
   FilterOutline,
   EyeOutline,
-  CloseOutline,
   CreateOutline,
   TrashOutline,
 } from "@vicons/ionicons5";
 import { useRouter } from "vue-router";
 import { useFiscalYear } from "@/composables/useFiscalYear";
 import PageHeader from "@/components/common/PageHeader.vue";
-import type { DataTableColumns } from "naive-ui";
+import PlanOverviewCharts from "@/components/plan/PlanOverviewCharts.vue";
+import { getPlanProgress } from "@/services/planApi";
+import type { PlanProgress } from "@/types/plan";
 import { listPlans, createPlan, updatePlan, deletePlan, type PlanListItem } from "@/services/plan";
+import type { DataTableColumns } from "naive-ui";
 
 const router = useRouter();
 const message = useMessage();
@@ -37,18 +42,43 @@ const loading = ref(false);
 const { fyLabel, fyOptions, selectedFY } = useFiscalYear();
 
 const plans = ref<PlanListItem[]>([]);
+const progressMap = ref<Map<string, PlanProgress>>(new Map());
 const showModal = ref(false);
 const modalLoading = ref(false);
 const formData = ref({ year: selectedFY.value, name: "", description: "" });
 const showEditModal = ref(false);
 const editingPlan = ref<PlanListItem | null>(null);
 const editForm = ref({ name: "", description: "", status: "" as "" | "draft" | "active" | "completed" });
+const activeTab = ref("overview");
 
 const STATUS_CONFIG: Record<string, { label: string; type: "success" | "warning" | "info" | "default" }> = {
   active: { label: "กำลังดำเนินการ", type: "info" },
   draft: { label: "ร่าง", type: "warning" },
   completed: { label: "เสร็จสิ้น", type: "success" },
 };
+
+const stats = computed(() => {
+  const total = plans.value.length;
+  const active = plans.value.filter(p => p.status === "active").length;
+  const completed = plans.value.filter(p => p.status === "completed").length;
+  const progressValues = Array.from(progressMap.value.values());
+  const avgProgress = progressValues.length > 0
+    ? Math.round(progressValues.reduce((sum, p) => sum + p.overallProgress, 0) / progressValues.length)
+    : 0;
+  return { total, active, completed, avgProgress };
+});
+
+function getPlanProgressPct(planId: string): number | null {
+  const p = progressMap.value.get(planId);
+  return p ? Math.round(p.overallProgress) : null;
+}
+
+function progressColor(pct: number): string {
+  if (pct >= 75) return "#18A058";
+  if (pct >= 50) return "#2080F0";
+  if (pct >= 25) return "#F0A020";
+  return "#D03050";
+}
 
 const columns: DataTableColumns<PlanListItem> = [
   {
@@ -64,10 +94,30 @@ const columns: DataTableColumns<PlanListItem> = [
   {
     title: "สถานะ",
     key: "status",
-    width: 150,
+    width: 140,
     render: (row) => {
       const cfg = STATUS_CONFIG[row.status];
       return h(NTag, { bordered: false, size: "small", type: cfg?.type || "default" }, { default: () => cfg?.label || row.status });
+    },
+  },
+  {
+    title: "ความก้าวหน้า",
+    key: "progress",
+    width: 180,
+    render: (row) => {
+      const pct = getPlanProgressPct(row.id);
+      if (pct === null) return h("span", { style: "color: var(--color-text-tertiary)" }, "-");
+      return h("div", { style: "display: flex; align-items: center; gap: 8px" }, [
+        h(NProgress, {
+          type: "line",
+          percentage: pct,
+          indicatorPlacement: "inside",
+          color: progressColor(pct),
+          railColor: "var(--color-border)",
+          height: 16,
+          borderRadius: 4,
+        }),
+      ]);
     },
   },
   {
@@ -117,27 +167,32 @@ const columns: DataTableColumns<PlanListItem> = [
   },
 ];
 
-const tableData = computed(() =>
-  plans.value.map((p) => ({
-    ...p,
-    _render: {
-      name: h("div", { style: "min-width: 250px" }, [
-        h("div", { style: "font-weight: 500; color: var(--color-text)" }, p.name),
-        h("span", { style: "font-size: var(--text-xs); color: var(--color-text-secondary)" }, `ปี ${p.year}`),
-      ]),
-    },
-  }))
-);
+const tableData = computed(() => plans.value);
 
 async function fetchPlans() {
   loading.value = true;
   try {
     plans.value = await listPlans(selectedFY.value);
+    await fetchAllProgress();
   } catch (e) {
     message.error("โหลดแผนไม่สำเร็จ");
   } finally {
     loading.value = false;
   }
+}
+
+async function fetchAllProgress() {
+  const activePlans = plans.value.filter(p => p.status === "active" || p.status === "completed");
+  const results = await Promise.allSettled(
+    activePlans.map(p => getPlanProgress(p.id))
+  );
+  const map = new Map<string, PlanProgress>();
+  results.forEach((r, i) => {
+    if (r.status === "fulfilled" && r.value) {
+      map.set(activePlans[i].id, r.value);
+    }
+  });
+  progressMap.value = map;
 }
 
 async function handleCreate() {
@@ -182,8 +237,6 @@ async function handleEdit() {
 }
 
 function confirmDelete(plan: PlanListItem) {
-  message.warning(`กดปุ่มยืนยันเพื่อลบแผน: ${plan.name}`);
-  // Use NDialog for proper confirm, fallback to window.confirm
   if (window.confirm(`ยืนยันลบแผน "${plan.name}" หรือไม่?`)) {
     handleDelete(plan.id);
   }
@@ -207,6 +260,7 @@ onMounted(fetchPlans);
     <div class="plan-page">
       <PageHeader title="แผนปฏิบัติการรายปี" :subtitle="`${fyLabel} — ${plans.length} แผน`">
         <template #actions>
+          <NSelect v-model:value="selectedFY" :options="fyOptions" size="small" style="width: 160px" @update:value="fetchPlans" />
           <NButton type="primary" @click="showModal = true">
             <template #icon>
               <NIcon><AddCircleOutline /></NIcon>
@@ -216,26 +270,53 @@ onMounted(fetchPlans);
         </template>
       </PageHeader>
 
-      <!-- Filters -->
-      <NCard class="filter-card" :bordered="false">
-        <NSpace :size="12" align="center">
-          <NIcon :size="18" color="var(--color-text-tertiary)"><FilterOutline /></NIcon>
-          <NSelect v-model:value="selectedFY" :options="fyOptions" size="small" style="width: 160px" @update:value="fetchPlans" />
-        </NSpace>
-      </NCard>
+      <!-- Stats Cards -->
+      <div class="stats-row">
+        <NCard :bordered="false" class="stat-card">
+          <NStatistic label="แผนทั้งหมด" :value="stats.total" />
+        </NCard>
+        <NCard :bordered="false" class="stat-card">
+          <NStatistic label="กำลังดำเนินการ" :value="stats.active">
+            <template #suffix>
+              <span class="stat-suffix">แผน</span>
+            </template>
+          </NStatistic>
+        </NCard>
+        <NCard :bordered="false" class="stat-card">
+          <NStatistic label="เสร็จสิ้น" :value="stats.completed">
+            <template #suffix>
+              <span class="stat-suffix">แผน</span>
+            </template>
+          </NStatistic>
+        </NCard>
+        <NCard :bordered="false" class="stat-card">
+          <NStatistic label="ความก้าวหน้าเฉลี่ย" :value="stats.avgProgress">
+            <template #suffix>
+              <span class="stat-suffix">%</span>
+            </template>
+          </NStatistic>
+        </NCard>
+      </div>
 
-      <!-- Plan Table -->
-      <NCard class="table-card" :bordered="false">
-        <NDataTable
-          :columns="columns"
-          :data="tableData"
-          :bordered="false"
-          :single-line="false"
-          :row-key="(row: PlanListItem) => row.id"
-          :scroll-x="1000"
-          size="small"
-        />
-      </NCard>
+      <!-- Tabs: Overview / List -->
+      <NTabs v-model:value="activeTab" type="line" animated>
+        <NTabPane name="overview" tab="แผนภาพรวม">
+          <PlanOverviewCharts :plans="plans" />
+        </NTabPane>
+        <NTabPane name="list" tab="รายการแผน">
+          <NCard class="table-card" :bordered="false">
+            <NDataTable
+              :columns="columns"
+              :data="tableData"
+              :bordered="false"
+              :single-line="false"
+              :row-key="(row: PlanListItem) => row.id"
+              :scroll-x="1100"
+              size="small"
+            />
+          </NCard>
+        </NTabPane>
+      </NTabs>
     </div>
 
     <!-- Create Modal -->
@@ -293,9 +374,22 @@ onMounted(fetchPlans);
   gap: var(--space-md);
 }
 
-.filter-card {
+.stats-row {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: var(--space-sm);
+}
+
+.stat-card {
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-xs);
+  text-align: center;
+}
+
+.stat-suffix {
+  font-size: var(--text-sm);
+  color: var(--color-text-secondary);
+  margin-left: 4px;
 }
 
 .table-card {
@@ -303,14 +397,15 @@ onMounted(fetchPlans);
   box-shadow: var(--shadow-sm);
 }
 
-@media (max-width: 767px) {
-  .page-title {
-    font-size: var(--text-xl);
+@media (max-width: 1023px) {
+  .stats-row {
+    grid-template-columns: repeat(2, 1fr);
   }
+}
 
-  .page-header {
-    flex-wrap: wrap;
-    gap: var(--space-sm);
+@media (max-width: 639px) {
+  .stats-row {
+    grid-template-columns: 1fr;
   }
 }
 </style>

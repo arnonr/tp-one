@@ -131,24 +131,146 @@ async function generateIndicatorCode(goalId: string): Promise<string> {
 // ===== Strategy =====
 
 export const planService = {
+  // ===== Annual Plans =====
+
+  async listPlans(fiscalYear?: number, status?: string) {
+    let q = db.select().from(annualPlans);
+    if (fiscalYear) {
+      q = q.where(eq(annualPlans.year, fiscalYear));
+    }
+    if (status) {
+      q = q.where(eq(annualPlans.status, status as any));
+    }
+    return q.orderBy(desc(annualPlans.year));
+  },
+
+  async getPlan(planId: string) {
+    return resolvePlan(planId);
+  },
+
+  async createPlan(data: { year: number; name: string; description?: string }, createdById: string) {
+    if (!data.year) throw new ValidationError('year is required');
+    if (!data.name?.trim()) throw new ValidationError('name is required');
+
+    const [plan] = await db
+      .insert(annualPlans)
+      .values({
+        year: data.year,
+        name: data.name.trim(),
+        description: data.description?.trim(),
+        createdById,
+      })
+      .returning();
+    return plan;
+  },
+
+  async updatePlan(planId: string, data: { name?: string; description?: string; status?: string }) {
+    await resolvePlan(planId);
+    const [updated] = await db
+      .update(annualPlans)
+      .set({
+        ...(data.name !== undefined && { name: data.name.trim() }),
+        ...(data.description !== undefined && { description: data.description?.trim() }),
+        ...(data.status !== undefined && { status: data.status as any }),
+        updatedAt: new Date(),
+      })
+      .where(eq(annualPlans.id, planId))
+      .returning();
+    return updated;
+  },
+
+  async deletePlan(planId: string) {
+    await resolvePlan(planId);
+    await db.delete(annualPlans).where(eq(annualPlans.id, planId));
+    return { success: true };
+  },
+
   // Strategy CRUD
 
   async listStrategies(planId: string) {
     await resolvePlan(planId);
-    return db
-      .select({
-        id: strategies.id,
-        planId: strategies.planId,
-        code: strategies.code,
-        name: strategies.name,
-        description: strategies.description,
-        sortOrder: strategies.sortOrder,
-        createdAt: strategies.createdAt,
-        updatedAt: strategies.updatedAt,
-      })
+
+    const strategyRows = await db
+      .select()
       .from(strategies)
       .where(eq(strategies.planId, planId))
       .orderBy(asc(strategies.sortOrder), asc(strategies.createdAt));
+
+    if (strategyRows.length === 0) return [];
+
+    const strategyIds = strategyRows.map(s => s.id);
+
+    const goalRows = await db
+      .select()
+      .from(goals)
+      .where(inArray(goals.strategyId, strategyIds))
+      .orderBy(asc(goals.sortOrder), asc(goals.createdAt));
+
+    const goalIds = goalRows.map(g => g.id);
+
+    const indicatorRows = goalIds.length > 0
+      ? await db
+          .select()
+          .from(indicators)
+          .where(inArray(indicators.goalId, goalIds))
+          .orderBy(asc(indicators.sortOrder), asc(indicators.createdAt))
+      : [];
+
+    const indicatorIds = indicatorRows.map(i => i.id);
+
+    const assigneeRows = indicatorIds.length > 0
+      ? await db
+          .select({
+            indicatorId: indicatorAssignees.indicatorId,
+            userId: indicatorAssignees.userId,
+            userName: users.name,
+            userEmail: users.email,
+          })
+          .from(indicatorAssignees)
+          .leftJoin(users, eq(indicatorAssignees.userId, users.id))
+          .where(inArray(indicatorAssignees.indicatorId, indicatorIds))
+      : [];
+
+    // group indicators by goalId
+    const indicatorsByGoal = new Map<string, typeof indicatorRows>();
+    for (const ind of indicatorRows) {
+      const list = indicatorsByGoal.get(ind.goalId) ?? [];
+      list.push(ind);
+      indicatorsByGoal.set(ind.goalId, list);
+    }
+
+    // group assignees by indicatorId
+    const assigneesByIndicator = new Map<string, typeof assigneeRows>();
+    for (const a of assigneeRows) {
+      const list = assigneesByIndicator.get(a.indicatorId) ?? [];
+      list.push(a);
+      assigneesByIndicator.set(a.indicatorId, list);
+    }
+
+    // group goals by strategyId
+    const goalsByStrategy = new Map<string, typeof goalRows>();
+    for (const g of goalRows) {
+      const list = goalsByStrategy.get(g.strategyId) ?? [];
+      list.push(g);
+      goalsByStrategy.set(g.strategyId, list);
+    }
+
+    return strategyRows.map(s => ({
+      ...s,
+      goals: (goalsByStrategy.get(s.id) ?? []).map(g => ({
+        ...g,
+        indicators: (indicatorsByGoal.get(g.id) ?? []).map(ind => ({
+          ...ind,
+          weight: parseFloat(String(ind.weight ?? '1')),
+          targetValue: String(ind.targetValue),
+          assignees: (assigneesByIndicator.get(ind.id) ?? []).map(a => ({
+            id: a.userId,
+            name: a.userName,
+            email: a.userEmail,
+          })),
+        })),
+      })),
+    }));
   },
 
   async createStrategy(planId: string, data: CreateStrategyInput, createdById: string) {
@@ -211,7 +333,7 @@ export const planService = {
         await db.delete(indicators).where(inArray(indicators.id, indIds));
       }
       // delete goals
-      await db.delete(goals).where(inArray(goals.strategyId, strategyId));
+      await db.delete(goals).where(eq(goals.strategyId, strategyId));
     }
 
     await db.delete(strategies).where(eq(strategies.id, strategyId));
