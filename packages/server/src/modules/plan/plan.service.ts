@@ -16,6 +16,7 @@ import { annualPlans } from '../../db/schema/annual-plans';
 import { users } from '../../db/schema/users';
 import { planIndicatorAuditLogs } from '../../db/schema/plan-indicator-audit-logs';
 import { eq, and, desc, asc, count, inArray, sql } from 'drizzle-orm';
+import ExcelJS from 'exceljs';
 import { NotFoundError, ValidationError } from '../../shared/errors';
 import {
   getFiscalYear,
@@ -625,6 +626,171 @@ export const planService = {
       })
       .returning();
     return update;
+  },
+
+  async getIndicatorAuditLogs(indicatorId: string, page = 1, pageSize = 20) {
+    const offset = (page - 1) * pageSize;
+
+    const [logs, [{ count: total }]] = await Promise.all([
+      db
+        .select({
+          id: planIndicatorAuditLogs.id,
+          indicatorId: planIndicatorAuditLogs.indicatorId,
+          changedBy: planIndicatorAuditLogs.changedBy,
+          changedByName: users.name,
+          changedAt: planIndicatorAuditLogs.changedAt,
+          action: planIndicatorAuditLogs.action,
+          fieldName: planIndicatorAuditLogs.fieldName,
+          oldValue: planIndicatorAuditLogs.oldValue,
+          newValue: planIndicatorAuditLogs.newValue,
+          reason: planIndicatorAuditLogs.reason,
+        })
+        .from(planIndicatorAuditLogs)
+        .leftJoin(users, eq(planIndicatorAuditLogs.changedBy, users.id))
+        .where(eq(planIndicatorAuditLogs.indicatorId, indicatorId))
+        .orderBy(desc(planIndicatorAuditLogs.changedAt))
+        .limit(pageSize)
+        .offset(offset),
+      db
+        .select({ count: count() })
+        .from(planIndicatorAuditLogs)
+        .where(eq(planIndicatorAuditLogs.indicatorId, indicatorId)),
+    ]);
+
+    return {
+      data: logs,
+      total: Number(total),
+      page,
+      pageSize,
+      totalPages: Math.ceil(Number(total) / pageSize),
+    };
+  },
+
+  async revertIndicator(indicatorId: string, userId: string, auditLogId: string, reason: string) {
+    const indicator = await resolveIndicator(indicatorId);
+
+    const [auditLog] = await db
+      .select()
+      .from(planIndicatorAuditLogs)
+      .where(and(
+        eq(planIndicatorAuditLogs.id, auditLogId),
+        eq(planIndicatorAuditLogs.indicatorId, indicatorId),
+      ))
+      .limit(1);
+    if (!auditLog) throw new NotFoundError('Audit log', auditLogId);
+
+    const revertData: Record<string, unknown> = {};
+    if (auditLog.fieldName && auditLog.oldValue !== null) {
+      revertData[auditLog.fieldName] = auditLog.oldValue;
+    } else if (!auditLog.fieldName && auditLog.oldValue) {
+      const oldValues = JSON.parse(auditLog.oldValue);
+      if (oldValues.name !== undefined) revertData.name = oldValues.name;
+      if (oldValues.targetValue !== undefined) revertData.targetValue = oldValues.targetValue;
+      if (oldValues.unit !== undefined) revertData.unit = oldValues.unit;
+      if (oldValues.description !== undefined) revertData.description = oldValues.description;
+      if (oldValues.indicatorType !== undefined) revertData.indicatorType = oldValues.indicatorType;
+      if (oldValues.weight !== undefined) revertData.weight = oldValues.weight;
+      if (oldValues.sortOrder !== undefined) revertData.sortOrder = oldValues.sortOrder;
+    }
+
+    if (Object.keys(revertData).length === 0) {
+      throw new ValidationError('Nothing to revert');
+    }
+
+    const [updated] = await db
+      .update(indicators)
+      .set({ ...revertData, updatedAt: new Date() } as any)
+      .where(eq(indicators.id, indicatorId))
+      .returning();
+
+    await db.insert(planIndicatorAuditLogs).values({
+      indicatorId,
+      changedBy: userId,
+      action: 'reverted',
+      oldValue: JSON.stringify({
+        name: indicator.name,
+        targetValue: indicator.targetValue,
+        unit: indicator.unit,
+        description: indicator.description,
+      }),
+      newValue: JSON.stringify(revertData),
+      reason,
+    });
+
+    return updated;
+  },
+
+  async exportAuditLogs(indicatorId: string): Promise<Buffer> {
+    const logs = await db
+      .select({
+        changedAt: planIndicatorAuditLogs.changedAt,
+        changedByName: users.name,
+        action: planIndicatorAuditLogs.action,
+        fieldName: planIndicatorAuditLogs.fieldName,
+        oldValue: planIndicatorAuditLogs.oldValue,
+        newValue: planIndicatorAuditLogs.newValue,
+        reason: planIndicatorAuditLogs.reason,
+      })
+      .from(planIndicatorAuditLogs)
+      .leftJoin(users, eq(planIndicatorAuditLogs.changedBy, users.id))
+      .where(eq(planIndicatorAuditLogs.indicatorId, indicatorId))
+      .orderBy(desc(planIndicatorAuditLogs.changedAt));
+
+    const workbook = new ExcelJS.Workbook();
+    const ws = workbook.addWorksheet('Audit Log');
+
+    ws.columns = [
+      { header: 'วันที่', key: 'date', width: 18 },
+      { header: 'ผู้เปลี่ยนแปลง', key: 'user', width: 20 },
+      { header: 'การกระทำ', key: 'action', width: 14 },
+      { header: 'ฟิลด์', key: 'field', width: 16 },
+      { header: 'ค่าเดิม', key: 'oldVal', width: 30 },
+      { header: 'ค่าใหม่', key: 'newVal', width: 30 },
+      { header: 'เหตุผล', key: 'reason', width: 30 },
+    ];
+
+    const actionLabels: Record<string, string> = {
+      created: 'สร้าง',
+      updated: 'แก้ไข',
+      deleted: 'ลบ',
+      reverted: 'กู้คืน',
+    };
+
+    const fieldLabels: Record<string, string> = {
+      name: 'ชื่อ',
+      description: 'รายละเอียด',
+      targetValue: 'ค่าเป้าหมาย',
+      unit: 'หน่วย',
+      indicatorType: 'ประเภท',
+      weight: 'น้ำหนัก',
+      sortOrder: 'ลำดับ',
+    };
+
+    const buddhistYear = (d: Date) => {
+      const day = d.getDate();
+      const month = d.getMonth() + 1;
+      const year = d.getFullYear() + 543;
+      return `${day}/${month}/${year}`;
+    };
+
+    for (const log of logs) {
+      ws.addRow({
+        date: buddhistYear(new Date(log.changedAt)),
+        user: log.changedByName ?? '-',
+        action: actionLabels[log.action] ?? log.action,
+        field: log.fieldName ? (fieldLabels[log.fieldName] ?? log.fieldName) : '-',
+        oldVal: log.oldValue ?? '-',
+        newVal: log.newValue ?? '-',
+        reason: log.reason ?? '-',
+      });
+    }
+
+    const headerRow = ws.getRow(1);
+    headerRow.font = { bold: true, size: 12 };
+    headerRow.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE0E0E0' } };
+
+    const buffer = await workbook.xlsx.writeBuffer();
+    return Buffer.from(buffer);
   },
 
   // Progress aggregation
