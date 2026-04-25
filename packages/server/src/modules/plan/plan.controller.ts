@@ -167,7 +167,7 @@ export const planController = {
   ) {
     const { goalId } = parseParams(params);
     const { planService } = await import('./plan.service');
-    return planService.createIndicator(goalId!, body, user.id);
+    return planService.createIndicator(goalId!, body, (user as any).userId ?? user.id);
   },
 
   async updateIndicator(
@@ -177,7 +177,7 @@ export const planController = {
   ) {
     const { indicatorId } = parseParams(params);
     const { planService } = await import('./plan.service');
-    return planService.updateIndicator(indicatorId!, body, user.id);
+    return planService.updateIndicator(indicatorId!, body, (user as any).userId ?? user.id);
   },
 
   async deleteIndicator(
@@ -186,7 +186,7 @@ export const planController = {
   ) {
     const { indicatorId } = parseParams(params);
     const { planService } = await import('./plan.service');
-    return planService.deleteIndicator(indicatorId!, user.id);
+    return planService.deleteIndicator(indicatorId!, (user as any).userId ?? user.id);
   },
 
   // Assignee management
@@ -263,7 +263,7 @@ export const planController = {
   ) {
     const { indicatorId } = parseParams(params);
     const { planService } = await import('./plan.service');
-    return planService.revertIndicator(indicatorId!, user.id, body.auditLogId, body.reason);
+    return planService.revertIndicator(indicatorId!, (user as any).userId ?? user.id, body.auditLogId, body.reason);
   },
 
   async exportAuditLogs(
