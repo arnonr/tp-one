@@ -104,3 +104,23 @@ export interface PlanProgress {
   overallProgress: number;
   totalWeight: number;
 }
+
+// ===== Audit Trail =====
+
+export interface IndicatorAuditLogEntry {
+  id: string;
+  indicatorId: string;
+  changedBy: string;
+  changedByName?: string;
+  changedAt: string;
+  action: 'created' | 'updated' | 'deleted' | 'reverted';
+  fieldName?: string;
+  oldValue?: string;
+  newValue?: string;
+  reason?: string;
+}
+
+export interface RevertInput {
+  auditLogId: string;
+  reason: string;
+}
