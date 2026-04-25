@@ -1,11 +1,13 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { NCard, NText, NButton, NIcon, NSpace, NTag, NProgress } from 'naive-ui'
-import { CreateOutline, TrashOutline, AddOutline, StatsChartOutline } from '@vicons/ionicons5'
+import { CreateOutline, TrashOutline, AddOutline, StatsChartOutline, TimeOutline } from '@vicons/ionicons5'
 import type { Indicator, IndicatorUpdate } from '@/types/plan'
 import IndicatorAssignees from './IndicatorAssignees.vue'
 import IndicatorChart from './IndicatorChart.vue'
+import IndicatorAuditLog from './IndicatorAuditLog.vue'
 import { listIndicatorUpdates } from '@/services/planApi'
+import { useAuthStore } from '@/stores/auth'
 
 const props = defineProps<{
   indicator: Indicator
@@ -17,10 +19,14 @@ const emit = defineEmits<{
   edit: [indicatorId: string]
   delete: [indicatorId: string]
   addUpdate: [indicatorId: string]
+  reverted: []
 }>()
 
 const latestUpdate = ref<IndicatorUpdate | null>(null)
 const showChart = ref(false)
+const showAudit = ref(false)
+const authStore = useAuthStore()
+const isAdmin = computed(() => authStore.user?.role === 'admin')
 
 async function fetchLatestUpdate() {
   try {
@@ -79,6 +85,9 @@ function handleAddUpdate() {
         >
           <template #icon><NIcon><StatsChartOutline /></NIcon></template>
         </NButton>
+        <NButton size="tiny" quaternary @click="showAudit = !showAudit">
+          <template #icon><NIcon><TimeOutline /></NIcon></template>
+        </NButton>
         <NButton
           v-if="planStatus !== 'completed'"
           size="tiny"
@@ -128,6 +137,13 @@ function handleAddUpdate() {
       :indicator-id="indicator.id"
       :target-value="indicator.targetValue"
       :unit="indicator.unit"
+    />
+
+    <IndicatorAuditLog
+      v-if="showAudit"
+      :indicator-id="indicator.id"
+      :is-admin="isAdmin"
+      @reverted="emit('reverted')"
     />
   </NCard>
 </template>

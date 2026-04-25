@@ -17,6 +17,7 @@ const emit = defineEmits<{
   editIndicator: [indicatorId: string, payload: { name?: string; description?: string; targetValue?: string; unit?: string; indicatorType?: string; weight?: number }]
   deleteIndicator: [indicatorId: string]
   addUpdate: [indicatorId: string]
+  reverted: []
 }>()
 
 const strategyCode = computed(() => {
@@ -99,6 +100,7 @@ function handleDeleteIndicator(indicatorId: string) {
           @edit-indicator="handleEditIndicator"
           @delete-indicator="handleDeleteIndicator"
           @add-update="(id: string) => emit('addUpdate', id)"
+          @reverted="emit('reverted')"
         />
       </NCollapseItem>
     </NCollapse>

@@ -26,6 +26,7 @@ const emit = defineEmits<{
   editIndicator: [indicatorId: string, payload: { name?: string; description?: string; targetValue?: string; unit?: string; indicatorType?: string; weight?: number }]
   deleteIndicator: [indicatorId: string]
   addUpdate: [indicatorId: string]
+  reverted: []
 }>()
 
 const message = useMessage()
@@ -196,6 +197,7 @@ function handleAddIndicatorFromCard(goalId: string, payload: any) {
           @edit-indicator="(_id) => openEditIndicator(_id)"
           @delete-indicator="confirmDeleteIndicator"
           @add-update="(_id) => emit('addUpdate', _id)"
+          @reverted="emit('reverted')"
         />
       </NCollapseItem>
     </NCollapse>

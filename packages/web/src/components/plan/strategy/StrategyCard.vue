@@ -20,6 +20,7 @@ const emit = defineEmits<{
   editIndicator: [indicatorId: string, payload: { name?: string; description?: string; targetValue?: string; unit?: string; indicatorType?: string; weight?: number }]
   deleteIndicator: [indicatorId: string]
   addUpdate: [indicatorId: string]
+  reverted: []
 }>()
 
 const codeLabel = computed(() => {
@@ -107,6 +108,7 @@ function handleAddIndicator(goalId: string) {
       @edit-indicator="(id, payload) => emit('editIndicator', id, payload)"
       @delete-indicator="(id) => emit('deleteIndicator', id)"
       @add-update="(id) => emit('addUpdate', id)"
+      @reverted="emit('reverted')"
     />
     <NText v-else depth="3" class="no-goals">ยังไม่มีเป้าหมาย</NText>
   </NCard>

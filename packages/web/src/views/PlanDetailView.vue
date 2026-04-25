@@ -373,6 +373,7 @@ const STATUS_CONFIG: Record<string, { label: string; type: 'success' | 'warning'
         @edit-indicator="openEditIndicator"
         @delete-indicator="confirmDeleteIndicator"
         @add-update="openAddUpdate"
+        @reverted="fetchPlan"
       />
     </div>
   </NSpin>

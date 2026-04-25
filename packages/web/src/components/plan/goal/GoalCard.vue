@@ -18,6 +18,7 @@ const emit = defineEmits<{
   editIndicator: [indicatorId: string]
   deleteIndicator: [indicatorId: string]
   addUpdate: [indicatorId: string]
+  reverted: []
 }>()
 
 const codeLabel = computed(() => {
@@ -94,6 +95,7 @@ function handleIndicatorAddUpdate(indicatorId: string) {
       @edit="handleIndicatorEdit"
       @delete="handleIndicatorDelete"
       @add-update="handleIndicatorAddUpdate"
+      @reverted="emit('reverted')"
     />
     <NText v-else depth="3" class="no-indicators">ยังไม่มีตัวชี้วัด</NText>
   </NCard>

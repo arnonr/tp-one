@@ -16,6 +16,7 @@ const emit = defineEmits<{
   edit: [indicatorId: string]
   delete: [indicatorId: string]
   addUpdate: [indicatorId: string]
+  reverted: []
 }>()
 
 function handleAddIndicator() {
@@ -54,6 +55,7 @@ function handleAddUpdate(indicator: Indicator) {
         @edit="(id: string) => emit('edit', id)"
         @delete="(id: string) => emit('delete', id)"
         @add-update="(id: string) => emit('addUpdate', id)"
+        @reverted="emit('reverted')"
       />
     </div>
   </div>
