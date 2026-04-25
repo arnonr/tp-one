@@ -678,6 +678,7 @@ export const planService = {
       ))
       .limit(1);
     if (!auditLog) throw new NotFoundError('Audit log', auditLogId);
+    if (auditLog.action === 'deleted') throw new ValidationError('Cannot revert a deleted entry');
 
     const revertData: Record<string, unknown> = {};
     if (auditLog.fieldName && auditLog.oldValue !== null) {
