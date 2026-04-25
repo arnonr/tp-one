@@ -240,6 +240,47 @@ export const planController = {
     return planService.createIndicatorUpdate(indicatorId!, user.userId, body);
   },
 
+  // Indicator Audit Trail
+
+  async getIndicatorAuditLogs(
+    _user: { id: string; role: GlobalRole },
+    params: Record<string, string>,
+    query: Record<string, string>,
+  ) {
+    const { indicatorId } = parseParams(params);
+    const { planService } = await import('./plan.service');
+    return planService.getIndicatorAuditLogs(
+      indicatorId!,
+      query.page ? parseInt(query.page) : 1,
+      query.pageSize ? parseInt(query.pageSize) : 20,
+    );
+  },
+
+  async revertIndicator(
+    user: { id: string; role: GlobalRole },
+    params: Record<string, string>,
+    body: { auditLogId: string; reason: string },
+  ) {
+    const { indicatorId } = parseParams(params);
+    const { planService } = await import('./plan.service');
+    return planService.revertIndicator(indicatorId!, user.id, body.auditLogId, body.reason);
+  },
+
+  async exportAuditLogs(
+    _user: { id: string; role: GlobalRole },
+    params: Record<string, string>,
+  ) {
+    const { indicatorId } = parseParams(params);
+    const { planService } = await import('./plan.service');
+    const buffer = await planService.exportAuditLogs(indicatorId!);
+    return new Response(buffer, {
+      headers: {
+        'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        'Content-Disposition': 'attachment; filename=indicator-audit-log.xlsx',
+      },
+    });
+  },
+
   // Progress
 
   async getPlanProgress(

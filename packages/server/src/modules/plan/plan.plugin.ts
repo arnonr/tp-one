@@ -89,6 +89,17 @@ export const planPlugin = new Elysia({ prefix: '/api/plans' })
     detail: { summary: 'Create indicator update' },
   })
 
+  // Indicator Audit Trail
+  .get('/indicators/:indicatorId/audit-logs/export', async ({ user, params }) => planController.exportAuditLogs(user, params), {
+    detail: { summary: 'Export indicator audit log to Excel' },
+  })
+  .get('/indicators/:indicatorId/audit-logs', async ({ user, params, query }) => planController.getIndicatorAuditLogs(user, params, query as any), {
+    detail: { summary: 'Get indicator audit history' },
+  })
+  .post('/indicators/:indicatorId/revert', async ({ user, params, body }) => planController.revertIndicator(user, params, body as any), {
+    detail: { summary: 'Revert indicator to previous state (admin)' },
+  })
+
   // Reports
   .get('/reports/plan-progress', async ({ user, query }) => planController.getPlanProgress(user, {}, query as any), {
     detail: { summary: 'Get plan progress aggregation' },
