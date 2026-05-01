@@ -252,7 +252,7 @@ const columns: DataTableColumns<PlanRow> = [
       const btns: any[] = []
       if (row.type === 'strategy') {
         if (props.planStatus !== 'completed') {
-          btns.push(actionBtn(AddOutline, 'เพิ่มเป้าหมาย', () => emit('addGoal', row.id, { name: '', indicatorType: 'amount', weight: 1 })))
+          btns.push(actionBtn(AddOutline, 'เพิ่มเป้าหมาย', () => { addingGoalForStrategyId.value = row.id; editingGoal.value = null; showGoalForm.value = true }))
         }
         btns.push(actionBtn(CreateOutline, 'แก้ไข', () => openEditStrategyById(row.id)))
         btns.push(actionBtn(TrashOutline, 'ลบ', () => emit('deleteStrategy', row.id), 'error'))
@@ -289,6 +289,7 @@ const strategyFormLoading = ref(false)
 const showGoalForm = ref(false)
 const editingGoal = ref<Goal | null>(null)
 const goalFormLoading = ref(false)
+const addingGoalForStrategyId = ref<string | null>(null)
 
 const showIndicatorForm = ref(false)
 const editingIndicator = ref<Indicator | null>(null)
@@ -353,13 +354,17 @@ async function handleSaveStrategy(payload: { name: string; description?: string;
 }
 
 async function handleSaveGoal(payload: { name: string; description?: string; sortOrder?: number }) {
-  if (!editingGoal.value) return
   goalFormLoading.value = true
   try {
-    emit('editGoal', editingGoal.value.id, payload)
+    if (editingGoal.value) {
+      emit('editGoal', editingGoal.value.id, payload)
+    } else if (addingGoalForStrategyId.value) {
+      emit('addGoal', addingGoalForStrategyId.value, payload)
+    }
     showGoalForm.value = false
   } finally {
     goalFormLoading.value = false
+    addingGoalForStrategyId.value = null
   }
 }
 
