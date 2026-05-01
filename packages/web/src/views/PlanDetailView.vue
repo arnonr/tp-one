@@ -64,11 +64,6 @@ const strategies = ref<Strategy[]>([])
 const progressData = ref<PlanProgress | null>(null)
 
 // Form modals
-const showIndicatorForm = ref(false)
-const indicatorFormLoading = ref(false)
-const editingIndicator = ref<Indicator | null>(null)
-const selectedGoalForIndicator = ref<Goal | null>(null)
-
 const showUpdateForm = ref(false)
 const updateFormLoading = ref(false)
 const selectedIndicatorForUpdate = ref<Indicator | null>(null)
@@ -239,34 +234,6 @@ async function handleDeleteGoal(goalId: string) {
 
 // ========== Indicator CRUD ==========
 
-function openAddIndicator(goalId: string, _payload: any) {
-  // Find goal across all strategies
-  for (const strategy of strategies.value) {
-    const goal = strategy.goals?.find(g => g.id === goalId)
-    if (goal) {
-      editingIndicator.value = null
-      selectedGoalForIndicator.value = goal
-      showIndicatorForm.value = true
-      return
-    }
-  }
-}
-
-function openEditIndicator(indicatorId: string) {
-  // Find indicator across all strategies/goals
-  for (const strategy of strategies.value) {
-    for (const goal of strategy.goals || []) {
-      const indicator = goal.indicators?.find(i => i.id === indicatorId)
-      if (indicator) {
-        editingIndicator.value = indicator
-        selectedGoalForIndicator.value = goal
-        showIndicatorForm.value = true
-        return
-      }
-    }
-  }
-}
-
 function confirmDeleteIndicator(indicatorId: string) {
   let indicatorName = ''
   for (const strategy of strategies.value) {
@@ -284,31 +251,23 @@ function confirmDeleteIndicator(indicatorId: string) {
   })
 }
 
-async function handleSaveIndicator(payload: {
-  name: string
-  description?: string
-  targetValue: string
-  unit?: string
-  indicatorType?: 'amount' | 'count' | 'percentage'
-  weight?: number
-}) {
-  if (!selectedGoalForIndicator.value) return
-
-  indicatorFormLoading.value = true
+async function handleAddIndicator(goalId: string, payload: any) {
   try {
-    if (editingIndicator.value) {
-      await updateIndicator(editingIndicator.value.id, payload)
-      message.success('แก้ไขตัวชี้วัดสำเร็จ')
-    } else {
-      await createIndicator(selectedGoalForIndicator.value.id, payload)
-      message.success('เพิ่มตัวชี้วัดสำเร็จ')
-    }
-    showIndicatorForm.value = false
+    await createIndicator(goalId, payload)
+    message.success('เพิ่มตัวชี้วัดสำเร็จ')
     await fetchPlan()
   } catch (e) {
     message.error('ไม่สำเร็จ')
-  } finally {
-    indicatorFormLoading.value = false
+  }
+}
+
+async function handleEditIndicator(indicatorId: string, payload: any) {
+  try {
+    await updateIndicator(indicatorId, payload)
+    message.success('แก้ไขตัวชี้วัดสำเร็จ')
+    await fetchPlan()
+  } catch (e) {
+    message.error('ไม่สำเร็จ')
   }
 }
 
@@ -568,7 +527,7 @@ const progressColor = computed(() => {
           :progress-data="progressData"
           @refresh="fetchPlan" @add-strategy="handleAddStrategy" @edit-strategy="handleEditStrategy"
           @delete-strategy="confirmDeleteStrategy" @add-goal="handleAddGoal" @edit-goal="handleEditGoal"
-          @delete-goal="confirmDeleteGoal" @add-indicator="openAddIndicator" @edit-indicator="openEditIndicator"
+          @delete-goal="confirmDeleteGoal" @add-indicator="handleAddIndicator" @edit-indicator="handleEditIndicator"
           @delete-indicator="confirmDeleteIndicator" @add-update="openAddUpdate" @reverted="fetchPlan"
           @update-strategy-status="handleUpdateStrategyStatus"
           @update-goal-status="handleUpdateGoalStatus"
@@ -576,10 +535,6 @@ const progressColor = computed(() => {
       </div>
     </div>
   </NSpin>
-
-  <!-- Indicator Form Modal -->
-  <IndicatorForm v-model:show="showIndicatorForm" :indicator="editingIndicator" :loading="indicatorFormLoading"
-    @save="handleSaveIndicator" />
 
   <!-- Indicator Update Form Modal -->
   <IndicatorUpdateForm v-if="selectedIndicatorForUpdate" v-model:show="showUpdateForm"

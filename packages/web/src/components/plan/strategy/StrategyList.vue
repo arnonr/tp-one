@@ -133,7 +133,7 @@ const columns: DataTableColumns<PlanRow> = [
         : row.type === 'goal'
           ? 'font-weight: 500; font-size: var(--text-sm); color: #888'
           : 'font-weight: 400; font-size: var(--text-sm); color: #ff6600'
-      const marginLeft = row.type === 'strategy' ? 0 : row.type === 'goal' ? 16 : 36
+      const marginLeft = row.type === 'strategy' ? 0 : row.type === 'goal' ? 16 : 32
       const children: any[] = [
         h('span', { style: nameStyle }, row.name),
       ]
@@ -333,7 +333,7 @@ const columns: DataTableColumns<PlanRow> = [
             trigger: 'click',
             options: menuOptions,
             onSelect: (key: string) => {
-              if (key === 'add-indicator') emit('addIndicator', row.id, { name: '', targetValue: '', indicatorType: 'amount', weight: 1 })
+              if (key === 'add-indicator') { addingIndicatorForGoalId.value = row.id; editingIndicator.value = null; showIndicatorForm.value = true }
               else if (key === 'edit-goal') openEditGoalById(row.id)
               else if (key === 'delete-goal') emit('deleteGoal', row.id)
             },
@@ -406,6 +406,7 @@ const addingGoalForStrategyId = ref<string | null>(null)
 
 const showIndicatorForm = ref(false)
 const editingIndicator = ref<Indicator | null>(null)
+const addingIndicatorForGoalId = ref<string | null>(null)
 const indicatorFormLoading = ref(false)
 
 // ===== Drawers =====
@@ -458,7 +459,7 @@ function openEditIndicatorById(indicatorId: string) {
 
 function openIndicatorChart(indicatorId: string) {
   drawerIndicatorId.value = indicatorId
-  drawerTab.value = 'chart'
+  drawerTab.value = 'audit'
   showIndicatorDrawer.value = true
 }
 
@@ -493,13 +494,18 @@ async function handleSaveGoal(payload: { name: string; description?: string; sor
 }
 
 async function handleSaveIndicator(payload: { name: string; description?: string; targetValue?: string; unit?: string; indicatorType?: string; weight?: number }) {
-  if (!editingIndicator.value) return
   indicatorFormLoading.value = true
   try {
-    emit('editIndicator', editingIndicator.value.id, payload)
-    showIndicatorForm.value = false
+    if (editingIndicator.value) {
+      emit('editIndicator', editingIndicator.value.id, payload)
+    } else if (addingIndicatorForGoalId.value) {
+      emit('addIndicator', addingIndicatorForGoalId.value, payload)
+    }
   } finally {
     indicatorFormLoading.value = false
+    editingIndicator.value = null
+    addingIndicatorForGoalId.value = null
+    showIndicatorForm.value = false
   }
 }
 </script>
@@ -591,6 +597,14 @@ async function handleSaveIndicator(payload: { name: string; description?: string
 
 :deep(.strategy-table .n-data-table-tr.row-goal .n-data-table-td:first-child) {
   border-left: 3px solid #cbd5e1;
+}
+
+:deep(.strategy-table .n-data-table-tr.row-indicator) {
+  background-color: #ffffff;
+}
+
+:deep(.strategy-table .n-data-table-tr.row-indicator .n-data-table-td:first-child) {
+  border-left: 3px solid #e2e8f0;
 }
 
 /* Action-on-hover: show dropdown trigger on row hover */

@@ -56,6 +56,7 @@ function handleSave() {
     description: form.value.description.trim(),
     sortOrder: form.value.sortOrder || undefined,
   })
+  emit('update:show', false)
 }
 
 function handleClose() {

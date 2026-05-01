@@ -89,6 +89,7 @@ function handleSave() {
     indicatorType: form.value.indicatorType,
     weight: form.value.weight || 1,
   })
+  emit('update:show', false)
 }
 
 function handleClose() {
