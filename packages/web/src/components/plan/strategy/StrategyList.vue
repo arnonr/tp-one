@@ -542,9 +542,9 @@ async function handleSaveIndicator(payload: { name: string; description?: string
   indicatorFormLoading.value = true
   try {
     if (editingIndicator.value) {
-      emit('editIndicator', editingIndicator.value.id, payload)
+      ;(emit as any)('editIndicator', editingIndicator.value.id, payload)
     } else if (addingIndicatorForGoalId.value) {
-      emit('addIndicator', addingIndicatorForGoalId.value, payload)
+      ;(emit as any)('addIndicator', addingIndicatorForGoalId.value, payload)
     }
   } finally {
     indicatorFormLoading.value = false

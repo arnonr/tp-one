@@ -12,12 +12,14 @@ import {
   useMessage,
 } from 'naive-ui'
 import ThaiDatePicker from '@/components/common/ThaiDatePicker.vue'
+import RichTextEditor from '@/components/common/RichTextEditor.vue'
 
 const props = defineProps<{
   show: boolean
   indicatorId: string
   indicatorName: string
   targetValue: string
+  lastReportedValue?: string | number | null
   loading?: boolean
 }>()
 
@@ -48,13 +50,13 @@ watch(() => props.show, (val) => {
   if (val) {
     form.value = {
       reportedDate: now.getTime(),
-      reportedValue: null,
+      reportedValue: props.lastReportedValue !== undefined && props.lastReportedValue !== null && props.lastReportedValue !== '' ? Number(props.lastReportedValue) : null,
       progressPct: null,
       note: '',
       evidenceUrl: '',
     }
   }
-})
+}, { immediate: true })
 
 function autoCalcProgress() {
   if (form.value.reportedValue === null || !props.targetValue) return null
@@ -65,10 +67,8 @@ function autoCalcProgress() {
 }
 
 watch(() => form.value.reportedValue, () => {
-  if (form.value.progressPct === null) {
-    const calc = autoCalcProgress()
-    if (calc !== null) form.value.progressPct = calc
-  }
+  const calc = autoCalcProgress()
+  if (calc !== null) form.value.progressPct = calc
 })
 
 function handleSave() {
@@ -91,44 +91,24 @@ function handleClose() {
 </script>
 
 <template>
-  <NModal
-    :show="show"
-    preset="card"
-    :title="`รายงานความคืบหน้า: ${indicatorName}`"
-    style="width: 520px"
-    @update:show="emit('update:show', $event)"
-  >
+  <NModal :show="show" preset="card" :title="`รายงานความคืบหน้า: ${indicatorName}`" style="width: 520px"
+    @update:show="emit('update:show', $event)">
     <NForm label-placement="top">
       <NFormItem label="วันที่รายงาน">
-        <ThaiDatePicker v-model:value="form.reportedDate" type="date" placeholder="เลือกวันที่รายงาน" style="width: 100%" />
+        <ThaiDatePicker v-model:value="form.reportedDate" type="date" placeholder="เลือกวันที่รายงาน"
+          style="width: 100%" />
       </NFormItem>
       <NFormItem :label="`ค่าที่รายงาน (เป้าหมาย: ${targetValue})`" required>
-        <NInputNumber
-          v-model:value="form.reportedValue"
-          :min="0"
-          :precision="2"
-          placeholder="เช่น 85"
-          style="width: 100%"
-        />
+        <NInputNumber v-model:value="form.reportedValue" :min="0" :precision="2" placeholder="เช่น 85"
+          style="width: 100%" />
       </NFormItem>
       <NFormItem label="เปอร์เซ็นต์ความคืบหน้า (คำนวณอัตโนมัติ)">
-        <NInputNumber
-          v-model:value="form.progressPct"
-          :min="0"
-          :max="100"
-          placeholder="เช่น 75"
-          style="width: 100%"
-        />
+        <NInputNumber v-model:value="form.progressPct" :min="0" :max="100" placeholder="เช่น 75" style="width: 100%" />
       </NFormItem>
       <NFormItem label="หมายเหตุ">
-        <NInput
-          v-model:value="form.note"
-          type="textarea"
-          placeholder="รายละเอียดเพิ่มเติม"
-          :rows="2"
-        />
+        <RichTextEditor v-model="form.note" placeholder="รายละเอียดเพิ่มเติม" :min-height="'120px'" />
       </NFormItem>
-      <NFormItem label="URL หลักฐาน">
+      <NFormItem label="URL (ถ้ามี)">
         <NInput v-model:value="form.evidenceUrl" placeholder="https://..." />
       </NFormItem>
     </NForm>

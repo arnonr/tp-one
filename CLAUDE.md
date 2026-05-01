@@ -1,5 +1,11 @@
 # TP-One — ระบบจัดการงานอุทยานเทคโนโลยี
 
+# Thinking Process Requirement
+
+- Always output a <thought> block before any code changes.
+- For complex tasks, create a detailed implementation plan in a <plan> block.
+- Review the plan with the user before executing tool calls.
+
 ## Project Overview
 
 ระบบจัดการงานสำหรับอุทยานเทคโนโลยี (หน่วยงานรับบริการวิชาการ มหาวิทยาลัย) ให้บริการ 4 ด้าน: เช่าพื้นที่, ที่ปรึกษา/วิจัย, อบรม/สัมนา, บ่มเพาะสตาร์ทอัป
@@ -87,6 +93,7 @@ packages/
 - Composable: `useThaiDate()`, `useFiscalYear()`
 
 **UI Language: ภาษาไทยทั้งหมด**
+
 - Naive UI locale: Thai (`thTH`)
 - Sidebar, labels, buttons, messages: ภาษาไทย
 - Status names เริ่มต้น: "รออนุมัติ", "กำลังดำเนินการ", "เสร็จสิ้น"
@@ -95,12 +102,16 @@ packages/
 ## Project Skills — ใช้เมื่อทำงานใน project นี้
 
 ### tp-one-frontend
+
 ใช้เมื่อทำงานกับ `packages/web/` — เขียน Vue component, page, composable, store, service, routing, หรือ styling
+
 - บังคับ: Thai-first (พ.ศ., เดือนไทย, UI ภาษาไทย), Naive UI, Composition API, Pinia pattern
 - มี reference: component/page/composable/store scaffolding templates
 
 ### tp-one-backend
+
 ใช้เมื่อทำงานกับ `packages/server/` — เขียน module, controller, service, plugin, middleware, schema, migration
+
 - บังคับ: module pattern (service → controller → plugin), Drizzle ORM, AppError, RBAC, activity log
 - มี reference: module scaffolding checklist (schema → service → controller → plugin → register → test)
 
@@ -114,6 +125,7 @@ packages/
 ## Coding Conventions
 
 ### Backend (ElysiaJS)
+
 - **1 feature = 1 module directory** with `controller.ts`, `service.ts`, `plugin.ts`
 - Elysia plugins group routes by prefix: `new Elysia({ prefix: '/api/tasks' })`
 - Use `drizzle-orm` query builder — never raw SQL
@@ -122,6 +134,7 @@ packages/
 - RBAC: use `authMiddleware()` + `requireRole()` / `requireAdmin()`
 
 ### Frontend (Vue 3)
+
 - Composition API + `<script setup lang="ts">` — no Options API
 - Components organized by feature domain, not by type
 - Use Naive UI components — don't build custom UI primitives
@@ -129,6 +142,7 @@ packages/
 - Use `@/` alias for imports (configured in vite.config.ts)
 
 ### General
+
 - TypeScript strict mode
 - No `any` — use proper types
 - Commit messages: conventional commits (`feat:`, `fix:`, `refactor:`, `docs:`)
@@ -160,12 +174,12 @@ Current phase: **Phase 1 — Foundation (Auth + UI Shell + Thai Utils)**
 
 ## Key Files
 
-| File | Purpose |
-|------|---------|
-| `docs/SYSTEM_ANALYSIS.md` | Full system requirements (Thai) |
-| `docs/superpowers/plans/2026-04-21-tp-one-implementation.md` | Implementation plan |
-| `packages/server/src/shared/thai.utils.ts` | Thai date/fiscal year utilities (backend) |
-| `packages/web/src/utils/thai.ts` | Thai date/fiscal year utilities (frontend) |
-| `packages/server/src/db/schema/` | Database schema source of truth |
-| `docker-compose.yml` | Local dev environment (PostgreSQL + Redis + Nginx) |
-| `.env.example` | Environment variables template |
+| File                                                         | Purpose                                            |
+| ------------------------------------------------------------ | -------------------------------------------------- |
+| `docs/SYSTEM_ANALYSIS.md`                                    | Full system requirements (Thai)                    |
+| `docs/superpowers/plans/2026-04-21-tp-one-implementation.md` | Implementation plan                                |
+| `packages/server/src/shared/thai.utils.ts`                   | Thai date/fiscal year utilities (backend)          |
+| `packages/web/src/utils/thai.ts`                             | Thai date/fiscal year utilities (frontend)         |
+| `packages/server/src/db/schema/`                             | Database schema source of truth                    |
+| `docker-compose.yml`                                         | Local dev environment (PostgreSQL + Redis + Nginx) |
+| `.env.example`                                               | Environment variables template                     |

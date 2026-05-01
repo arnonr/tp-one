@@ -68,6 +68,17 @@ const showUpdateForm = ref(false)
 const updateFormLoading = ref(false)
 const selectedIndicatorForUpdate = ref<Indicator | null>(null)
 
+const selectedIndicatorProgress = computed(() => {
+  if (!selectedIndicatorForUpdate.value || !progressData.value) return null
+  for (const sp of progressData.value.strategies) {
+    for (const gp of sp.goals) {
+      const ip = gp.indicators.find(i => i.indicatorId === selectedIndicatorForUpdate.value!.id)
+      if (ip) return ip
+    }
+  }
+  return null
+})
+
 const currentQ = getFiscalQuarter()
 
 // Export
@@ -539,7 +550,9 @@ const progressColor = computed(() => {
   <!-- Indicator Update Form Modal -->
   <IndicatorUpdateForm v-if="selectedIndicatorForUpdate" v-model:show="showUpdateForm"
     :indicator-id="selectedIndicatorForUpdate.id" :indicator-name="selectedIndicatorForUpdate.name"
-    :target-value="selectedIndicatorForUpdate.targetValue" :loading="updateFormLoading" @save="handleSaveUpdate" />
+    :target-value="selectedIndicatorForUpdate.targetValue"
+    :last-reported-value="selectedIndicatorProgress?.latestValue"
+    :loading="updateFormLoading" @save="handleSaveUpdate" />
 </template>
 
 <style scoped>

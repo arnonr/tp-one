@@ -12,6 +12,7 @@ import { myWorkPlugin } from "./modules/my-work/my-work.plugin";
 import { notificationPlugin } from "./modules/notification/notification.plugin";
 import { quickNotePlugin } from "./modules/quick-note/quick-note.plugin";
 import { snapshotPlugin } from "./modules/snapshot/snapshot.plugin";
+import { attachmentPlugin } from "./modules/attachment/attachment.plugin";
 import { usersPlugin } from "./modules/auth/users.plugin";
 import { dashboardPlugin } from "./modules/dashboard/dashboard.plugin";
 import { reportPlugin } from "./modules/report/report.plugin";
@@ -43,6 +44,25 @@ const app = new Elysia()
     set.status = 404;
     return { success: false, error: { code: "NOT_FOUND", message: "File not found" } };
   })
+  .get("/api/uploads/attachments/*", async ({ params, set }) => {
+    const filePath = params["*"];
+    const fullPath = `${config.uploadDir}/attachments/${filePath}`;
+    const file = Bun.file(fullPath);
+    if (await file.exists()) {
+      const ext = filePath.split(".").pop()?.toLowerCase() || "";
+      const mimeTypes: Record<string, string> = {
+        jpg: "image/jpeg", jpeg: "image/jpeg", png: "image/png",
+        webp: "image/webp", heic: "image/heic", heif: "image/heif",
+        pdf: "application/pdf",
+      };
+      if (mimeTypes[ext]) {
+        set.headers["Content-Type"] = mimeTypes[ext];
+      }
+      return file;
+    }
+    set.status = 404;
+    return { success: false, error: { code: "NOT_FOUND", message: "File not found" } };
+  })
   .use(authPlugin)
   .use(workspacePlugin)
   .use(taskPlugin)
@@ -52,6 +72,7 @@ const app = new Elysia()
   .use(notificationPlugin)
   .use(quickNotePlugin)
   .use(snapshotPlugin)
+  .use(attachmentPlugin)
   .use(usersPlugin)
   .use(dashboardPlugin)
   .use(reportPlugin)

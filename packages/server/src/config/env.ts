@@ -8,7 +8,7 @@ export const config = {
   jwtExpiresIn: env.JWT_EXPIRES_IN || '7d',
   nodeEnv: env.NODE_ENV || 'development',
   corsOrigin: env.CORS_ORIGIN || 'http://localhost:5173',
-  uploadDir: env.UPLOAD_DIR || '/data/uploads',
+  uploadDir: env.UPLOAD_DIR || `${process.cwd()}/uploads`,
   telegramBotToken: env.TELEGRAM_BOT_TOKEN || '',
   telegramChatId: env.TELEGRAM_CHAT_ID || '',
   oidcIssuer: env.OIDC_ISSUER || '',
