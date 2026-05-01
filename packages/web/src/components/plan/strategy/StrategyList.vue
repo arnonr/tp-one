@@ -620,12 +620,10 @@ async function handleSaveIndicator(payload: { name: string; description?: string
 
 :deep(.strategy-table .n-data-table-td) {
   border-bottom: 1px solid #e2e8f0 !important;
-  border-right: 1px solid #e2e8f0 !important;
 }
 
 :deep(.strategy-table .n-data-table-th) {
   border-bottom: 1px solid #e2e8f0 !important;
-  border-right: 1px solid #e2e8f0 !important;
 }
 
 /* Row Grouping — hierarchy background colors */
