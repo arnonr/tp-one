@@ -7,11 +7,11 @@ import {
   NFormItem,
   NInput,
   NInputNumber,
-  NDatePicker,
   NButton,
   NSpace,
   useMessage,
 } from 'naive-ui'
+import ThaiDatePicker from '@/components/common/ThaiDatePicker.vue'
 
 const props = defineProps<{
   show: boolean
@@ -100,7 +100,7 @@ function handleClose() {
   >
     <NForm label-placement="top">
       <NFormItem label="วันที่รายงาน">
-        <NDatePicker v-model:value="form.reportedDate" type="date" style="width: 100%" />
+        <ThaiDatePicker v-model:value="form.reportedDate" type="date" placeholder="เลือกวันที่รายงาน" style="width: 100%" />
       </NFormItem>
       <NFormItem :label="`ค่าที่รายงาน (เป้าหมาย: ${targetValue})`" required>
         <NInputNumber
