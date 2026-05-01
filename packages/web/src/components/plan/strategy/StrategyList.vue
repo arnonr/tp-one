@@ -234,7 +234,7 @@ const columns: DataTableColumns<PlanRow> = [
   {
     title: 'ความก้าวหน้า',
     key: 'progress',
-    width: 150,
+    width: 120,
     render(row) {
       if (row.type !== 'indicator') return null
       const pct = row.progress ?? 0
@@ -243,7 +243,7 @@ const columns: DataTableColumns<PlanRow> = [
           type: 'line',
           percentage: pct,
           showIndicator: false,
-          height: 8,
+          height: 14,
           railColor: '#e0e0e0',
           color: pct >= 100 ? '#52c41a' : '#1890ff',
           style: 'width: 100%',
@@ -454,6 +454,7 @@ async function handleSaveIndicator(payload: { name: string; description?: string
   border-bottom: 1px solid #e2e8f0 !important;
   border-right: 1px solid #e2e8f0 !important;
 }
+
 :deep(.strategy-table .n-data-table-th) {
   border-bottom: 1px solid #e2e8f0 !important;
   border-right: 1px solid #e2e8f0 !important;
