@@ -968,6 +968,8 @@ export const planService = {
             periodLabel,
             periodStart,
             periodEnd,
+            note: latestUpdate?.note ?? undefined,
+            evidenceUrl: latestUpdate?.evidenceUrl ?? undefined,
           });
         }
 

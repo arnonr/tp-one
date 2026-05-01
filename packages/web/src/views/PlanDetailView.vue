@@ -552,6 +552,8 @@ const progressColor = computed(() => {
     :indicator-id="selectedIndicatorForUpdate.id" :indicator-name="selectedIndicatorForUpdate.name"
     :target-value="selectedIndicatorForUpdate.targetValue"
     :last-reported-value="selectedIndicatorProgress?.latestValue"
+    :last-note="selectedIndicatorProgress?.note"
+    :last-evidence-url="selectedIndicatorProgress?.evidenceUrl"
     :loading="updateFormLoading" @save="handleSaveUpdate" />
 </template>
 

@@ -81,6 +81,8 @@ export interface IndicatorProgress {
   latestValue?: string;
   latestProgressPct?: number;
   periodLabel: string;
+  note?: string;
+  evidenceUrl?: string;
 }
 
 export interface GoalProgress {

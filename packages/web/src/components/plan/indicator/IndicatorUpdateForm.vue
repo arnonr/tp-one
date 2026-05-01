@@ -20,6 +20,8 @@ const props = defineProps<{
   indicatorName: string
   targetValue: string
   lastReportedValue?: string | number | null
+  lastNote?: string | null
+  lastEvidenceUrl?: string | null
   loading?: boolean
 }>()
 
@@ -53,8 +55,8 @@ watch(() => props.show, (val) => {
       reportedDate: now.getTime(),
       reportedValue: initialValue,
       progressPct: calcProgress(initialValue, props.targetValue),
-      note: '',
-      evidenceUrl: '',
+      note: props.lastNote || '',
+      evidenceUrl: props.lastEvidenceUrl || '',
     }
   }
 }, { immediate: true })
