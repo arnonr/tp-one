@@ -153,7 +153,7 @@ const columns: DataTableColumns<PlanRow> = [
           })
         )
       }
-      return h('div', { style: `margin-left: ${marginLeft}px; display: flex; flex-direction: column; align-items: flex-start; gap: 0; padding: 2px 0` }, children)
+      return h('div', { style: `margin-left: ${marginLeft}px; display: flex; align-items: center; gap: 4px` }, children)
     },
   },
   {
