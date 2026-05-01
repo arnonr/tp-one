@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, h } from 'vue'
+import { ref, computed, h, watch } from 'vue'
 import {
   NDataTable, NButton, NIcon, NProgress, NDrawer, NDrawerContent, NSpace, NPopover, NDropdown, NCard, NTabs, NTabPane, NGrid, NGi
 } from 'naive-ui'
@@ -135,13 +135,14 @@ const columns: DataTableColumns<PlanRow> = [
           : 'font-weight: 400; font-size: var(--text-sm); color: #ff6600'
       const marginLeft = row.type === 'strategy' ? 0 : row.type === 'goal' ? 16 : 32
       const children: any[] = [
-        h('span', { style: `${nameStyle}; word-break: break-word; white-space: normal; line-height: 1.5;` }, row.name),
+        h('span', { style: `${nameStyle}; word-break: break-word; white-space: normal;` }, row.name),
       ]
       if (row.description) {
         children.push(
           h(NPopover, { trigger: 'hover', placement: 'top', width: 280 }, {
             trigger: () => h('span', {
-              style: `margin-top: 3px; display: inline-flex; align-items: center; justify-content: center; width: 14px; height: 14px; flex-shrink: 0; cursor: pointer; opacity: 0.6; transition: opacity 0.15s; background: #e8e8e8; border: 1px solid #4080ff; border-radius: 3px;`,
+              class: 'info-icon',
+              style: `display: inline-flex; align-items: center; justify-content: center; width: 14px; height: 14px; flex-shrink: 0; cursor: pointer; opacity: 0.6; transition: opacity 0.15s; background: #e8e8e8; border: 1px solid #4080ff; border-radius: 3px;`,
               onMouseenter: (e: MouseEvent) => { (e.currentTarget as HTMLElement).style.opacity = '1' },
               onMouseleave: (e: MouseEvent) => { (e.currentTarget as HTMLElement).style.opacity = '0.6' },
             }, h('span', {
@@ -153,7 +154,7 @@ const columns: DataTableColumns<PlanRow> = [
           })
         )
       }
-      return h('div', { style: `margin-left: ${marginLeft}px; display: flex; align-items: flex-start; gap: 4px; flex: 1; min-width: 0;` }, children)
+      return h('div', { style: `margin-left: ${marginLeft}px; display: flex; align-items: center; gap: 4px; flex: 1; min-width: 0;` }, children)
     },
   },
   {
@@ -177,6 +178,7 @@ const columns: DataTableColumns<PlanRow> = [
 
       return h(NPopover, { trigger: 'hover', placement: 'top' }, {
         trigger: () => h('span', {
+          class: 'status-badge',
           style: `display: inline-flex; padding: 2px 10px; border-radius: 9999px; font-size: 0.75rem; font-weight: 500; white-space: nowrap; cursor: pointer; background: ${bgColor}; color: ${textColor}; border: 1px solid ${borderColor}; transition: opacity 0.15s;`,
           onMouseenter: (e: MouseEvent) => { (e.currentTarget as HTMLElement).style.opacity = '0.8' },
           onMouseleave: (e: MouseEvent) => { (e.currentTarget as HTMLElement).style.opacity = '1' },
@@ -383,6 +385,25 @@ const columns: DataTableColumns<PlanRow> = [
 // ===== Row props =====
 const rowProps = (row: PlanRow) => ({
   style: row.type === 'indicator' ? 'cursor: default' : 'cursor: pointer',
+  onClick: (e: MouseEvent) => {
+    if (row.type === 'indicator') return
+    const target = e.target as HTMLElement
+    if (
+      target.closest('.n-button') ||
+      target.closest('.action-cell') ||
+      target.closest('.status-badge') ||
+      target.closest('.info-icon') ||
+      target.closest('.n-data-table-expand-trigger')
+    ) {
+      return
+    }
+    const index = expandedRowKeys.value.indexOf(row.id)
+    if (index > -1) {
+      expandedRowKeys.value = expandedRowKeys.value.filter(k => k !== row.id)
+    } else {
+      expandedRowKeys.value = [...expandedRowKeys.value, row.id]
+    }
+  }
 })
 
 const rowClassName = (row: PlanRow) => {
@@ -393,6 +414,31 @@ const rowClassName = (row: PlanRow) => {
 
 // ===== Expand/Collapse =====
 const expandedRowKeys = ref<string[]>([])
+const knownExpandedKeys = new Set<string>()
+
+watch(() => treeData.value, (newTree) => {
+  const newKeys: string[] = []
+  
+  const traverse = (nodes: PlanRow[]) => {
+    for (const node of nodes) {
+      if (node.type !== 'indicator') {
+        if (!knownExpandedKeys.has(node.id)) {
+          knownExpandedKeys.add(node.id)
+          newKeys.push(node.id)
+        }
+        if (node.children) {
+          traverse(node.children)
+        }
+      }
+    }
+  }
+  
+  traverse(newTree)
+  
+  if (newKeys.length > 0) {
+    expandedRowKeys.value = [...expandedRowKeys.value, ...newKeys]
+  }
+}, { immediate: true, deep: true })
 
 // ===== Forms =====
 const showStrategyForm = ref(false)
@@ -524,7 +570,7 @@ async function handleSaveIndicator(payload: { name: string; description?: string
     </div>
 
     <NDataTable v-if="treeData.length > 0" :columns="columns" :data="treeData" :row-props="rowProps"
-      v-model:expanded-row-keys="expandedRowKeys" :loading="loading" :bordered="false" striped class="strategy-table"
+      :row-key="row => row.id" v-model:expanded-row-keys="expandedRowKeys" :loading="loading" :bordered="false" striped class="strategy-table"
       :row-class-name="rowClassName" />
     <div v-else class="empty-state">
       <p>ยังไม่มียุทธศาสตร์ในแผนนี้</p>
