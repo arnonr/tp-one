@@ -128,7 +128,6 @@ const columns: DataTableColumns<PlanRow> = [
     key: 'name',
     minWidth: 220,
     render(row) {
-      const codeStyle = 'font-size: 10px; color: var(--color-text-tertiary); font-family: monospace; display: block; line-height: 1.2;'
       const nameStyle = row.type === 'strategy'
         ? 'font-weight: 600; font-size: var(--text-base); color: #000'
         : row.type === 'goal'
@@ -136,7 +135,6 @@ const columns: DataTableColumns<PlanRow> = [
           : 'font-weight: 400; font-size: var(--text-sm); color: #ff6600'
       const marginLeft = row.type === 'strategy' ? 0 : row.type === 'goal' ? 16 : 36
       const children: any[] = [
-        h('span', { style: codeStyle }, row.code),
         h('span', { style: nameStyle }, row.name),
       ]
       if (row.description) {
