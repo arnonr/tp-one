@@ -6,6 +6,7 @@ import {
 } from 'naive-ui'
 import { RefreshOutline, DownloadOutline } from '@vicons/ionicons5'
 import type { IndicatorAuditLogEntry } from '@/types/plan'
+import { formatThaiDateTime } from '@/utils/thai'
 import { getIndicatorAuditLogs, revertIndicator, exportIndicatorAuditLogs } from '@/services/planApi'
 
 const props = defineProps<{
@@ -65,10 +66,6 @@ async function fetchLogs() {
   }
 }
 
-function formatBuddhistDate(iso: string): string {
-  const d = new Date(iso)
-  return `${d.getDate()}/${d.getMonth() + 1}/${d.getFullYear() + 543} ${d.getHours().toString().padStart(2, '0')}:${d.getMinutes().toString().padStart(2, '0')}`
-}
 
 function handleRevertClick(entry: IndicatorAuditLogEntry) {
   revertTarget.value = entry
@@ -134,7 +131,7 @@ onMounted(fetchLogs)
               <NTag :type="actionColors[entry.action]" size="small" :bordered="false">
                 {{ actionLabels[entry.action] }}
               </NTag>
-              <NText depth="3" class="audit-time">{{ formatBuddhistDate(entry.changedAt) }}</NText>
+              <NText depth="3" class="audit-time">{{ formatThaiDateTime(entry.changedAt) }}</NText>
               <NText depth="2">โดย {{ entry.changedByName ?? '-' }}</NText>
             </div>
             <div v-if="entry.fieldName" class="audit-detail">

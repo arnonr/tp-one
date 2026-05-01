@@ -33,6 +33,12 @@ export function formatThaiMonth(date: Date | string): string {
   return `${THAI_MONTHS_SHORT[d.getMonth()]} ${toBE(d.getFullYear())}`;
 }
 
+export function formatThaiDateTime(iso: string): string {
+  const d = new Date(iso);
+  d.setHours(d.getHours() + 7); // convert UTC to Bangkok time (+7)
+  return `${d.getDate().toString().padStart(2, '0')} ${THAI_MONTHS_SHORT[d.getMonth()]} ${toBE(d.getFullYear())} ${d.getHours().toString().padStart(2, '0')}:${d.getMinutes().toString().padStart(2, '0')}`;
+}
+
 export function getFiscalYear(date: Date = new Date()): number {
   const month = date.getMonth() + 1;
   if (month >= 10) return toBE(date.getFullYear() + 1);
