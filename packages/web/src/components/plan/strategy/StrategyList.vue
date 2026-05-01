@@ -135,13 +135,13 @@ const columns: DataTableColumns<PlanRow> = [
           : 'font-weight: 400; font-size: var(--text-sm); color: #ff6600'
       const marginLeft = row.type === 'strategy' ? 0 : row.type === 'goal' ? 16 : 32
       const children: any[] = [
-        h('span', { style: nameStyle }, row.name),
+        h('span', { style: `${nameStyle}; word-break: break-word; white-space: normal; line-height: 1.5;` }, row.name),
       ]
       if (row.description) {
         children.push(
           h(NPopover, { trigger: 'hover', placement: 'top', width: 280 }, {
             trigger: () => h('span', {
-              style: `margin-left: 4px; display: inline-flex; align-items: center; justify-content: center; width: 14px; height: 14px; flex-shrink: 0; cursor: pointer; opacity: 0.6; transition: opacity 0.15s; background: #e8e8e8; border: 1px solid #4080ff; border-radius: 3px;`,
+              style: `margin-top: 3px; display: inline-flex; align-items: center; justify-content: center; width: 14px; height: 14px; flex-shrink: 0; cursor: pointer; opacity: 0.6; transition: opacity 0.15s; background: #e8e8e8; border: 1px solid #4080ff; border-radius: 3px;`,
               onMouseenter: (e: MouseEvent) => { (e.currentTarget as HTMLElement).style.opacity = '1' },
               onMouseleave: (e: MouseEvent) => { (e.currentTarget as HTMLElement).style.opacity = '0.6' },
             }, h('span', {
@@ -153,7 +153,7 @@ const columns: DataTableColumns<PlanRow> = [
           })
         )
       }
-      return h('div', { style: `margin-left: ${marginLeft}px; display: inline-flex; align-items: center; gap: 4px` }, children)
+      return h('div', { style: `margin-left: ${marginLeft}px; display: flex; align-items: flex-start; gap: 4px; flex: 1; min-width: 0;` }, children)
     },
   },
   {
