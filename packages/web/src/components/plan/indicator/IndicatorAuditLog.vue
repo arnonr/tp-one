@@ -6,7 +6,7 @@ import {
 } from 'naive-ui'
 import { RefreshOutline, DownloadOutline } from '@vicons/ionicons5'
 import type { IndicatorAuditLogEntry } from '@/types/plan'
-import { formatThaiDateTime } from '@/utils/thai'
+import { formatThaiDateTime, formatThaiDate } from '@/utils/thai'
 import { getIndicatorAuditLogs, revertIndicator, exportIndicatorAuditLogs } from '@/services/planApi'
 
 const props = defineProps<{
@@ -34,6 +34,18 @@ interface AuditLogGroup {
   entries: IndicatorAuditLogEntry[]
 }
 
+const hiddenFields = new Set(['name', 'weight', 'indicatorType', 'unit'])
+
+const fieldSortOrder: Record<string, number> = {
+  reportedDate: 1,
+  reportedValue: 2,
+  note: 3,
+  evidenceUrl: 4,
+  description: 5,
+  targetValue: 6,
+  sortOrder: 7,
+}
+
 const groupedLogs = computed<AuditLogGroup[]>(() => {
   const map = new Map<string, AuditLogGroup>()
   for (const entry of logs.value) {
@@ -49,7 +61,7 @@ const groupedLogs = computed<AuditLogGroup[]>(() => {
         entries: [entry],
       })
     }
-    if (entry.fieldName) {
+    if (entry.fieldName && !hiddenFields.has(entry.fieldName)) {
       map.get(key)!.fields.push({
         fieldName: entry.fieldName,
         oldValue: entry.oldValue,
@@ -57,10 +69,27 @@ const groupedLogs = computed<AuditLogGroup[]>(() => {
       })
     }
   }
-  return Array.from(map.values()).sort((a, b) =>
-    new Date(b.changedAt).getTime() - new Date(a.changedAt).getTime()
-  )
+  return Array.from(map.values())
+    .sort((a, b) => new Date(b.changedAt).getTime() - new Date(a.changedAt).getTime())
+    .map(group => ({
+      ...group,
+      fields: [...group.fields].sort((a, b) =>
+        (fieldSortOrder[a.fieldName] ?? 99) - (fieldSortOrder[b.fieldName] ?? 99)
+      ),
+    }))
 })
+
+function formatFieldValue(fieldName: string, value: string | undefined): string {
+  if (value === undefined || value === '') return '-'
+  if (fieldName === 'evidenceUrl' && value !== '-') {
+    return value
+  }
+  return value
+}
+
+function isUrlField(fieldName: string): boolean {
+  return fieldName === 'evidenceUrl'
+}
 
 const showRevertModal = ref(false)
 const revertTarget = ref<IndicatorAuditLogEntry | null>(null)
@@ -90,7 +119,9 @@ const fieldLabels: Record<string, string> = {
   weight: 'น้ำหนัก',
   sortOrder: 'ลำดับ',
   reportedValue: 'ค่าที่รายงาน',
+  reportedDate: 'วันที่ดำเนินการ',
   note: 'หมายเหตุ',
+  evidenceUrl: 'URL',
 }
 
 async function fetchLogs() {
@@ -179,10 +210,26 @@ onMounted(fetchLogs)
               <NText depth="3" class="audit-time">{{ formatThaiDateTime(group.changedAt) }}</NText>
               <NText depth="2">โดย {{ group.changedByName ?? '-' }}</NText>
             </div>
-            <div v-for="field in group.fields" :key="field.fieldName" class="audit-detail">
-              <NText depth="3">{{ fieldLabels[field.fieldName] ?? field.fieldName }}:</NText>
-              <NText>{{ field.oldValue ?? '-' }} → {{ field.newValue ?? '-' }}</NText>
-            </div>
+            <template v-for="field in group.fields" :key="field.fieldName">
+              <div v-if="field.fieldName === 'note'" class="audit-note-block">
+                <NText depth="3">{{ fieldLabels[field.fieldName] ?? field.fieldName }}</NText>
+                <div class="audit-note" v-html="field.newValue" />
+              </div>
+              <div v-else class="audit-detail">
+                <NText depth="3">{{ fieldLabels[field.fieldName] ?? field.fieldName }}:</NText>
+                <template v-if="field.fieldName === 'reportedDate'">
+                  <NText>{{ field.newValue ? formatThaiDate(field.newValue) : '-' }}</NText>
+                </template>
+                <template v-else-if="field.fieldName === 'reportedValue'">
+                  <NText>{{ field.newValue ?? '-' }}</NText>
+                </template>
+                <template v-else-if="isUrlField(field.fieldName)">
+                  <a v-if="field.newValue && field.newValue !== '-'" :href="field.newValue" target="_blank" rel="noopener" style="color: #18a058;">{{ field.newValue }}</a>
+                  <NText v-else>{{ field.oldValue ?? '-' }} → {{ field.newValue ?? '-' }}</NText>
+                </template>
+                <NText v-else>{{ field.oldValue ?? '-' }} → {{ field.newValue ?? '-' }}</NText>
+              </div>
+            </template>
             <div v-if="group.reason" class="audit-reason">
               <NText depth="3">เหตุผล: {{ group.reason }}</NText>
             </div>
@@ -266,5 +313,14 @@ onMounted(fetchLogs)
 .audit-reason {
   font-size: 12px;
   font-style: italic;
+}
+.audit-note :deep(img) {
+  width: 100%;
+  max-width: 100%;
+}
+.audit-note-block {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
 }
 </style>

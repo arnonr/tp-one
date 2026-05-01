@@ -93,20 +93,23 @@ function handleClose() {
   <NModal :show="show" preset="card" :title="`รายงานความคืบหน้า: ${indicatorName}`" style="width: 520px"
     @update:show="emit('update:show', $event)">
     <NForm label-placement="top">
-      <NFormItem label="วันที่รายงาน">
+      <NFormItem label="วันที่ดำเนินการ">
         <ThaiDatePicker v-model:value="form.reportedDate" type="date" placeholder="เลือกวันที่รายงาน"
           style="width: 100%" />
       </NFormItem>
       <NFormItem :label="`ค่าที่รายงาน (เป้าหมาย: ${targetValue})`" required>
         <input v-model.number="form.reportedValue" type="number" :min="0" step="0.01" placeholder="เช่น 85"
-          class="n-input-number" style="width: 100%; padding: 6px 12px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px;"
+          class="n-input-number"
+          style="width: 100%; padding: 6px 12px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px;"
           @input="() => { form.progressPct = calcProgress(form.reportedValue, targetValue) }" />
       </NFormItem>
       <NFormItem label="เปอร์เซ็นต์ความคืบหน้า (คำนวณอัตโนมัติ)">
-        <NInputNumber :value="form.progressPct" :min="0" :max="100" placeholder="เช่น 75" disabled style="width: 100%" />
+        <NInputNumber :value="form.progressPct" :min="0" :max="100" placeholder="เช่น 75" disabled
+          style="width: 100%" />
       </NFormItem>
       <NFormItem label="หมายเหตุ">
-        <RichTextEditor v-model="form.note" placeholder="รายละเอียดเพิ่มเติม" :min-height="'200px'" style="width: 100%" />
+        <RichTextEditor v-model="form.note" placeholder="รายละเอียดเพิ่มเติม" :min-height="'200px'"
+          style="width: 100%" />
       </NFormItem>
       <NFormItem label="URL (ถ้ามี)">
         <NInput v-model:value="form.evidenceUrl" placeholder="https://..." />

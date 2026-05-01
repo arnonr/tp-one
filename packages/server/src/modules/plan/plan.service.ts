@@ -648,22 +648,49 @@ export const planService = {
       .returning();
 
     // Log to audit trail
-    const auditEntries = [{
-      indicatorId,
-      changedBy: reportedBy,
-      action: 'updated' as const,
-      fieldName: 'reportedValue' as const,
-      oldValue: lastUpdate?.reportedValue ?? '',
-      newValue: data.reportedValue,
-    }];
+    const auditEntries: Array<{
+      indicatorId: string;
+      changedBy: string;
+      action: 'updated';
+      fieldName: string;
+      oldValue: string;
+      newValue: string;
+    }> = [
+      {
+        indicatorId,
+        changedBy: reportedBy,
+        action: 'updated',
+        fieldName: 'reportedValue',
+        oldValue: lastUpdate?.reportedValue ?? '',
+        newValue: data.reportedValue,
+      },
+      {
+        indicatorId,
+        changedBy: reportedBy,
+        action: 'updated',
+        fieldName: 'reportedDate',
+        oldValue: '',
+        newValue: data.reportedDate,
+      },
+    ];
     if (data.note) {
       auditEntries.push({
         indicatorId,
         changedBy: reportedBy,
-        action: 'updated' as const,
-        fieldName: 'note' as const,
+        action: 'updated',
+        fieldName: 'note',
         oldValue: '',
         newValue: data.note,
+      });
+    }
+    if (data.evidenceUrl) {
+      auditEntries.push({
+        indicatorId,
+        changedBy: reportedBy,
+        action: 'updated',
+        fieldName: 'evidenceUrl',
+        oldValue: '',
+        newValue: data.evidenceUrl,
       });
     }
     await db.insert(planIndicatorAuditLogs).values(auditEntries);
