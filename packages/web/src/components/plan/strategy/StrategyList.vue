@@ -124,18 +124,11 @@ function actionBtn(icon: any, title: string, onClick: () => void, type?: 'error'
 // ===== Columns =====
 const columns: DataTableColumns<PlanRow> = [
   {
-    title: 'รหัส',
-    key: 'code',
-    width: 80,
-    render(row) {
-      return h('span', { style: 'font-size: 11px; color: var(--color-text-tertiary); font-family: monospace' }, row.code)
-    },
-  },
-  {
     title: 'ชื่อ',
     key: 'name',
     minWidth: 220,
     render(row) {
+      const codeStyle = 'font-size: 10px; color: var(--color-text-tertiary); font-family: monospace; display: block; line-height: 1.2;'
       const nameStyle = row.type === 'strategy'
         ? 'font-weight: 600; font-size: var(--text-base); color: #000'
         : row.type === 'goal'
@@ -143,6 +136,7 @@ const columns: DataTableColumns<PlanRow> = [
           : 'font-weight: 400; font-size: var(--text-sm); color: #ff6600'
       const marginLeft = row.type === 'strategy' ? 0 : row.type === 'goal' ? 16 : 36
       const children: any[] = [
+        h('span', { style: codeStyle }, row.code),
         h('span', { style: nameStyle }, row.name),
       ]
       if (row.description) {
@@ -161,7 +155,7 @@ const columns: DataTableColumns<PlanRow> = [
           })
         )
       }
-      return h('div', { style: `margin-left: ${marginLeft}px; display: inline-flex; align-items: center; gap: 2px` }, children)
+      return h('div', { style: `margin-left: ${marginLeft}px; display: flex; flex-direction: column; align-items: flex-start; gap: 0; padding: 2px 0` }, children)
     },
   },
   {
