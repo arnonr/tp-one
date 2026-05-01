@@ -5,7 +5,7 @@ import {
 } from 'naive-ui'
 import type { DataTableColumns } from 'naive-ui'
 import {
-  AddOutline, CreateOutline, TrashOutline, StatsChartOutline, InformationCircle
+  AddOutline, CreateOutline, TrashOutline, StatsChartOutline
 } from '@vicons/ionicons5'
 import type { Strategy, Goal, Indicator, PlanProgress, IndicatorProgress, PlanItemStatus } from '@/types/plan'
 import StrategyForm from './StrategyForm.vue'
@@ -145,10 +145,12 @@ const columns: DataTableColumns<PlanRow> = [
         children.push(
           h(NPopover, { trigger: 'hover', placement: 'top', width: 280 }, {
             trigger: () => h('span', {
-              style: `margin-left: 4px; display: inline-flex; align-items: center; justify-content: center; width: 14px; height: 14px; cursor: pointer; opacity: 0.6; transition: opacity 0.15s;`,
+              style: `margin-left: 4px; display: inline-flex; align-items: center; justify-content: center; width: 14px; height: 14px; cursor: pointer; opacity: 0.6; transition: opacity 0.15s; background: #e8e8e8; border: 1px solid #4080ff; border-radius: 3px;`,
               onMouseenter: (e: MouseEvent) => { (e.currentTarget as HTMLElement).style.opacity = '1' },
               onMouseleave: (e: MouseEvent) => { (e.currentTarget as HTMLElement).style.opacity = '0.6' },
-            }, h(NIcon, { size: 16, color: '#4080ff' }, () => h(InformationCircle))),
+            }, h('span', {
+              style: 'color: #4080ff; font-size: 10px; font-weight: 600; font-style: italic; line-height: 1;'
+            }, 'i')),
             default: () => h('div', {
               style: 'padding: 4px; font-size: 13px; line-height: 1.6; white-space: pre-wrap; color: #333',
             }, row.description),
