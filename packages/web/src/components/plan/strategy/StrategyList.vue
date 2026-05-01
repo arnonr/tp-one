@@ -1,16 +1,20 @@
 <script setup lang="ts">
 import { ref, computed, h } from 'vue'
 import {
-  NDataTable, NButton, NIcon, NProgress, NDrawer, NDrawerContent, NSpace, NPopover
+  NDataTable, NButton, NIcon, NProgress, NDrawer, NDrawerContent, NSpace, NPopover, NDropdown, NCard, NTabs, NTabPane, NGrid, NGi
 } from 'naive-ui'
 import type { DataTableColumns } from 'naive-ui'
 import {
-  AddOutline, CreateOutline, TrashOutline, StatsChartOutline
+  AddOutline, CreateOutline, TrashOutline, StatsChartOutline, EllipsisHorizontal
 } from '@vicons/ionicons5'
 import type { Strategy, Goal, Indicator, PlanProgress, IndicatorProgress, PlanItemStatus } from '@/types/plan'
 import StrategyForm from './StrategyForm.vue'
 import GoalForm from '@/components/plan/goal/GoalForm.vue'
 import IndicatorForm from '@/components/plan/indicator/IndicatorForm.vue'
+import IndicatorUpdateForm from '@/components/plan/indicator/IndicatorUpdateForm.vue'
+import IndicatorAssignees from '@/components/plan/indicator/IndicatorAssignees.vue'
+import IndicatorChart from '@/components/plan/indicator/IndicatorChart.vue'
+import IndicatorAuditLog from '@/components/plan/indicator/IndicatorAuditLog.vue'
 import { PLAN_ITEM_STATUS_OPTIONS } from '@/composables/usePlanStatus'
 
 const props = defineProps<{
@@ -274,28 +278,112 @@ const columns: DataTableColumns<PlanRow> = [
   {
     title: 'ดำเนินการ',
     key: 'actions',
-    width: 160,
+    width: 120,
     render(row) {
-      const btns: any[] = []
       if (row.type === 'strategy') {
+        const menuOptions: any[] = []
         if (props.planStatus !== 'completed') {
-          btns.push(actionBtn(AddOutline, 'เพิ่มเป้าหมาย', () => { addingGoalForStrategyId.value = row.id; editingGoal.value = null; showGoalForm.value = true }))
+          menuOptions.push({
+            label: 'เพิ่มเป้าหมาย',
+            key: 'add-goal',
+            icon: () => h(NIcon, null, { default: () => h(AddOutline) }),
+          })
         }
-        btns.push(actionBtn(CreateOutline, 'แก้ไข', () => openEditStrategyById(row.id)))
-        btns.push(actionBtn(TrashOutline, 'ลบ', () => emit('deleteStrategy', row.id), 'error'))
+        menuOptions.push({
+          label: 'แก้ไข',
+          key: 'edit-strategy',
+          icon: () => h(NIcon, null, { default: () => h(CreateOutline) }),
+        })
+        menuOptions.push({
+          label: 'ลบ',
+          key: 'delete-strategy',
+          icon: () => h(NIcon, null, { default: () => h(TrashOutline) }),
+          props: { style: 'color: #d03050' },
+        })
+        const dropdownBtns: any[] = [
+          h(NDropdown, {
+            trigger: 'click',
+            options: menuOptions,
+            onSelect: (key: string) => {
+              if (key === 'add-goal') { addingGoalForStrategyId.value = row.id; editingGoal.value = null; showGoalForm.value = true }
+              else if (key === 'edit-strategy') openEditStrategyById(row.id)
+              else if (key === 'delete-strategy') emit('deleteStrategy', row.id)
+            },
+          }, {
+            default: () => h(NButton, { size: 'tiny', tertiary: true, title: 'ดำเนินการ', class: 'dropdown-trigger', style: 'cursor: pointer' }, {
+              icon: () => h(NIcon, { size: 14 }, () => h(EllipsisHorizontal)),
+            }),
+          })
+        ]
+        return h('div', { class: 'action-cell', style: 'display: contents;' }, h(NSpace, { size: 'small' }, { default: () => dropdownBtns }))
       } else if (row.type === 'goal') {
+        const menuOptions: any[] = []
         if (props.planStatus !== 'completed') {
-          btns.push(actionBtn(AddOutline, 'เพิ่มตัวชี้วัด', () => emit('addIndicator', row.id, { name: '', targetValue: '', indicatorType: 'amount', weight: 1 })))
+          menuOptions.push({
+            label: 'เพิ่มตัวชี้วัด',
+            key: 'add-indicator',
+            icon: () => h(NIcon, null, { default: () => h(AddOutline) }),
+          })
         }
-        btns.push(actionBtn(CreateOutline, 'แก้ไข', () => openEditGoalById(row.id)))
-        btns.push(actionBtn(TrashOutline, 'ลบ', () => emit('deleteGoal', row.id), 'error'))
+        menuOptions.push({
+          label: 'แก้ไข',
+          key: 'edit-goal',
+          icon: () => h(NIcon, null, { default: () => h(CreateOutline) }),
+        })
+        menuOptions.push({
+          label: 'ลบ',
+          key: 'delete-goal',
+          icon: () => h(NIcon, null, { default: () => h(TrashOutline) }),
+          props: { style: 'color: #d03050' },
+        })
+        const dropdownBtns: any[] = [
+          h(NDropdown, {
+            trigger: 'click',
+            options: menuOptions,
+            onSelect: (key: string) => {
+              if (key === 'add-indicator') emit('addIndicator', row.id, { name: '', targetValue: '', indicatorType: 'amount', weight: 1 })
+              else if (key === 'edit-goal') openEditGoalById(row.id)
+              else if (key === 'delete-goal') emit('deleteGoal', row.id)
+            },
+          }, {
+            default: () => h(NButton, { size: 'tiny', tertiary: true, title: 'ดำเนินการ', class: 'dropdown-trigger', style: 'cursor: pointer' }, {
+              icon: () => h(NIcon, { size: 14 }, () => h(EllipsisHorizontal)),
+            }),
+          })
+        ]
+        return h('div', { class: 'action-cell', style: 'display: contents;' }, h(NSpace, { size: 'small' }, { default: () => dropdownBtns }))
       } else {
-        btns.push(actionBtn(AddOutline, 'รายงาน', () => emit('addUpdate', row.id)))
-        btns.push(actionBtn(StatsChartOutline, 'กราฟ/ประวัติ', () => openIndicatorChart(row.id)))
-        btns.push(actionBtn(CreateOutline, 'แก้ไข', () => openEditIndicatorById(row.id)))
-        btns.push(actionBtn(TrashOutline, 'ลบ', () => emit('deleteIndicator', row.id), 'error'))
+        const menuOptions: any[] = [
+          {
+            label: 'แก้ไข',
+            key: 'edit-indicator',
+            icon: () => h(NIcon, null, { default: () => h(CreateOutline) }),
+          },
+          {
+            label: 'ลบ',
+            key: 'delete-indicator',
+            icon: () => h(NIcon, null, { default: () => h(TrashOutline) }),
+            props: { style: 'color: #d03050' },
+          },
+        ]
+        const dropdownBtns: any[] = [
+          actionBtn(AddOutline, 'รายงาน', () => emit('addUpdate', row.id)),
+          actionBtn(StatsChartOutline, 'กราฟ/ประวัติ', () => openIndicatorChart(row.id)),
+          h(NDropdown, {
+            trigger: 'click',
+            options: menuOptions,
+            onSelect: (key: string) => {
+              if (key === 'edit-indicator') openEditIndicatorById(row.id)
+              else if (key === 'delete-indicator') emit('deleteIndicator', row.id)
+            },
+          }, {
+            default: () => h(NButton, { size: 'tiny', tertiary: true, title: 'ดำเนินการ', class: 'dropdown-trigger', style: 'cursor: pointer' }, {
+              icon: () => h(NIcon, { size: 14 }, () => h(EllipsisHorizontal)),
+            }),
+          })
+        ]
+        return h('div', { class: 'action-cell', style: 'display: contents;' }, h(NSpace, { size: 'small' }, { default: () => dropdownBtns }))
       }
-      return h(NSpace, { size: 'small' }, { default: () => btns })
     },
   },
 ]
@@ -332,6 +420,17 @@ const indicatorFormLoading = ref(false)
 const showIndicatorDrawer = ref(false)
 const drawerIndicatorId = ref<string>('')
 const drawerTab = ref<'assignees' | 'chart' | 'audit'>('assignees')
+
+const drawerIndicator = computed(() => {
+  if (!drawerIndicatorId.value) return null
+  for (const strategy of props.strategies) {
+    for (const goal of strategy.goals || []) {
+      const indicator = goal.indicators?.find(i => i.id === drawerIndicatorId.value)
+      if (indicator) return indicator
+    }
+  }
+  return null
+})
 
 function openEditStrategyById(strategyId: string) {
   const strategy = props.strategies.find(s => s.id === strategyId)
@@ -442,7 +541,26 @@ async function handleSaveIndicator(payload: { name: string; description?: string
     @save="handleSaveIndicator" />
 
   <NDrawer v-model:show="showIndicatorDrawer" :width="600" placement="right">
-    <NDrawerContent :title="'รายละเอียดตัวชี้วัด'">
+    <NDrawerContent :title="'รายละเอียดตัวชี้วัด'" closable>
+      <template v-if="drawerIndicatorId">
+        <NTabs v-model:value="drawerTab" type="line" animated style="margin-top: 12px">
+          <NTabPane name="assignees" tab="ผู้รับผิดชอบ">
+            <IndicatorAssignees :assignees="drawerIndicator?.assignees || []" :editable="false" />
+          </NTabPane>
+          <NTabPane name="chart" tab="กราฟแนวโน้ม">
+            <IndicatorChart
+              v-if="drawerIndicator"
+              :indicator-id="drawerIndicatorId"
+              :target-value="drawerIndicator.targetValue || ''"
+              :unit="drawerIndicator.unit"
+            />
+            <NText v-else depth="3">ไม่พบข้อมูลตัวชี้วัด</NText>
+          </NTabPane>
+          <NTabPane name="audit" tab="ประวัติการเปลี่ยนแปลง">
+            <IndicatorAuditLog :indicator-id="drawerIndicatorId" :is-admin="false" />
+          </NTabPane>
+        </NTabs>
+      </template>
     </NDrawerContent>
   </NDrawer>
 </template>
@@ -485,5 +603,10 @@ async function handleSaveIndicator(payload: { name: string; description?: string
 
 :deep(.strategy-table .n-data-table-tr.row-goal .n-data-table-td:first-child) {
   border-left: 3px solid #cbd5e1;
+}
+
+/* Action-on-hover: show dropdown trigger on row hover */
+:deep(.strategy-table .n-data-table-tr:hover .action-cell .dropdown-trigger) {
+  opacity: 1 !important;
 }
 </style>

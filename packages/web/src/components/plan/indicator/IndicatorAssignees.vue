@@ -6,6 +6,7 @@ import type { UserMini } from '@/types/plan'
 const props = defineProps<{
   assignees: UserMini[]
   maxDisplay?: number
+  editable?: boolean
 }>()
 
 const emit = defineEmits<{
@@ -18,9 +19,9 @@ const emit = defineEmits<{
     <NTag
       v-for="assignee in assignees.slice(0, maxDisplay || assignees.length)"
       :key="assignee.id"
-      closable
+      :closable="editable"
       size="small"
-      @close="emit('remove', assignee.id)"
+      @close="editable ? emit('remove', assignee.id) : undefined"
     >
       {{ assignee.name }}
     </NTag>
