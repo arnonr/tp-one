@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, h } from 'vue'
 import {
-  NDataTable, NButton, NIcon, NProgress, NDrawer, NDrawerContent, NSpace, NPopover, NSelect
+  NDataTable, NButton, NIcon, NProgress, NDrawer, NDrawerContent, NSpace, NPopover
 } from 'naive-ui'
 import type { DataTableColumns } from 'naive-ui'
 import {
@@ -163,20 +163,42 @@ const columns: DataTableColumns<PlanRow> = [
     title: 'สถานะ',
     key: 'status',
     width: 160,
-    align: 'center',
+    align: 'left',
     render(row) {
-      const statusOptions = PLAN_ITEM_STATUS_OPTIONS.map(o => ({ label: o.label, value: o.value }))
+      const statusOption = PLAN_ITEM_STATUS_OPTIONS.find(o => o.value === row.status)
+      const bgColor = statusOption ? `${statusOption.color}20` : '#f1f5f9'
+      const textColor = statusOption?.color || '#64748b'
+      const borderColor = statusOption?.color || '#e2e8f0'
+      const label = statusOption?.label || row.status
+
+      const statusOptions = PLAN_ITEM_STATUS_OPTIONS.map(o => ({ label: o.label, value: o.value, color: o.color }))
       const handleUpdate = (value: PlanItemStatus) => {
         if (row.type === 'strategy') emit('updateStrategyStatus', row.id, { status: value })
         else if (row.type === 'goal') emit('updateGoalStatus', row.id, { status: value })
         else emit('updateIndicatorStatus', row.id, { status: value })
       }
-      return h(NSelect, {
-        value: row.status,
-        options: statusOptions,
-        size: 'tiny',
-        style: 'min-width: 130px',
-        onUpdateValue: handleUpdate,
+
+      return h(NPopover, { trigger: 'hover', placement: 'top' }, {
+        trigger: () => h('span', {
+          style: `display: inline-flex; padding: 2px 10px; border-radius: 9999px; font-size: 0.75rem; font-weight: 500; white-space: nowrap; cursor: pointer; background: ${bgColor}; color: ${textColor}; border: 1px solid ${borderColor}; transition: opacity 0.15s;`,
+          onMouseenter: (e: MouseEvent) => { (e.currentTarget as HTMLElement).style.opacity = '0.8' },
+          onMouseleave: (e: MouseEvent) => { (e.currentTarget as HTMLElement).style.opacity = '1' },
+        }, label),
+        default: () => h('div', { style: 'padding: 4px 0' }, [
+          h('div', { style: 'font-size: 12px; font-weight: 500; color: #333; margin-bottom: 6px; padding: 0 8px' }, 'เปลี่ยนสถานะ'),
+          ...statusOptions.map(opt => {
+            const isActive = opt.value === row.status
+            return h('div', {
+              style: `padding: 6px 8px; cursor: pointer; border-radius: 4px; display: flex; gap: 8px; background: ${isActive ? `${opt.color}10` : 'transparent'}; color: ${opt.color};`,
+              onClick: () => handleUpdate(opt.value),
+            }, [
+              h('span', {
+                style: `width: 8px; height: 8px; border-radius: 50%; background: ${opt.color}; ${isActive ? '' : 'opacity: 0.5'}`,
+              }),
+              opt.label,
+            ])
+          }),
+        ]),
       })
     },
   },
@@ -193,7 +215,7 @@ const columns: DataTableColumns<PlanRow> = [
     title: 'เป้าหมาย',
     key: 'targetValue',
     width: 90,
-    align: 'right',
+    align: 'left',
     render(row) {
       if (row.type !== 'indicator') return null
       return h('span', { style: 'font-size: 12px; font-weight: 500' }, row.targetValue || '-')
@@ -203,7 +225,7 @@ const columns: DataTableColumns<PlanRow> = [
     title: 'ค่าปัจจุบัน',
     key: 'currentValue',
     width: 90,
-    align: 'right',
+    align: 'left',
     render(row) {
       if (row.type !== 'indicator') return null
       return h('span', { style: 'font-size: 12px;' }, row.currentValue || '-')
@@ -245,7 +267,7 @@ const columns: DataTableColumns<PlanRow> = [
     },
   },
   {
-    title: '',
+    title: 'ดำเนินการ',
     key: 'actions',
     width: 160,
     render(row) {
@@ -394,7 +416,7 @@ async function handleSaveIndicator(payload: { name: string; description?: string
     </div>
 
     <NDataTable v-if="treeData.length > 0" :columns="columns" :data="treeData" :row-props="rowProps"
-      v-model:expanded-row-keys="expandedRowKeys" :loading="loading" :bordered="false" striped />
+      v-model:expanded-row-keys="expandedRowKeys" :loading="loading" :bordered="false" striped class="strategy-table" />
     <div v-else class="empty-state">
       <p>ยังไม่มียุทธศาสตร์ในแผนนี้</p>
       <NButton size="small" @click="showStrategyForm = true">เพิ่มยุทธศาสตร์แรก</NButton>
@@ -424,5 +446,9 @@ async function handleSaveIndicator(payload: { name: string; description?: string
   text-align: center;
   padding: var(--space-xl);
   color: var(--color-text-secondary);
+}
+
+:deep(.strategy-table .n-data-table-td) {
+  border-bottom: 1px solid var(--color-border);
 }
 </style>
