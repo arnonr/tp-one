@@ -133,7 +133,6 @@ const columns: DataTableColumns<PlanRow> = [
         : row.type === 'goal'
           ? 'font-weight: 500; font-size: var(--text-sm); color: #888'
           : 'font-weight: 400; font-size: var(--text-sm); color: #ff6600'
-      const marginLeft = row.type === 'strategy' ? 0 : row.type === 'goal' ? 16 : 32
       const children: any[] = [
         h('span', { style: `${nameStyle}; word-break: break-word; white-space: normal;` }, row.name),
       ]
@@ -154,7 +153,7 @@ const columns: DataTableColumns<PlanRow> = [
           })
         )
       }
-      return h('div', { style: `margin-left: ${marginLeft}px; display: flex; align-items: center; gap: 4px; flex: 1; min-width: 0;` }, children)
+      return h('div', { style: `display: inline-flex; align-items: flex-start; gap: 4px; max-width: 100%; vertical-align: top;` }, children)
     },
   },
   {
@@ -620,6 +619,8 @@ async function handleSaveIndicator(payload: { name: string; description?: string
 
 :deep(.strategy-table .n-data-table-td) {
   border-bottom: 1px solid #e2e8f0 !important;
+  vertical-align: top !important;
+  padding-top: 12px !important;
 }
 
 :deep(.strategy-table .n-data-table-th) {
