@@ -305,6 +305,12 @@ const rowProps = (row: PlanRow) => ({
   style: row.type === 'indicator' ? 'cursor: default' : 'cursor: pointer',
 })
 
+const rowClassName = (row: PlanRow) => {
+  if (row.type === 'strategy') return 'row-strategy'
+  if (row.type === 'goal') return 'row-goal'
+  return 'row-indicator'
+}
+
 // ===== Expand/Collapse =====
 const expandedRowKeys = ref<string[]>([])
 
@@ -421,7 +427,8 @@ async function handleSaveIndicator(payload: { name: string; description?: string
     </div>
 
     <NDataTable v-if="treeData.length > 0" :columns="columns" :data="treeData" :row-props="rowProps"
-      v-model:expanded-row-keys="expandedRowKeys" :loading="loading" :bordered="false" striped class="strategy-table" />
+      v-model:expanded-row-keys="expandedRowKeys" :loading="loading" :bordered="false" striped class="strategy-table"
+      :row-class-name="rowClassName" />
     <div v-else class="empty-state">
       <p>ยังไม่มียุทธศาสตร์ในแผนนี้</p>
       <NButton size="small" @click="showStrategyForm = true">เพิ่มยุทธศาสตร์แรก</NButton>
@@ -461,5 +468,22 @@ async function handleSaveIndicator(payload: { name: string; description?: string
 :deep(.strategy-table .n-data-table-th) {
   border-bottom: 1px solid #e2e8f0 !important;
   border-right: 1px solid #e2e8f0 !important;
+}
+
+/* Row Grouping — hierarchy background colors */
+:deep(.strategy-table .n-data-table-tr.row-strategy) {
+  background-color: #f1f5f9;
+}
+
+:deep(.strategy-table .n-data-table-tr.row-strategy .n-data-table-td:first-child) {
+  border-left: 3px solid #94a3b8;
+}
+
+:deep(.strategy-table .n-data-table-tr.row-goal) {
+  background-color: #f8fafc;
+}
+
+:deep(.strategy-table .n-data-table-tr.row-goal .n-data-table-td:first-child) {
+  border-left: 3px solid #cbd5e1;
 }
 </style>
