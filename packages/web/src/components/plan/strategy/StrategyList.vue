@@ -145,7 +145,7 @@ const columns: DataTableColumns<PlanRow> = [
         children.push(
           h(NPopover, { trigger: 'hover', placement: 'top', width: 280 }, {
             trigger: () => h('span', {
-              style: `margin-left: 4px; display: inline-flex; align-items: center; justify-content: center; width: 14px; height: 14px; cursor: pointer; opacity: 0.6; transition: opacity 0.15s; background: #e8e8e8; border: 1px solid #4080ff; border-radius: 3px;`,
+              style: `margin-left: 4px; display: inline-flex; align-items: center; justify-content: center; width: 14px; height: 14px; flex-shrink: 0; cursor: pointer; opacity: 0.6; transition: opacity 0.15s; background: #e8e8e8; border: 1px solid #4080ff; border-radius: 3px;`,
               onMouseenter: (e: MouseEvent) => { (e.currentTarget as HTMLElement).style.opacity = '1' },
               onMouseleave: (e: MouseEvent) => { (e.currentTarget as HTMLElement).style.opacity = '0.6' },
             }, h('span', {
@@ -207,29 +207,30 @@ const columns: DataTableColumns<PlanRow> = [
     title: 'หน่วยนับ',
     key: 'unit',
     width: 90,
+    align: 'center',
     render(row) {
       if (row.type !== 'indicator') return null
-      return h('span', { style: 'font-size: 12px;)' }, row.unit || '-')
+      return h('span', { style: 'font-size: 12px; text-align: center; display: block;' }, row.unit || '-')
     },
   },
   {
     title: 'เป้าหมาย',
     key: 'targetValue',
     width: 90,
-    align: 'left',
+    align: 'center',
     render(row) {
       if (row.type !== 'indicator') return null
-      return h('span', { style: 'font-size: 12px; font-weight: 500' }, row.targetValue || '-')
+      return h('span', { style: 'font-size: 12px; font-weight: 500; text-align: center; display: block;' }, row.targetValue || '-')
     },
   },
   {
     title: 'ค่าปัจจุบัน',
     key: 'currentValue',
     width: 90,
-    align: 'left',
+    align: 'center',
     render(row) {
       if (row.type !== 'indicator') return null
-      return h('span', { style: 'font-size: 12px;' }, row.currentValue || '-')
+      return h('span', { style: 'font-size: 12px; text-align: center; display: block;' }, row.currentValue || '-')
     },
   },
   {
@@ -244,13 +245,14 @@ const columns: DataTableColumns<PlanRow> = [
           type: 'line',
           percentage: pct,
           showIndicator: false,
-          height: 14,
+          height: 20,
           railColor: '#e0e0e0',
           color: pct >= 100 ? '#52c41a' : '#1890ff',
+          borderRadius: 4,
           style: 'width: 100%',
         }),
         h('span', {
-          style: `position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 9px; color: ${pct >= 100 ? '#fff' : '#333'}; font-weight: 500; pointer-events: none;`,
+          style: `position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 10px; color: ${pct >= 100 ? '#fff' : '#fff'}; font-weight: 500; pointer-events: none;`,
         }, `${pct}%`),
       ])
     },
