@@ -186,7 +186,7 @@ const columns: DataTableColumns<PlanRow> = [
     width: 90,
     render(row) {
       if (row.type !== 'indicator') return null
-      return h('span', { style: 'font-size: 12px; color: var(--color-text-secondary)' }, row.unit || '-')
+      return h('span', { style: 'font-size: 12px;)' }, row.unit || '-')
     },
   },
   {
@@ -200,13 +200,13 @@ const columns: DataTableColumns<PlanRow> = [
     },
   },
   {
-    title: 'ผลงาน',
+    title: 'ค่าปัจจุบัน',
     key: 'currentValue',
     width: 90,
     align: 'right',
     render(row) {
       if (row.type !== 'indicator') return null
-      return h('span', { style: 'font-size: 12px; color: var(--color-text-secondary)' }, row.currentValue || '-')
+      return h('span', { style: 'font-size: 12px;' }, row.currentValue || '-')
     },
   },
   {
@@ -228,6 +228,20 @@ const columns: DataTableColumns<PlanRow> = [
         }),
         h('span', { style: 'font-size: 11px; color: var(--color-text-secondary); min-width: 35px' }, `${pct}%`),
       ])
+    },
+  },
+  {
+    title: 'ผู้รับผิดชอบ',
+    key: 'assignees',
+    width: 140,
+    render(row) {
+      if (row.type !== 'indicator') return null
+      const assigneeList = row.assignees
+      if (!assigneeList || assigneeList.length === 0) {
+        return h('span', { style: 'font-size: 12px; color: var(--color-text-tertiary)' }, '-')
+      }
+      const names = assigneeList.map((a: any) => a.name || a.displayName || a.email || 'ไม่ทราบ').join(', ')
+      return h('span', { style: 'font-size: 12px;', title: names }, names.length > 20 ? names.slice(0, 20) + '…' : names)
     },
   },
   {
@@ -366,31 +380,27 @@ async function handleSaveIndicator(payload: { name: string; description?: string
     <div class="strategy-list-header">
       <NButton v-if="planStatus !== 'completed'" type="primary" size="small" @click="showStrategyForm = true">
         <template #icon>
-          <NIcon><AddOutline /></NIcon>
+          <NIcon>
+            <AddOutline />
+          </NIcon>
         </template>
         เพิ่มยุทธศาสตร์
       </NButton>
     </div>
 
-    <NDataTable
-      v-if="treeData.length > 0"
-      :columns="columns"
-      :data="treeData"
-      :row-props="rowProps"
-      v-model:expanded-row-keys="expandedRowKeys"
-      :loading="loading"
-      :bordered="false"
-      striped
-    />
+    <NDataTable v-if="treeData.length > 0" :columns="columns" :data="treeData" :row-props="rowProps"
+      v-model:expanded-row-keys="expandedRowKeys" :loading="loading" :bordered="false" striped />
     <div v-else class="empty-state">
       <p>ยังไม่มียุทธศาสตร์ในแผนนี้</p>
       <NButton size="small" @click="showStrategyForm = true">เพิ่มยุทธศาสตร์แรก</NButton>
     </div>
   </div>
 
-  <StrategyForm v-model:show="showStrategyForm" :strategy="editingStrategy" :loading="strategyFormLoading" @save="handleSaveStrategy" />
+  <StrategyForm v-model:show="showStrategyForm" :strategy="editingStrategy" :loading="strategyFormLoading"
+    @save="handleSaveStrategy" />
   <GoalForm v-model:show="showGoalForm" :goal="editingGoal" :loading="goalFormLoading" @save="handleSaveGoal" />
-  <IndicatorForm v-model:show="showIndicatorForm" :indicator="editingIndicator" :loading="indicatorFormLoading" @save="handleSaveIndicator" />
+  <IndicatorForm v-model:show="showIndicatorForm" :indicator="editingIndicator" :loading="indicatorFormLoading"
+    @save="handleSaveIndicator" />
 
   <NDrawer v-model:show="showIndicatorDrawer" :width="600" placement="right">
     <NDrawerContent :title="'รายละเอียดตัวชี้วัด'">
@@ -404,6 +414,7 @@ async function handleSaveIndicator(payload: { name: string; description?: string
   justify-content: flex-end;
   margin-bottom: var(--space-md);
 }
+
 .empty-state {
   text-align: center;
   padding: var(--space-xl);
