@@ -27,7 +27,6 @@ const emit = defineEmits<{
     targetValue: string
     unit?: string
     indicatorType?: 'amount' | 'count' | 'percentage'
-    weight?: number
   }]
 }>()
 
@@ -45,7 +44,6 @@ const form = ref({
   targetValue: null as number | null,
   unit: '',
   indicatorType: 'amount' as 'amount' | 'count' | 'percentage',
-  weight: 1,
 })
 
 watch(() => props.show, (val) => {
@@ -57,7 +55,6 @@ watch(() => props.show, (val) => {
         targetValue: props.indicator.targetValue ? parseFloat(props.indicator.targetValue) : null,
         unit: props.indicator.unit || '',
         indicatorType: props.indicator.indicatorType,
-        weight: props.indicator.weight || 1,
       }
     } else {
       form.value = {
@@ -66,7 +63,6 @@ watch(() => props.show, (val) => {
         targetValue: null,
         unit: '',
         indicatorType: 'amount',
-        weight: 1,
       }
     }
   }
@@ -87,7 +83,6 @@ function handleSave() {
     targetValue: form.value.targetValue?.toString() || '',
     unit: form.value.unit.trim() || undefined,
     indicatorType: form.value.indicatorType,
-    weight: form.value.weight || 1,
   })
   emit('update:show', false)
 }
@@ -131,9 +126,6 @@ function handleClose() {
       </NFormItem>
       <NFormItem label="ประเภท">
         <NSelect v-model:value="form.indicatorType" :options="INDICATOR_TYPE_OPTIONS" />
-      </NFormItem>
-      <NFormItem label="น้ำหนัก (weight)">
-        <NInputNumber v-model:value="form.weight" :min="0.1" :max="10" :precision="1" style="width: 100%" />
       </NFormItem>
     </NForm>
     <template #footer>

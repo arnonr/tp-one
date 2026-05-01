@@ -48,28 +48,27 @@ const form = ref({
 
 watch(() => props.show, (val) => {
   if (val) {
+    const initialValue = props.lastReportedValue !== undefined && props.lastReportedValue !== null && props.lastReportedValue !== '' ? Number(props.lastReportedValue) : null
     form.value = {
       reportedDate: now.getTime(),
-      reportedValue: props.lastReportedValue !== undefined && props.lastReportedValue !== null && props.lastReportedValue !== '' ? Number(props.lastReportedValue) : null,
-      progressPct: null,
+      reportedValue: initialValue,
+      progressPct: calcProgress(initialValue, props.targetValue),
       note: '',
       evidenceUrl: '',
     }
   }
 }, { immediate: true })
 
-function autoCalcProgress() {
-  if (form.value.reportedValue === null || !props.targetValue) return null
-  const val = form.value.reportedValue
-  const target = parseFloat(props.targetValue)
-  if (isNaN(val) || isNaN(target) || target === 0) return null
-  return Math.round((val / target) * 100)
+function calcProgress(val: number | null, target: string): number | null {
+  if (val === null || !target) return null
+  const targetNum = parseFloat(target)
+  if (isNaN(val) || isNaN(targetNum) || targetNum === 0) return null
+  return Math.round((val / targetNum) * 100)
 }
 
-watch(() => form.value.reportedValue, () => {
-  const calc = autoCalcProgress()
-  if (calc !== null) form.value.progressPct = calc
-})
+watch(() => form.value.reportedValue, (val) => {
+  form.value.progressPct = calcProgress(val, props.targetValue)
+}, { flush: 'sync' })
 
 function handleSave() {
   if (form.value.reportedValue === null) {
@@ -99,14 +98,15 @@ function handleClose() {
           style="width: 100%" />
       </NFormItem>
       <NFormItem :label="`ค่าที่รายงาน (เป้าหมาย: ${targetValue})`" required>
-        <NInputNumber v-model:value="form.reportedValue" :min="0" :precision="2" placeholder="เช่น 85"
-          style="width: 100%" />
+        <input v-model.number="form.reportedValue" type="number" :min="0" step="0.01" placeholder="เช่น 85"
+          class="n-input-number" style="width: 100%; padding: 6px 12px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px;"
+          @input="() => { form.progressPct = calcProgress(form.reportedValue, targetValue) }" />
       </NFormItem>
       <NFormItem label="เปอร์เซ็นต์ความคืบหน้า (คำนวณอัตโนมัติ)">
-        <NInputNumber v-model:value="form.progressPct" :min="0" :max="100" placeholder="เช่น 75" style="width: 100%" />
+        <NInputNumber :value="form.progressPct" :min="0" :max="100" placeholder="เช่น 75" disabled style="width: 100%" />
       </NFormItem>
       <NFormItem label="หมายเหตุ">
-        <RichTextEditor v-model="form.note" placeholder="รายละเอียดเพิ่มเติม" :min-height="'120px'" />
+        <RichTextEditor v-model="form.note" placeholder="รายละเอียดเพิ่มเติม" :min-height="'200px'" style="width: 100%" />
       </NFormItem>
       <NFormItem label="URL (ถ้ามี)">
         <NInput v-model:value="form.evidenceUrl" placeholder="https://..." />

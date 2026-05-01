@@ -6,6 +6,10 @@
 - For complex tasks, create a detailed implementation plan in a <plan> block.
 - Review the plan with the user before executing tool calls.
 
+# Review reflection
+
+After writing the code, analyze it for potential edge cases, performance bottlenecks, or security risks. List them in a <reflection> block before finalizing.
+
 ## Project Overview
 
 ระบบจัดการงานสำหรับอุทยานเทคโนโลยี (หน่วยงานรับบริการวิชาการ มหาวิทยาลัย) ให้บริการ 4 ด้าน: เช่าพื้นที่, ที่ปรึกษา/วิจัย, อบรม/สัมนา, บ่มเพาะสตาร์ทอัป

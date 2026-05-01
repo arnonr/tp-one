@@ -843,21 +843,11 @@ export const planService = {
             .select()
             .from(indicatorUpdates)
             .where(eq(indicatorUpdates.indicatorId, ind.id))
-            .orderBy(desc(indicatorUpdates.reportedDate));
+            .orderBy(desc(indicatorUpdates.reportedDate), desc(indicatorUpdates.createdAt));
 
-          // group updates by period and pick the latest within each group
-          const updatesByPeriod = new Map<string, typeof allUpdates[0]>();
-          for (const upd of allUpdates) {
-            const key = getPeriodKey(upd.reportedDate, period);
-            if (!updatesByPeriod.has(key)) {
-              updatesByPeriod.set(key, upd);
-            }
-          }
-
-          // derive period metadata from the latest update in the most recent period
-          const sortedKeys = [...updatesByPeriod.keys()].sort();
-          const latestGroupKey = sortedKeys[sortedKeys.length - 1];
-          const latestUpdate = latestGroupKey ? updatesByPeriod.get(latestGroupKey)! : null;
+          // pick the update with the most recent reportedDate,
+          // tiebreak by createdAt (latest record wins if same reportedDate)
+          const latestUpdate = allUpdates[0] ?? null;
           let periodLabel = '';
           let periodStart = new Date();
           let periodEnd = new Date();
