@@ -506,14 +506,20 @@ export const planService = {
 
     const trackableFields = ['name', 'description', 'targetValue', 'unit', 'indicatorType', 'weight', 'sortOrder'] as const;
     const auditEntries = trackableFields
-      .filter((field) => data[field as keyof UpdateIndicatorInput] !== undefined)
+      .filter((field) => {
+        const key = field as keyof UpdateIndicatorInput;
+        if (data[key] === undefined) return false;
+        const oldVal = String(current[field as keyof typeof current] ?? '');
+        const newVal = String(data[key] ?? '');
+        return oldVal !== newVal;
+      })
       .map((field) => ({
         indicatorId,
         changedBy: updatedById,
         action: 'updated' as const,
         fieldName: field,
         oldValue: String(current[field as keyof typeof current] ?? ''),
-        newValue: String(updated[field as keyof typeof updated] ?? ''),
+        newValue: String(data[field as keyof UpdateIndicatorInput] ?? ''),
       }));
 
     if (auditEntries.length > 0) {
@@ -620,6 +626,14 @@ export const planService = {
     if (!data.reportedDate?.trim()) throw new ValidationError('reportedDate is required');
     if (!data.reportedValue?.trim()) throw new ValidationError('reportedValue is required');
 
+    // Get last reported value for audit log
+    const [lastUpdate] = await db
+      .select({ reportedValue: indicatorUpdates.reportedValue })
+      .from(indicatorUpdates)
+      .where(eq(indicatorUpdates.indicatorId, indicatorId))
+      .orderBy(desc(indicatorUpdates.reportedDate))
+      .limit(1);
+
     const [update] = await db
       .insert(indicatorUpdates)
       .values({
@@ -632,6 +646,28 @@ export const planService = {
         evidenceUrl: data.evidenceUrl,
       })
       .returning();
+
+    // Log to audit trail
+    const auditEntries = [{
+      indicatorId,
+      changedBy: reportedBy,
+      action: 'updated' as const,
+      fieldName: 'reportedValue' as const,
+      oldValue: lastUpdate?.reportedValue ?? '',
+      newValue: data.reportedValue,
+    }];
+    if (data.note) {
+      auditEntries.push({
+        indicatorId,
+        changedBy: reportedBy,
+        action: 'updated' as const,
+        fieldName: 'note' as const,
+        oldValue: '',
+        newValue: data.note,
+      });
+    }
+    await db.insert(planIndicatorAuditLogs).values(auditEntries);
+
     return update;
   },
 

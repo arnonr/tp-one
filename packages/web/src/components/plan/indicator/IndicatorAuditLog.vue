@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import {
   NTimeline, NTimelineItem, NTag, NButton, NIcon, NSpin,
   NModal, NInput, NForm, NFormItem, NSpace, NText, NPagination,
@@ -23,6 +23,44 @@ const loading = ref(false)
 const page = ref(1)
 const pageSize = ref(20)
 const total = ref(0)
+
+interface AuditLogGroup {
+  key: string
+  action: string
+  changedAt: string
+  changedByName?: string
+  fields: Array<{ fieldName: string; oldValue?: string; newValue?: string }>
+  reason?: string
+  entries: IndicatorAuditLogEntry[]
+}
+
+const groupedLogs = computed<AuditLogGroup[]>(() => {
+  const map = new Map<string, AuditLogGroup>()
+  for (const entry of logs.value) {
+    const key = `${entry.changedAt}-${entry.action}-${entry.changedBy}`
+    if (!map.has(key)) {
+      map.set(key, {
+        key,
+        action: entry.action,
+        changedAt: entry.changedAt,
+        changedByName: entry.changedByName,
+        fields: [],
+        reason: entry.reason,
+        entries: [entry],
+      })
+    }
+    if (entry.fieldName) {
+      map.get(key)!.fields.push({
+        fieldName: entry.fieldName,
+        oldValue: entry.oldValue,
+        newValue: entry.newValue,
+      })
+    }
+  }
+  return Array.from(map.values()).sort((a, b) =>
+    new Date(b.changedAt).getTime() - new Date(a.changedAt).getTime()
+  )
+})
 
 const showRevertModal = ref(false)
 const revertTarget = ref<IndicatorAuditLogEntry | null>(null)
@@ -51,6 +89,8 @@ const fieldLabels: Record<string, string> = {
   indicatorType: 'ประเภท',
   weight: 'น้ำหนัก',
   sortOrder: 'ลำดับ',
+  reportedValue: 'ค่าที่รายงาน',
+  note: 'หมายเหตุ',
 }
 
 async function fetchLogs() {
@@ -67,8 +107,8 @@ async function fetchLogs() {
 }
 
 
-function handleRevertClick(entry: IndicatorAuditLogEntry) {
-  revertTarget.value = entry
+function handleRevertClick(group: AuditLogGroup) {
+  revertTarget.value = group.entries[0]
   revertReason.value = ''
   showRevertModal.value = true
 }
@@ -77,7 +117,12 @@ async function confirmRevert() {
   if (!revertTarget.value || !revertReason.value.trim()) return
   reverting.value = true
   try {
-    await revertIndicator(props.indicatorId, revertTarget.value.id, revertReason.value.trim())
+    const group = groupedLogs.value.find(g => g.entries[0].id === revertTarget.value!.id)
+    if (group) {
+      for (const entry of group.entries) {
+        await revertIndicator(props.indicatorId, entry.id, revertReason.value.trim())
+      }
+    }
     showRevertModal.value = false
     emit('reverted')
     await fetchLogs()
@@ -120,33 +165,33 @@ onMounted(fetchLogs)
     </div>
 
     <NSpin :show="loading">
-      <NTimeline v-if="logs.length > 0">
+      <NTimeline v-if="groupedLogs.length > 0">
         <NTimelineItem
-          v-for="entry in logs"
-          :key="entry.id"
-          :type="actionColors[entry.action] ?? 'default'"
+          v-for="group in groupedLogs"
+          :key="group.key"
+          :type="actionColors[group.action] ?? 'default'"
         >
           <div class="audit-entry">
             <div class="audit-meta">
-              <NTag :type="actionColors[entry.action]" size="small" :bordered="false">
-                {{ actionLabels[entry.action] }}
+              <NTag :type="actionColors[group.action]" size="small" :bordered="false">
+                {{ actionLabels[group.action] }}
               </NTag>
-              <NText depth="3" class="audit-time">{{ formatThaiDateTime(entry.changedAt) }}</NText>
-              <NText depth="2">โดย {{ entry.changedByName ?? '-' }}</NText>
+              <NText depth="3" class="audit-time">{{ formatThaiDateTime(group.changedAt) }}</NText>
+              <NText depth="2">โดย {{ group.changedByName ?? '-' }}</NText>
             </div>
-            <div v-if="entry.fieldName" class="audit-detail">
-              <NText depth="3">{{ fieldLabels[entry.fieldName] ?? entry.fieldName }}:</NText>
-              <NText>{{ entry.oldValue ?? '-' }} → {{ entry.newValue ?? '-' }}</NText>
+            <div v-for="field in group.fields" :key="field.fieldName" class="audit-detail">
+              <NText depth="3">{{ fieldLabels[field.fieldName] ?? field.fieldName }}:</NText>
+              <NText>{{ field.oldValue ?? '-' }} → {{ field.newValue ?? '-' }}</NText>
             </div>
-            <div v-if="entry.reason" class="audit-reason">
-              <NText depth="3">เหตุผล: {{ entry.reason }}</NText>
+            <div v-if="group.reason" class="audit-reason">
+              <NText depth="3">เหตุผล: {{ group.reason }}</NText>
             </div>
             <NButton
-              v-if="isAdmin && entry.action !== 'deleted'"
+              v-if="isAdmin && group.action !== 'deleted'"
               size="tiny"
               type="warning"
               quaternary
-              @click="handleRevertClick(entry)"
+              @click="handleRevertClick(group)"
               style="margin-top: 4px"
             >
               กู้คืน
