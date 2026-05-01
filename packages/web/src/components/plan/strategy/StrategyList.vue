@@ -234,21 +234,23 @@ const columns: DataTableColumns<PlanRow> = [
   {
     title: 'ความก้าวหน้า',
     key: 'progress',
-    width: 120,
+    width: 150,
     render(row) {
       if (row.type !== 'indicator') return null
       const pct = row.progress ?? 0
-      return h('div', { style: 'display: flex; align-items: center; gap: 8px; min-width: 100px' }, [
+      return h('div', { style: 'position: relative; width: 100%' }, [
         h(NProgress, {
           type: 'line',
           percentage: pct,
-          showInfo: false,
+          showIndicator: false,
           height: 8,
           railColor: '#e0e0e0',
           color: pct >= 100 ? '#52c41a' : '#1890ff',
-          style: 'flex: 1',
+          style: 'width: 100%',
         }),
-        h('span', { style: 'font-size: 11px; color: var(--color-text-secondary); min-width: 35px' }, `${pct}%`),
+        h('span', {
+          style: `position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 9px; color: ${pct >= 100 ? '#fff' : '#333'}; font-weight: 500; pointer-events: none;`,
+        }, `${pct}%`),
       ])
     },
   },
