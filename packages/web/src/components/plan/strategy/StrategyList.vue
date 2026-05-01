@@ -153,7 +153,7 @@ const columns: DataTableColumns<PlanRow> = [
           })
         )
       }
-      return h('div', { style: `margin-left: ${marginLeft}px; display: flex; align-items: center; gap: 4px` }, children)
+      return h('div', { style: `margin-left: ${marginLeft}px; display: inline-flex; align-items: center; gap: 4px` }, children)
     },
   },
   {
@@ -186,7 +186,7 @@ const columns: DataTableColumns<PlanRow> = [
           ...statusOptions.map(opt => {
             const isActive = opt.value === row.status
             return h('div', {
-              style: `padding: 6px 8px; cursor: pointer; border-radius: 4px; display: flex; gap: 8px; background: ${isActive ? `${opt.color}10` : 'transparent'}; color: ${opt.color};`,
+              style: `padding: 6px 8px; cursor: pointer; border-radius: 4px; display: inline-flex; gap: 8px; background: ${isActive ? `${opt.color}10` : 'transparent'}; color: ${opt.color};`,
               onClick: () => handleUpdate(opt.value),
             }, [
               h('span', {
@@ -540,12 +540,8 @@ async function handleSaveIndicator(payload: { name: string; description?: string
             <IndicatorAssignees :assignees="drawerIndicator?.assignees || []" :editable="false" />
           </NTabPane>
           <NTabPane name="chart" tab="กราฟแนวโน้ม">
-            <IndicatorChart
-              v-if="drawerIndicator"
-              :indicator-id="drawerIndicatorId"
-              :target-value="drawerIndicator.targetValue || ''"
-              :unit="drawerIndicator.unit"
-            />
+            <IndicatorChart v-if="drawerIndicator" :indicator-id="drawerIndicatorId"
+              :target-value="drawerIndicator.targetValue || ''" :unit="drawerIndicator.unit" />
             <NText v-else depth="3">ไม่พบข้อมูลตัวชี้วัด</NText>
           </NTabPane>
           <NTabPane name="audit" tab="ประวัติการเปลี่ยนแปลง">
