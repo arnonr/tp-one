@@ -1,5 +1,7 @@
 // 4-level Annual Plan hierarchy types
 
+export type PlanItemStatus = 'pending' | 'in_progress' | 'completed' | 'cancelled';
+
 export interface AnnualPlan {
   id: string;
   year: number;
@@ -18,6 +20,7 @@ export interface Strategy {
   code: string; // S1, S2, ...
   name: string;
   description?: string;
+  status: PlanItemStatus;
   sortOrder: number;
   goals?: Goal[];
 }
@@ -28,6 +31,7 @@ export interface Goal {
   code: string; // S1-G1, S1-G2, ...
   name: string;
   description?: string;
+  status: PlanItemStatus;
   sortOrder: number;
   indicators?: Indicator[];
 }
@@ -42,6 +46,7 @@ export interface Indicator {
   unit?: string;
   indicatorType: 'amount' | 'count' | 'percentage';
   weight: number;
+  status: PlanItemStatus;
   sortOrder: number;
   assignees?: UserMini[];
 }
@@ -134,6 +139,28 @@ export interface IndicatorAuditLogEntry {
 
 export interface IndicatorAuditLogResponse {
   data: IndicatorAuditLogEntry[];
+  total: number;
+  page: number;
+  pageSize: number;
+  totalPages: number;
+}
+
+// ===== Status Logs =====
+
+export interface PlanStatusLogEntry {
+  id: string;
+  entityType: 'strategy' | 'goal' | 'indicator';
+  entityId: string;
+  oldStatus?: PlanItemStatus;
+  newStatus: PlanItemStatus;
+  changedBy: string;
+  changedByName?: string;
+  changedAt: string;
+  reason?: string;
+}
+
+export interface PlanStatusLogResponse {
+  data: PlanStatusLogEntry[];
   total: number;
   page: number;
   pageSize: number;

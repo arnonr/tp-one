@@ -1,5 +1,6 @@
 import { pgTable, uuid, varchar, text, integer, timestamp, index } from 'drizzle-orm/pg-core';
 import { strategies } from './strategies';
+import { planItemStatusEnum } from './plan-item-status';
 import { relations } from 'drizzle-orm';
 
 export const goals = pgTable('goals', {
@@ -8,6 +9,7 @@ export const goals = pgTable('goals', {
   code: varchar('code', { length: 20 }).notNull(),
   name: varchar('name', { length: 255 }).notNull(),
   description: text('description'),
+  status: planItemStatusEnum('status').default('pending').notNull(),
   sortOrder: integer('sort_order').default(0),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),

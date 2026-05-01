@@ -1,0 +1,76 @@
+- generic [ref=e5]:
+  - complementary [ref=e6]:
+    - generic [ref=e7]:
+      - generic [ref=e8]: TP
+      - generic [ref=e9]:
+        - generic [ref=e10]: TP-One
+        - generic [ref=e11]: อุทยานเทคโนโลยี
+    - generic [ref=e12]: เมนูหลัก
+    - menu [ref=e15]:
+      - menuitem "งานของฉัน" [ref=e16]:
+        - img [ref=e17] [cursor=pointer]:
+          - img [ref=e18]
+        - text: งานของฉัน
+      - menuitem "แดชบอร์ด" [ref=e21]:
+        - img [ref=e22] [cursor=pointer]:
+          - img [ref=e23]
+        - text: แดชบอร์ด
+      - menuitem "พื้นที่ทำงาน" [ref=e28]:
+        - img [ref=e29] [cursor=pointer]:
+          - img [ref=e30]
+        - text: พื้นที่ทำงาน
+      - menuitem "งานทั้งหมด" [ref=e35]:
+        - img [ref=e36] [cursor=pointer]:
+          - img [ref=e37]
+        - text: งานทั้งหมด
+      - menuitem "โครงการ" [ref=e40]:
+        - img [ref=e41] [cursor=pointer]:
+          - img [ref=e42]
+        - text: โครงการ
+      - menuitem "แผนปฏิบัติการ" [ref=e44]:
+        - img [ref=e45] [cursor=pointer]:
+          - img [ref=e46]
+        - text: แผนปฏิบัติการ
+      - menuitem "รายงาน" [ref=e52]:
+        - img [ref=e53] [cursor=pointer]:
+          - img [ref=e54]
+        - text: รายงาน
+    - generic [ref=e57] [cursor=pointer]:
+      - generic [ref=e59]: ผ
+      - generic [ref=e60]:
+        - generic [ref=e61]: ผู้ดูแลระบบ
+        - generic [ref=e62]: ผู้ดูแลระบบ
+      - img [ref=e63]:
+        - img [ref=e64]
+    - button [ref=e66] [cursor=pointer]:
+      - img [ref=e67]:
+        - img [ref=e68]
+  - generic [ref=e71]:
+    - banner [ref=e72]:
+      - heading "TP-One" [level=1] [ref=e73]
+      - generic [ref=e76] [cursor=pointer]:
+        - generic "ทุกพื้นที่ทำงาน" [ref=e77]:
+          - generic [ref=e78]: ทุกพื้นที่ทำงาน
+        - img "loading" [ref=e79]:
+          - img [ref=e82]
+          - img [ref=e89]
+      - generic [ref=e91]:
+        - generic [ref=e93]:
+          - img [ref=e95]:
+            - img [ref=e96]
+          - generic [ref=e99]:
+            - textbox "ค้นหา..." [ref=e100]
+            - generic:
+              - generic: ค้นหา...
+        - button "บันทึกด่วน" [ref=e103] [cursor=pointer]:
+          - img [ref=e104]:
+            - img [ref=e105]
+        - generic [ref=e108]:
+          - img [ref=e112] [cursor=pointer]:
+            - img [ref=e113]
+          - superscript [ref=e116]:
+            - generic [ref=e119]:
+              - generic [ref=e120]: "3"
+              - generic [ref=e122]: "3"
+              - generic [ref=e123]: "3"
+    - main [ref=e124]

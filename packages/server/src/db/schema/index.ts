@@ -14,3 +14,5 @@ export * from "./quick-notes";
 export * from "./snapshots";
 export * from "./kpi-audit-logs";
 export * from "./plan-indicator-audit-logs";
+export * from "./plan-item-status";
+export * from "./plan-status-logs";

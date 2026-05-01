@@ -8,6 +8,8 @@ import type {
   UserMini,
   PlanProgress,
   PlanListItem,
+  PlanItemStatus,
+  PlanStatusLogResponse,
 } from '@/types/plan'
 
 // ========== Annual Plans ==========
@@ -193,6 +195,28 @@ export async function exportIndicatorAuditLogs(indicatorId: string) {
 }
 
 // ========== Plan Report Export ==========
+
+export async function updateStrategyStatus(strategyId: string, payload: { status: PlanItemStatus; reason?: string }) {
+  const { data } = await api.patch(`/plans/strategies/${strategyId}/status`, payload)
+  return data
+}
+
+export async function updateGoalStatus(goalId: string, payload: { status: PlanItemStatus; reason?: string }) {
+  const { data } = await api.patch(`/plans/goals/${goalId}/status`, payload)
+  return data
+}
+
+export async function updateIndicatorStatus(indicatorId: string, payload: { status: PlanItemStatus; reason?: string }) {
+  const { data } = await api.patch(`/plans/indicators/${indicatorId}/status`, payload)
+  return data
+}
+
+export async function getPlanStatusLogs(entityType: string, entityId: string, page = 1, pageSize = 20) {
+  const { data } = await api.get(`/plans/status-logs/${entityType}/${entityId}`, {
+    params: { page, pageSize },
+  })
+  return data as PlanStatusLogResponse
+}
 
 export async function exportPlanPDF(planId: string, period = 'monthly') {
   const response = await api.get(`/plans/${planId}/export/pdf`, {

@@ -1,17 +1,24 @@
 <script setup lang="ts">
-import { ref, watch } from 'vue'
-import { NCollapse, NCollapseItem, NButton, NIcon, useMessage } from 'naive-ui'
-import { AddOutline } from '@vicons/ionicons5'
-import type { Strategy, Goal } from '@/types/plan'
-import StrategyCard from './StrategyCard.vue'
+import { ref, computed, h } from 'vue'
+import {
+  NDataTable, NButton, NIcon, NProgress, NDrawer, NDrawerContent, NSpace, NPopover, NSelect
+} from 'naive-ui'
+import type { DataTableColumns } from 'naive-ui'
+import {
+  AddOutline, CreateOutline, TrashOutline, StatsChartOutline
+} from '@vicons/ionicons5'
+import type { Strategy, Goal, Indicator, PlanProgress, IndicatorProgress, PlanItemStatus } from '@/types/plan'
 import StrategyForm from './StrategyForm.vue'
 import GoalForm from '@/components/plan/goal/GoalForm.vue'
+import IndicatorForm from '@/components/plan/indicator/IndicatorForm.vue'
+import { PLAN_ITEM_STATUS_OPTIONS } from '@/composables/usePlanStatus'
 
 const props = defineProps<{
   planId: string
   planStatus?: 'draft' | 'active' | 'completed'
   strategies: Strategy[]
   loading?: boolean
+  progressData?: PlanProgress | null
 }>()
 
 const emit = defineEmits<{
@@ -27,43 +34,296 @@ const emit = defineEmits<{
   deleteIndicator: [indicatorId: string]
   addUpdate: [indicatorId: string]
   reverted: []
+  updateStrategyStatus: [strategyId: string, payload: { status: PlanItemStatus }]
+  updateGoalStatus: [goalId: string, payload: { status: PlanItemStatus }]
+  updateIndicatorStatus: [indicatorId: string, payload: { status: PlanItemStatus }]
 }>()
 
-const message = useMessage()
+// ===== Progress lookup =====
+const progressMap = computed(() => {
+  const map = new Map<string, IndicatorProgress>()
+  if (!props.progressData) return map
+  for (const sp of props.progressData.strategies) {
+    for (const gp of sp.goals) {
+      for (const ip of gp.indicators) {
+        map.set(ip.indicatorId, ip)
+      }
+    }
+  }
+  return map
+})
 
+// ===== Tree row type =====
+interface PlanRow {
+  id: string
+  type: 'strategy' | 'goal' | 'indicator'
+  code: string
+  name: string
+  status: PlanItemStatus
+  description?: string
+  goalCount?: number
+  totalIndicatorCount?: number
+  indicatorCount?: number
+  targetValue?: string
+  unit?: string
+  currentValue?: string
+  assignees?: Indicator['assignees']
+  progress?: number
+  children?: PlanRow[]
+}
+
+// ===== Build tree data =====
+const treeData = computed<PlanRow[]>(() =>
+  props.strategies.map(s => ({
+    id: s.id,
+    type: 'strategy' as const,
+    code: s.code,
+    name: s.name,
+    status: s.status,
+    description: s.description,
+    goalCount: s.goals?.length || 0,
+    totalIndicatorCount: s.goals?.reduce((sum, g) => sum + (g.indicators?.length || 0), 0) || 0,
+    children: s.goals?.map(g => ({
+      id: g.id,
+      type: 'goal' as const,
+      code: g.code,
+      name: g.name,
+      status: g.status,
+      description: g.description,
+      indicatorCount: g.indicators?.length || 0,
+      children: g.indicators?.map(i => ({
+        id: i.id,
+        type: 'indicator' as const,
+        code: i.code,
+        name: i.name,
+        status: i.status,
+        description: i.description,
+        targetValue: i.targetValue,
+        unit: i.unit,
+        currentValue: progressMap.value.get(i.id)?.latestValue,
+        assignees: i.assignees,
+        progress: progressMap.value.get(i.id)?.latestProgressPct,
+      }))
+    }))
+  }))
+)
+
+// ===== Helper: icon button =====
+function actionBtn(icon: any, title: string, onClick: () => void, type?: 'error') {
+  return h(
+    NButton,
+    { size: 'tiny', tertiary: true, type: type || 'default', onClick, title, style: 'cursor: pointer' },
+    { icon: () => h(NIcon, { size: 14 }, () => h(icon)) }
+  )
+}
+
+// ===== Columns =====
+const columns: DataTableColumns<PlanRow> = [
+  {
+    title: 'รหัส',
+    key: 'code',
+    width: 80,
+    render(row) {
+      return h('span', { style: 'font-size: 11px; color: var(--color-text-tertiary); font-family: monospace' }, row.code)
+    },
+  },
+  {
+    title: 'ชื่อ',
+    key: 'name',
+    minWidth: 220,
+    render(row) {
+      const nameStyle = row.type === 'strategy'
+        ? 'font-weight: 600; font-size: var(--text-base); color: #000'
+        : row.type === 'goal'
+          ? 'font-weight: 500; font-size: var(--text-sm); color: #888'
+          : 'font-weight: 400; font-size: var(--text-sm); color: #ff6600'
+      const marginLeft = row.type === 'strategy' ? 0 : row.type === 'goal' ? 16 : 36
+      const children: any[] = [
+        h('span', { style: nameStyle }, row.name),
+      ]
+      if (row.description) {
+        const iconColor = row.type === 'strategy' ? '#4080ff' : row.type === 'goal' ? '#999' : '#ff6600'
+        children.push(
+          h(NPopover, { trigger: 'hover', placement: 'top', width: 280 }, {
+            trigger: () => h('span', {
+              style: `margin-left: 4px; display: inline-flex; align-items: center; justify-content: center; width: 16px; height: 16px; border-radius: 50%; background: ${iconColor}; color: #fff; cursor: pointer; opacity: 0.7; transition: opacity 0.15s; font-size: 11px; font-weight: 700; line-height: 1`,
+              onMouseenter: (e: MouseEvent) => { (e.currentTarget as HTMLElement).style.opacity = '1' },
+              onMouseleave: (e: MouseEvent) => { (e.currentTarget as HTMLElement).style.opacity = '0.7' },
+            }, 'i'),
+            default: () => h('div', {
+              style: 'padding: 4px; font-size: 13px; line-height: 1.6; white-space: pre-wrap; color: #333',
+            }, row.description),
+          })
+        )
+      }
+      return h('div', { style: `margin-left: ${marginLeft}px; display: inline-flex; align-items: center; gap: 2px` }, children)
+    },
+  },
+  {
+    title: 'สถานะ',
+    key: 'status',
+    width: 160,
+    align: 'center',
+    render(row) {
+      const statusOptions = PLAN_ITEM_STATUS_OPTIONS.map(o => ({ label: o.label, value: o.value }))
+      const handleUpdate = (value: PlanItemStatus) => {
+        if (row.type === 'strategy') emit('updateStrategyStatus', row.id, { status: value })
+        else if (row.type === 'goal') emit('updateGoalStatus', row.id, { status: value })
+        else emit('updateIndicatorStatus', row.id, { status: value })
+      }
+      return h(NSelect, {
+        value: row.status,
+        options: statusOptions,
+        size: 'tiny',
+        style: 'min-width: 130px',
+        onUpdateValue: handleUpdate,
+      })
+    },
+  },
+  {
+    title: 'หน่วยนับ',
+    key: 'unit',
+    width: 90,
+    render(row) {
+      if (row.type !== 'indicator') return null
+      return h('span', { style: 'font-size: 12px; color: var(--color-text-secondary)' }, row.unit || '-')
+    },
+  },
+  {
+    title: 'เป้าหมาย',
+    key: 'targetValue',
+    width: 90,
+    align: 'right',
+    render(row) {
+      if (row.type !== 'indicator') return null
+      return h('span', { style: 'font-size: 12px; font-weight: 500' }, row.targetValue || '-')
+    },
+  },
+  {
+    title: 'ผลงาน',
+    key: 'currentValue',
+    width: 90,
+    align: 'right',
+    render(row) {
+      if (row.type !== 'indicator') return null
+      return h('span', { style: 'font-size: 12px; color: var(--color-text-secondary)' }, row.currentValue || '-')
+    },
+  },
+  {
+    title: 'ความก้าวหน้า',
+    key: 'progress',
+    width: 120,
+    render(row) {
+      if (row.type !== 'indicator') return null
+      const pct = row.progress ?? 0
+      return h('div', { style: 'display: flex; align-items: center; gap: 8px; min-width: 100px' }, [
+        h(NProgress, {
+          type: 'line',
+          percentage: pct,
+          showInfo: false,
+          height: 8,
+          railColor: '#e0e0e0',
+          color: pct >= 100 ? '#52c41a' : '#1890ff',
+          style: 'flex: 1',
+        }),
+        h('span', { style: 'font-size: 11px; color: var(--color-text-secondary); min-width: 35px' }, `${pct}%`),
+      ])
+    },
+  },
+  {
+    title: '',
+    key: 'actions',
+    width: 160,
+    render(row) {
+      const btns: any[] = []
+      if (row.type === 'strategy') {
+        if (props.planStatus !== 'completed') {
+          btns.push(actionBtn(AddOutline, 'เพิ่มเป้าหมาย', () => emit('addGoal', row.id, { name: '', indicatorType: 'amount', weight: 1 })))
+        }
+        btns.push(actionBtn(CreateOutline, 'แก้ไข', () => openEditStrategyById(row.id)))
+        btns.push(actionBtn(TrashOutline, 'ลบ', () => emit('deleteStrategy', row.id), 'error'))
+      } else if (row.type === 'goal') {
+        if (props.planStatus !== 'completed') {
+          btns.push(actionBtn(AddOutline, 'เพิ่มตัวชี้วัด', () => emit('addIndicator', row.id, { name: '', targetValue: '', indicatorType: 'amount', weight: 1 })))
+        }
+        btns.push(actionBtn(CreateOutline, 'แก้ไข', () => openEditGoalById(row.id)))
+        btns.push(actionBtn(TrashOutline, 'ลบ', () => emit('deleteGoal', row.id), 'error'))
+      } else {
+        btns.push(actionBtn(AddOutline, 'รายงาน', () => emit('addUpdate', row.id)))
+        btns.push(actionBtn(StatsChartOutline, 'กราฟ/ประวัติ', () => openIndicatorChart(row.id)))
+        btns.push(actionBtn(CreateOutline, 'แก้ไข', () => openEditIndicatorById(row.id)))
+        btns.push(actionBtn(TrashOutline, 'ลบ', () => emit('deleteIndicator', row.id), 'error'))
+      }
+      return h(NSpace, { size: 'small' }, { default: () => btns })
+    },
+  },
+]
+
+// ===== Row props =====
+const rowProps = (row: PlanRow) => ({
+  style: row.type === 'indicator' ? 'cursor: default' : 'cursor: pointer',
+})
+
+// ===== Expand/Collapse =====
+const expandedRowKeys = ref<string[]>([])
+
+// ===== Forms =====
 const showStrategyForm = ref(false)
 const editingStrategy = ref<Strategy | null>(null)
 const strategyFormLoading = ref(false)
 
 const showGoalForm = ref(false)
-const selectedStrategyForGoal = ref<Strategy | null>(null)
 const editingGoal = ref<Goal | null>(null)
 const goalFormLoading = ref(false)
 
-const expandedStrategies = ref<string[]>([])
+const showIndicatorForm = ref(false)
+const editingIndicator = ref<Indicator | null>(null)
+const indicatorFormLoading = ref(false)
 
-// Expand all strategies by default
-if (props.strategies.length > 0 && expandedStrategies.value.length === 0) {
-  expandedStrategies.value = props.strategies.map(s => s.id)
-}
+// ===== Drawers =====
+const showIndicatorDrawer = ref(false)
+const drawerIndicatorId = ref<string>('')
+const drawerTab = ref<'assignees' | 'chart' | 'audit'>('assignees')
 
-// Watch for strategies changes and expand all
-watch(() => props.strategies, (newStrategies) => {
-  if (newStrategies.length > 0 && expandedStrategies.value.length === 0) {
-    expandedStrategies.value = newStrategies.map(s => s.id)
+function openEditStrategyById(strategyId: string) {
+  const strategy = props.strategies.find(s => s.id === strategyId)
+  if (strategy) {
+    editingStrategy.value = strategy
+    showStrategyForm.value = true
   }
-}, { immediate: true })
-
-function openAddStrategy() {
-  editingStrategy.value = null
-  showStrategyForm.value = true
 }
 
-function openEditStrategy(strategy: Strategy) {
-  editingStrategy.value = strategy
-  showStrategyForm.value = true
+function openEditGoalById(goalId: string) {
+  for (const strategy of props.strategies) {
+    const goal = strategy.goals?.find(g => g.id === goalId)
+    if (goal) {
+      editingGoal.value = goal
+      showGoalForm.value = true
+      return
+    }
+  }
 }
 
+function openEditIndicatorById(indicatorId: string) {
+  for (const strategy of props.strategies) {
+    for (const goal of strategy.goals || []) {
+      const indicator = goal.indicators?.find(i => i.id === indicatorId)
+      if (indicator) {
+        editingIndicator.value = indicator
+        showIndicatorForm.value = true
+        return
+      }
+    }
+  }
+}
+
+function openIndicatorChart(indicatorId: string) {
+  drawerIndicatorId.value = indicatorId
+  drawerTab.value = 'chart'
+  showIndicatorDrawer.value = true
+}
+
+// ===== Save handlers =====
 async function handleSaveStrategy(payload: { name: string; description?: string; sortOrder?: number }) {
   strategyFormLoading.value = true
   try {
@@ -78,131 +338,64 @@ async function handleSaveStrategy(payload: { name: string; description?: string;
   }
 }
 
-function confirmDeleteStrategy(strategy: Strategy) {
-  if (window.confirm(`ยืนยันลบกลยุทธ์ "${strategy.name}" และเป้าหมายภายใน?`)) {
-    emit('deleteStrategy', strategy.id)
-  }
-}
-
-function openAddGoalViaStrategyId(strategyId: string) {
-  const strategy = props.strategies.find(s => s.id === strategyId)
-  if (!strategy) return
-  selectedStrategyForGoal.value = strategy
-  editingGoal.value = null
-  showGoalForm.value = true
-}
-
-function openEditGoalViaGoalId(goalId: string) {
-  for (const strategy of props.strategies) {
-    const goal = strategy.goals?.find(g => g.id === goalId)
-    if (goal) {
-      editingGoal.value = goal
-      selectedStrategyForGoal.value = strategy
-      showGoalForm.value = true
-      return
-    }
-  }
-}
-
 async function handleSaveGoal(payload: { name: string; description?: string; sortOrder?: number }) {
-  if (!selectedStrategyForGoal.value) return
+  if (!editingGoal.value) return
   goalFormLoading.value = true
   try {
-    if (editingGoal.value) {
-      emit('editGoal', editingGoal.value.id, payload)
-    } else {
-      emit('addGoal', selectedStrategyForGoal.value.id, payload)
-    }
+    emit('editGoal', editingGoal.value.id, payload)
     showGoalForm.value = false
   } finally {
     goalFormLoading.value = false
   }
 }
 
-function confirmDeleteGoal(goalId: string) {
-  let goalName = ''
-  for (const strategy of props.strategies) {
-    const goal = strategy.goals?.find(g => g.id === goalId)
-    if (goal) {
-      goalName = goal.name
-      break
-    }
+async function handleSaveIndicator(payload: { name: string; description?: string; targetValue?: string; unit?: string; indicatorType?: string; weight?: number }) {
+  if (!editingIndicator.value) return
+  indicatorFormLoading.value = true
+  try {
+    emit('editIndicator', editingIndicator.value.id, payload)
+    showIndicatorForm.value = false
+  } finally {
+    indicatorFormLoading.value = false
   }
-  if (window.confirm(`ยืนยันลบเป้าหมาย "${goalName}" และตัวชี้วัดภายใน?`)) {
-    emit('deleteGoal', goalId)
-  }
-}
-
-function openAddIndicatorViaGoalId(goalId: string, _payload: any) {
-  emit('addIndicator', goalId, _payload)
-}
-
-function openEditIndicator(indicatorId: string) {
-  emit('editIndicator', indicatorId, { name: '', description: '', targetValue: '', unit: '', indicatorType: 'amount', weight: 1 })
-}
-
-function confirmDeleteIndicator(indicatorId: string) {
-  emit('deleteIndicator', indicatorId)
-}
-
-// Card-level handlers that adapt StrategyCard's emit to StrategyList's internal handlers
-function handleEditFromCard(strategy: Strategy) {
-  openEditStrategy(strategy)
-}
-
-function handleDeleteFromCard(strategy: Strategy) {
-  confirmDeleteStrategy(strategy)
-}
-
-function handleAddGoalFromCard(strategyId: string, _payload: any) {
-  openAddGoalViaStrategyId(strategyId)
-}
-
-function handleAddIndicatorFromCard(goalId: string, payload: any) {
-  openAddIndicatorViaGoalId(goalId, payload)
 }
 </script>
 
 <template>
   <div class="strategy-list">
     <div class="strategy-list-header">
-      <NButton v-if="planStatus !== 'completed'" type="primary" size="small" @click="openAddStrategy">
+      <NButton v-if="planStatus !== 'completed'" type="primary" size="small" @click="showStrategyForm = true">
         <template #icon>
-          <NIcon>
-            <AddOutline />
-          </NIcon>
+          <NIcon><AddOutline /></NIcon>
         </template>
         เพิ่มยุทธศาสตร์
       </NButton>
     </div>
 
-    <NCollapse v-if="strategies.length > 0" :expanded-names="expandedStrategies"
-      @update:expanded-names="(val) => (expandedStrategies = val)">
-      <NCollapseItem v-for="strategy in strategies" :key="strategy.id" :name="strategy.id">
-        <template #header>
-          <div class="collapse-header">
-            <span class="strategy-code-badge">{{ strategy.code }}</span>
-            <span class="strategy-label">{{ strategy.name }}</span>
-          </div>
-        </template>
-        <StrategyCard :strategy="strategy" :plan-status="planStatus" @edit="handleEditFromCard"
-          @delete="handleDeleteFromCard" @add-goal="handleAddGoalFromCard"
-          @edit-goal="(_id, _payload) => openEditGoalViaGoalId(_id)" @delete-goal="confirmDeleteGoal"
-          @add-indicator="handleAddIndicatorFromCard" @edit-indicator="(_id) => openEditIndicator(_id)"
-          @delete-indicator="confirmDeleteIndicator" @add-update="(_id) => emit('addUpdate', _id)"
-          @reverted="emit('reverted')" />
-      </NCollapseItem>
-    </NCollapse>
+    <NDataTable
+      v-if="treeData.length > 0"
+      :columns="columns"
+      :data="treeData"
+      :row-props="rowProps"
+      v-model:expanded-row-keys="expandedRowKeys"
+      :loading="loading"
+      :bordered="false"
+      striped
+    />
     <div v-else class="empty-state">
       <p>ยังไม่มียุทธศาสตร์ในแผนนี้</p>
-      <NButton size="small" @click="openAddStrategy">เพิ่มยุทธศาสตร์แรก</NButton>
+      <NButton size="small" @click="showStrategyForm = true">เพิ่มยุทธศาสตร์แรก</NButton>
     </div>
   </div>
 
-  <StrategyForm v-model:show="showStrategyForm" :strategy="editingStrategy" :loading="strategyFormLoading"
-    @save="handleSaveStrategy" />
-
+  <StrategyForm v-model:show="showStrategyForm" :strategy="editingStrategy" :loading="strategyFormLoading" @save="handleSaveStrategy" />
   <GoalForm v-model:show="showGoalForm" :goal="editingGoal" :loading="goalFormLoading" @save="handleSaveGoal" />
+  <IndicatorForm v-model:show="showIndicatorForm" :indicator="editingIndicator" :loading="indicatorFormLoading" @save="handleSaveIndicator" />
+
+  <NDrawer v-model:show="showIndicatorDrawer" :width="600" placement="right">
+    <NDrawerContent :title="'รายละเอียดตัวชี้วัด'">
+    </NDrawerContent>
+  </NDrawer>
 </template>
 
 <style scoped>
@@ -211,34 +404,9 @@ function handleAddIndicatorFromCard(goalId: string, payload: any) {
   justify-content: flex-end;
   margin-bottom: var(--space-md);
 }
-
-.collapse-header {
-  display: flex;
-  align-items: center;
-  gap: var(--space-sm);
-}
-
-.strategy-code-badge {
-  font-size: var(--text-xs);
-  font-weight: 600;
-  background: #FFF0E6;
-  color: #FF6600;
-  padding: 2px 8px;
-  border-radius: var(--radius-sm);
-}
-
-.strategy-label {
-  font-size: var(--text-sm);
-  font-weight: 500;
-}
-
 .empty-state {
   text-align: center;
   padding: var(--space-xl);
   color: var(--color-text-secondary);
-}
-
-.empty-state p {
-  margin-bottom: var(--space-md);
 }
 </style>

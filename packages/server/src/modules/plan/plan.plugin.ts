@@ -41,6 +41,9 @@ export const planPlugin = new Elysia({ prefix: '/api/plans' })
   .delete('/strategies/:strategyId', async ({ user, params }) => planController.deleteStrategy(user, params), {
     detail: { summary: 'Delete strategy' },
   })
+  .patch('/strategies/:strategyId/status', async ({ user, params, body }) => planController.updateStrategyStatus(user, params, body as any), {
+    detail: { summary: 'Update strategy status' },
+  })
 
   // Goals
   .get('/strategies/:strategyId/goals', async ({ user, params }) => planController.listGoals(user, params), {
@@ -55,6 +58,9 @@ export const planPlugin = new Elysia({ prefix: '/api/plans' })
   .delete('/goals/:goalId', async ({ user, params }) => planController.deleteGoal(user, params), {
     detail: { summary: 'Delete goal' },
   })
+  .patch('/goals/:goalId/status', async ({ user, params, body }) => planController.updateGoalStatus(user, params, body as any), {
+    detail: { summary: 'Update goal status' },
+  })
 
   // Indicators
   .get('/goals/:goalId/indicators', async ({ user, params }) => planController.listIndicators(user, params), {
@@ -68,6 +74,9 @@ export const planPlugin = new Elysia({ prefix: '/api/plans' })
   })
   .delete('/indicators/:indicatorId', async ({ user, params }) => planController.deleteIndicator(user, params), {
     detail: { summary: 'Delete indicator' },
+  })
+  .patch('/indicators/:indicatorId/status', async ({ user, params, body }) => planController.updateIndicatorStatus(user, params, body as any), {
+    detail: { summary: 'Update indicator status' },
   })
 
   // Indicator Assignees
@@ -103,6 +112,11 @@ export const planPlugin = new Elysia({ prefix: '/api/plans' })
   // Reports
   .get('/reports/plan-progress', async ({ user, query }) => planController.getPlanProgress(user, {}, query as any), {
     detail: { summary: 'Get plan progress aggregation' },
+  })
+
+  // Status Logs
+  .get('/status-logs/:entityType/:entityId', async ({ user, params, query }) => planController.getStatusLogs(user, params, query as any), {
+    detail: { summary: 'Get status change logs for an entity' },
   })
 
   // Plan Report Export

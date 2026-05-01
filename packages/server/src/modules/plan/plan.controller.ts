@@ -281,6 +281,53 @@ export const planController = {
     });
   },
 
+  // Status management
+
+  async updateStrategyStatus(
+    user: { id: string; role: GlobalRole },
+    params: Record<string, string>,
+    body: { status: string; reason?: string },
+  ) {
+    const { strategyId } = parseParams(params);
+    const { planService } = await import('./plan.service');
+    return planService.updateStrategyStatus(strategyId!, body.status, (user as any).userId ?? user.id, body.reason);
+  },
+
+  async updateGoalStatus(
+    user: { id: string; role: GlobalRole },
+    params: Record<string, string>,
+    body: { status: string; reason?: string },
+  ) {
+    const { goalId } = parseParams(params);
+    const { planService } = await import('./plan.service');
+    return planService.updateGoalStatus(goalId!, body.status, (user as any).userId ?? user.id, body.reason);
+  },
+
+  async updateIndicatorStatus(
+    user: { id: string; role: GlobalRole },
+    params: Record<string, string>,
+    body: { status: string; reason?: string },
+  ) {
+    const { indicatorId } = parseParams(params);
+    const { planService } = await import('./plan.service');
+    return planService.updateIndicatorStatus(indicatorId!, body.status, (user as any).userId ?? user.id, body.reason);
+  },
+
+  async getStatusLogs(
+    _user: { id: string; role: GlobalRole },
+    params: Record<string, string>,
+    query: Record<string, string>,
+  ) {
+    const { entityType, entityId } = params;
+    const { planService } = await import('./plan.service');
+    return planService.getStatusLogs(
+      entityType,
+      entityId,
+      query.page ? parseInt(query.page) : 1,
+      query.pageSize ? parseInt(query.pageSize) : 20,
+    );
+  },
+
   // Progress
 
   async getPlanProgress(

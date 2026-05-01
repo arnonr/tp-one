@@ -53,7 +53,7 @@ function handleSave() {
   }
   emit('save', {
     name: form.value.name.trim(),
-    description: form.value.description.trim() || undefined,
+    description: form.value.description.trim(),
     sortOrder: form.value.sortOrder || undefined,
   })
 }

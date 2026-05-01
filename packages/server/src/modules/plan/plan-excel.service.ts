@@ -85,10 +85,12 @@ const FISCAL_QUARTERS: Record<number, { label: string; months: number[] }> = {
   4: { label: 'ไตรมาสที่ 4 (ก.ค.-ก.ย.)', months: [7, 8, 9] },
 };
 
-const THAI_MONTHS = [
-  'ต.ค.', 'พ.ย.', 'ธ.ค.', 'ม.ค.', 'ก.พ.', 'มี.ค.',
-  'เม.ย.', 'พ.ค.', 'มิ.ย.', 'ก.ค.', 'ส.ค.', 'ก.ย.',
-];
+const THAI_MONTHS: Record<number, string> = {
+  1: 'ม.ค.', 2: 'ก.พ.', 3: 'มี.ค.',
+  4: 'เม.ย.', 5: 'พ.ค.', 6: 'มิ.ย.',
+  7: 'ก.ค.', 8: 'ส.ค.', 9: 'ก.ย.',
+  10: 'ต.ค.', 11: 'พ.ย.', 12: 'ธ.ค.',
+};
 
 export async function generatePlanExcel(data: PlanExportData): Promise<Buffer> {
   const wb = new ExcelJS.Workbook();
@@ -211,7 +213,7 @@ export async function generatePlanExcel(data: PlanExportData): Promise<Buffer> {
         const u = qUpdates[i];
         const x = qws.getRow(r);
         x.height = 22;
-        const monthName = THAI_MONTHS[qInfo.months.indexOf(u.month)] || '';
+        const monthName = THAI_MONTHS[u.month] || '';
 
         dCell(x.getCell(1), u.indicatorCode, { align: 'center' });
         dCell(x.getCell(2), monthName, { align: 'center' });

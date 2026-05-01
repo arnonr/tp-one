@@ -1,0 +1,289 @@
+- generic [ref=e5]:
+  - complementary [ref=e6]:
+    - generic [ref=e7]:
+      - generic [ref=e8]: TP
+      - generic [ref=e9]:
+        - generic [ref=e10]: TP-One
+        - generic [ref=e11]: อุทยานเทคโนโลยี
+    - generic [ref=e12]: เมนูหลัก
+    - menu [ref=e15]:
+      - menuitem "งานของฉัน" [ref=e16]:
+        - img [ref=e17] [cursor=pointer]:
+          - img [ref=e18]
+        - text: งานของฉัน
+      - menuitem "แดชบอร์ด" [ref=e21]:
+        - img [ref=e22] [cursor=pointer]:
+          - img [ref=e23]
+        - text: แดชบอร์ด
+      - menuitem "พื้นที่ทำงาน" [ref=e28]:
+        - img [ref=e29] [cursor=pointer]:
+          - img [ref=e30]
+        - text: พื้นที่ทำงาน
+      - menuitem "งานทั้งหมด" [ref=e35]:
+        - img [ref=e36] [cursor=pointer]:
+          - img [ref=e37]
+        - text: งานทั้งหมด
+      - menuitem "โครงการ" [ref=e40]:
+        - img [ref=e41] [cursor=pointer]:
+          - img [ref=e42]
+        - text: โครงการ
+      - menuitem "แผนปฏิบัติการ" [ref=e44]:
+        - img [ref=e45] [cursor=pointer]:
+          - img [ref=e46]
+        - text: แผนปฏิบัติการ
+      - menuitem "รายงาน" [ref=e52]:
+        - img [ref=e53] [cursor=pointer]:
+          - img [ref=e54]
+        - text: รายงาน
+    - generic [ref=e57] [cursor=pointer]:
+      - generic [ref=e59]: ผ
+      - generic [ref=e60]:
+        - generic [ref=e61]: ผู้ดูแลระบบ
+        - generic [ref=e62]: ผู้ดูแลระบบ
+      - img [ref=e63]:
+        - img [ref=e64]
+    - button [ref=e66] [cursor=pointer]:
+      - img [ref=e67]:
+        - img [ref=e68]
+  - generic [ref=e71]:
+    - banner [ref=e72]:
+      - heading "รายละเอียดแผน" [level=1] [ref=e73]
+      - generic [ref=e76] [cursor=pointer]:
+        - generic "ทุกพื้นที่ทำงาน" [ref=e77]:
+          - generic [ref=e78]: ทุกพื้นที่ทำงาน
+        - img "loading" [ref=e79]:
+          - img [ref=e82]
+          - img [ref=e89]
+      - generic [ref=e91]:
+        - generic [ref=e93]:
+          - img [ref=e95]:
+            - img [ref=e96]
+          - generic [ref=e99]:
+            - textbox "ค้นหา..." [ref=e100]
+            - generic:
+              - generic: ค้นหา...
+        - button "บันทึกด่วน" [ref=e103] [cursor=pointer]:
+          - img [ref=e104]:
+            - img [ref=e105]
+        - generic [ref=e108]:
+          - img [ref=e112] [cursor=pointer]:
+            - img [ref=e113]
+          - superscript [ref=e116]:
+            - generic [ref=e119]:
+              - generic [ref=e120]: "3"
+              - generic [ref=e122]: "3"
+              - generic [ref=e123]: "3"
+    - main [ref=e124]:
+      - generic [ref=e125]:
+        - generic:
+          - generic:
+            - generic:
+              - generic:
+                - generic:
+                  - button:
+                    - generic:
+                      - img:
+                        - img
+                  - generic:
+                    - generic: ร่าง
+                - heading "แผนปฏิบัติการประจำปี 2569" [level=1]
+                - generic:
+                  - generic:
+                    - img:
+                      - img
+                    - text: ปีงบประมาณ 2569
+                  - generic: "|"
+                  - generic:
+                    - img:
+                      - img
+                    - text: 2 ยุทธศาสตร์
+                  - generic: "|"
+                  - generic:
+                    - img:
+                      - img
+                    - text: 3 เป้าประสงค์
+                  - generic: "|"
+                  - generic:
+                    - img:
+                      - img
+                    - text: 3 ตัวชี้วัด
+            - generic:
+              - generic:
+                - generic:
+                  - generic:
+                    - generic:
+                      - img:
+                        - img
+                      - generic: ความคืบหน้ารวม
+                    - generic:
+                      - generic:
+                        - generic:
+                          - generic: 0%
+                    - progressbar
+              - generic:
+                - generic:
+                  - generic:
+                    - generic:
+                      - img:
+                        - img
+                      - generic: ตัวชี้วัดที่ผ่านเป้า
+                    - generic:
+                      - generic:
+                        - generic:
+                          - generic: "0"
+                      - generic: /
+                      - generic: "3"
+              - generic:
+                - generic:
+                  - generic:
+                    - generic:
+                      - img:
+                        - img
+                      - generic: ไตรมาสปัจจุบัน
+                    - generic:
+                      - generic:
+                        - generic:
+                          - generic: ไตรมาสที่ 3 (เม.ย. - มิ.ย.)
+              - generic:
+                - generic:
+                  - generic:
+                    - generic:
+                      - generic: ส่งออกรายงาน
+                    - generic:
+                      - generic:
+                        - generic:
+                          - generic:
+                            - generic "รายเดือน":
+                              - generic: รายเดือน
+                            - img "loading":
+                              - generic:
+                                - generic:
+                                  - generic:
+                                    - generic:
+                                      - img
+                      - group:
+                        - button "PDF":
+                          - generic:
+                            - img:
+                              - img
+                          - generic: PDF
+                        - button "Excel":
+                          - generic:
+                            - img:
+                              - img
+                          - generic: Excel
+            - separator
+            - generic:
+              - heading "โครงสร้างแผนงาน" [level=2]:
+                - img:
+                  - img
+                - text: โครงสร้างแผนงาน
+              - generic:
+                - generic:
+                  - button "เพิ่มยุทธศาสตร์":
+                    - generic:
+                      - img:
+                        - img
+                    - generic: เพิ่มยุทธศาสตร์
+                - generic:
+                  - generic:
+                    - generic:
+                      - generic:
+                        - generic:
+                          - generic:
+                            - img
+                        - generic:
+                          - generic: S1
+                          - generic: ยุทธศาสตร์ที่ 1 ความเป็นเลิศด้านการจัดการศึกษา
+                    - generic:
+                      - generic:
+                        - generic:
+                          - heading "S1 ยุทธศาสตร์ที่ 1 ความเป็นเลิศด้านการจัดการศึกษา 2 เป้าหมาย | 2 ตัวชี้วัด":
+                            - heading "S1 ยุทธศาสตร์ที่ 1 ความเป็นเลิศด้านการจัดการศึกษา 2 เป้าหมาย | 2 ตัวชี้วัด":
+                              - generic:
+                                - generic:
+                                  - generic:
+                                    - generic: S1
+                                  - generic:
+                                    - generic: ยุทธศาสตร์ที่ 1 ความเป็นเลิศด้านการจัดการศึกษา
+                                    - generic: 2 เป้าหมาย | 2 ตัวชี้วัด
+                                - button:
+                                  - generic:
+                                    - img:
+                                      - img
+                                - button:
+                                  - generic:
+                                    - img:
+                                      - img
+                                - button:
+                                  - generic:
+                                    - img:
+                                      - img
+                          - generic:
+                            - generic:
+                              - generic:
+                                - generic:
+                                  - generic:
+                                    - generic:
+                                      - generic:
+                                        - img
+                                    - generic:
+                                      - generic: S1-G1
+                                      - generic: เป้าประสงค์ที่ 1.1 พัฒนาการเรียนการสอน เพื่อให้รายวิชา/หลักสูตร ทันสมัย ได้มาตรฐาน ตอบสนองและตรงตามความ ต้องการของตลาดแรงงาน
+                              - generic:
+                                - generic:
+                                  - generic:
+                                    - generic:
+                                      - generic:
+                                        - img
+                                    - generic:
+                                      - generic: S1-G3
+                                      - generic: กไ
+                  - generic:
+                    - generic:
+                      - generic:
+                        - generic:
+                          - generic:
+                            - img
+                        - generic:
+                          - generic: S2
+                          - generic: กกก
+                          - generic "TEST": i
+                    - generic:
+                      - generic:
+                        - generic:
+                          - heading "S2 กกก 1 เป้าหมาย | 1 ตัวชี้วัด":
+                            - heading "S2 กกก 1 เป้าหมาย | 1 ตัวชี้วัด":
+                              - generic:
+                                - generic:
+                                  - generic:
+                                    - generic: S2
+                                  - generic:
+                                    - generic: กกก
+                                    - generic: 1 เป้าหมาย | 1 ตัวชี้วัด
+                                - button:
+                                  - generic:
+                                    - img:
+                                      - img
+                                - button:
+                                  - generic:
+                                    - img:
+                                      - img
+                                - button:
+                                  - generic:
+                                    - img:
+                                      - img
+                          - paragraph: TEST
+                          - generic:
+                            - generic:
+                              - generic:
+                                - generic:
+                                  - generic:
+                                    - generic:
+                                      - generic:
+                                        - img
+                                    - generic:
+                                      - generic: S2-G1
+                                      - generic: wwww
+        - img "loading" [ref=e127]:
+          - img [ref=e130]

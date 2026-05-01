@@ -10,6 +10,7 @@ import {
   NSelect,
   NButtonGroup,
   useMessage,
+  useDialog,
   NStatistic,
   NGrid,
   NGi,
@@ -42,8 +43,11 @@ import {
   getPlan,
   exportPlanPDF,
   exportPlanExcel,
+  updateStrategyStatus,
+  updateGoalStatus,
+  updateIndicatorStatus,
 } from '@/services/planApi'
-import type { AnnualPlan, Strategy, Goal, Indicator, PlanProgress } from '@/types/plan'
+import type { AnnualPlan, Strategy, Goal, Indicator, PlanProgress, PlanItemStatus } from '@/types/plan'
 import StrategyList from '@/components/plan/strategy/StrategyList.vue'
 import IndicatorForm from '@/components/plan/indicator/IndicatorForm.vue'
 import IndicatorUpdateForm from '@/components/plan/indicator/IndicatorUpdateForm.vue'
@@ -52,6 +56,7 @@ import { getFiscalQuarter, FISCAL_QUARTER_LABELS } from '@/utils/thai'
 const route = useRoute()
 const router = useRouter()
 const message = useMessage()
+const dialog = useDialog()
 const loading = ref(false)
 
 const plan = ref<AnnualPlan | null>(null)
@@ -165,9 +170,14 @@ async function handleEditStrategy(strategyId: string, payload: { name?: string; 
 
 function confirmDeleteStrategy(strategyId: string) {
   const strategy = strategies.value.find(s => s.id === strategyId)
-  if (strategy && window.confirm(`ยืนยันลบกลยุทธ์ "${strategy.name}" และเป้าหมายภายใน?`)) {
-    handleDeleteStrategy(strategyId)
-  }
+  if (!strategy) return
+  dialog.warning({
+    title: 'ยืนยันการลบ',
+    content: `ลบกลยุทธ์ "${strategy.name}" และเป้าหมายภายในทั้งหมด?`,
+    positiveText: 'ลบ',
+    negativeText: 'ยกเลิก',
+    onPositiveClick: () => handleDeleteStrategy(strategyId),
+  })
 }
 
 async function handleDeleteStrategy(strategyId: string) {
@@ -203,18 +213,18 @@ async function handleEditGoal(goalId: string, payload: { name?: string; descript
 }
 
 function confirmDeleteGoal(goalId: string) {
-  // Find goal name for confirmation
   let goalName = ''
   for (const strategy of strategies.value) {
     const goal = strategy.goals?.find(g => g.id === goalId)
-    if (goal) {
-      goalName = goal.name
-      break
-    }
+    if (goal) { goalName = goal.name; break }
   }
-  if (window.confirm(`ยืนยันลบเป้าหมาย "${goalName}" และตัวชี้วัดภายใน?`)) {
-    handleDeleteGoal(goalId)
-  }
+  dialog.warning({
+    title: 'ยืนยันการลบ',
+    content: `ลบเป้าหมาย "${goalName}" และตัวชี้วัดภายในทั้งหมด?`,
+    positiveText: 'ลบ',
+    negativeText: 'ยกเลิก',
+    onPositiveClick: () => handleDeleteGoal(goalId),
+  })
 }
 
 async function handleDeleteGoal(goalId: string) {
@@ -258,20 +268,20 @@ function openEditIndicator(indicatorId: string) {
 }
 
 function confirmDeleteIndicator(indicatorId: string) {
-  // Find indicator name for confirmation
   let indicatorName = ''
   for (const strategy of strategies.value) {
     for (const goal of strategy.goals || []) {
       const indicator = goal.indicators?.find(i => i.id === indicatorId)
-      if (indicator) {
-        indicatorName = indicator.name
-        break
-      }
+      if (indicator) { indicatorName = indicator.name; break }
     }
   }
-  if (window.confirm(`ยืนยันลบตัวชี้วัด "${indicatorName}"?`)) {
-    handleDeleteIndicator(indicatorId)
-  }
+  dialog.warning({
+    title: 'ยืนยันการลบ',
+    content: `ลบตัวชี้วัด "${indicatorName}"?`,
+    positiveText: 'ลบ',
+    negativeText: 'ยกเลิก',
+    onPositiveClick: () => handleDeleteIndicator(indicatorId),
+  })
 }
 
 async function handleSaveIndicator(payload: {
@@ -350,6 +360,38 @@ async function handleSaveUpdate(payload: {
   }
 }
 
+// ========== Status Update ==========
+
+async function handleUpdateStrategyStatus(strategyId: string, payload: { status: PlanItemStatus }) {
+  try {
+    await updateStrategyStatus(strategyId, payload)
+    message.success('อัปเดตสถานะยุทธศาสตร์สำเร็จ')
+    await fetchPlan()
+  } catch (e) {
+    message.error('อัปเดตสถานะไม่สำเร็จ')
+  }
+}
+
+async function handleUpdateGoalStatus(goalId: string, payload: { status: PlanItemStatus }) {
+  try {
+    await updateGoalStatus(goalId, payload)
+    message.success('อัปเดตสถานะเป้าประสงค์สำเร็จ')
+    await fetchPlan()
+  } catch (e) {
+    message.error('อัปเดตสถานะไม่สำเร็จ')
+  }
+}
+
+async function handleUpdateIndicatorStatus(indicatorId: string, payload: { status: PlanItemStatus }) {
+  try {
+    await updateIndicatorStatus(indicatorId, payload)
+    message.success('อัปเดตสถานะตัวชี้วัดสำเร็จ')
+    await fetchPlan()
+  } catch (e) {
+    message.error('อัปเดตสถานะไม่สำเร็จ')
+  }
+}
+
 const STATUS_CONFIG: Record<string, { label: string; type: 'success' | 'warning' | 'info' | 'default'; color: string }> = {
   active: { label: 'กำลังดำเนินการ', type: 'info', color: '#18A058' },
   draft: { label: 'ร่าง', type: 'warning', color: '#F0A020' },
@@ -395,14 +437,14 @@ const progressColor = computed(() => {
               <NIcon :size="16">
                 <GitNetworkOutline />
               </NIcon>
-              {{ strategies.length }} กลยุทธ์
+              {{ strategies.length }} ยุทธศาสตร์
             </span>
             <span class="meta-sep">|</span>
             <span class="meta-item">
               <NIcon :size="16">
                 <TrendingUpOutline />
               </NIcon>
-              {{ totalGoals }} เป้าหมาย
+              {{ totalGoals }} เป้าประสงค์
             </span>
             <span class="meta-sep">|</span>
             <span class="meta-item">
@@ -523,10 +565,14 @@ const progressColor = computed(() => {
           โครงสร้างแผนงาน
         </h2>
         <StrategyList :plan-id="plan.id" :plan-status="plan.status" :strategies="strategies" :loading="loading"
+          :progress-data="progressData"
           @refresh="fetchPlan" @add-strategy="handleAddStrategy" @edit-strategy="handleEditStrategy"
           @delete-strategy="confirmDeleteStrategy" @add-goal="handleAddGoal" @edit-goal="handleEditGoal"
           @delete-goal="confirmDeleteGoal" @add-indicator="openAddIndicator" @edit-indicator="openEditIndicator"
-          @delete-indicator="confirmDeleteIndicator" @add-update="openAddUpdate" @reverted="fetchPlan" />
+          @delete-indicator="confirmDeleteIndicator" @add-update="openAddUpdate" @reverted="fetchPlan"
+          @update-strategy-status="handleUpdateStrategyStatus"
+          @update-goal-status="handleUpdateGoalStatus"
+          @update-indicator-status="handleUpdateIndicatorStatus" />
       </div>
     </div>
   </NSpin>

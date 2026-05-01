@@ -1,0 +1,402 @@
+- generic [ref=e5]:
+  - complementary [ref=e6]:
+    - generic [ref=e7]:
+      - generic [ref=e8]: TP
+      - generic [ref=e9]:
+        - generic [ref=e10]: TP-One
+        - generic [ref=e11]: อุทยานเทคโนโลยี
+    - generic [ref=e12]: เมนูหลัก
+    - menu [ref=e15]:
+      - menuitem "งานของฉัน" [ref=e16]:
+        - img [ref=e17] [cursor=pointer]:
+          - img [ref=e18]
+        - text: งานของฉัน
+      - menuitem "แดชบอร์ด" [ref=e21]:
+        - img [ref=e22] [cursor=pointer]:
+          - img [ref=e23]
+        - text: แดชบอร์ด
+      - menuitem "พื้นที่ทำงาน" [ref=e28]:
+        - img [ref=e29] [cursor=pointer]:
+          - img [ref=e30]
+        - text: พื้นที่ทำงาน
+      - menuitem "งานทั้งหมด" [ref=e35]:
+        - img [ref=e36] [cursor=pointer]:
+          - img [ref=e37]
+        - text: งานทั้งหมด
+      - menuitem "โครงการ" [ref=e40]:
+        - img [ref=e41] [cursor=pointer]:
+          - img [ref=e42]
+        - text: โครงการ
+      - menuitem "แผนปฏิบัติการ" [ref=e44]:
+        - img [ref=e45] [cursor=pointer]:
+          - img [ref=e46]
+        - text: แผนปฏิบัติการ
+      - menuitem "รายงาน" [ref=e52]:
+        - img [ref=e53] [cursor=pointer]:
+          - img [ref=e54]
+        - text: รายงาน
+    - generic [ref=e57] [cursor=pointer]:
+      - generic [ref=e59]: ผ
+      - generic [ref=e60]:
+        - generic [ref=e61]: ผู้ดูแลระบบ
+        - generic [ref=e62]: ผู้ดูแลระบบ
+      - img [ref=e63]:
+        - img [ref=e64]
+    - button [ref=e66] [cursor=pointer]:
+      - img [ref=e67]:
+        - img [ref=e68]
+  - generic [ref=e71]:
+    - banner [ref=e72]:
+      - heading "รายละเอียดแผน" [level=1] [ref=e73]
+      - generic [ref=e76] [cursor=pointer]:
+        - generic "ทุกพื้นที่ทำงาน" [ref=e77]:
+          - generic [ref=e78]: ทุกพื้นที่ทำงาน
+        - img "loading" [ref=e79]:
+          - img [ref=e89]
+      - generic [ref=e91]:
+        - generic [ref=e93]:
+          - img [ref=e95]:
+            - img [ref=e96]
+          - generic [ref=e99]:
+            - textbox "ค้นหา..." [ref=e100]
+            - generic:
+              - generic: ค้นหา...
+        - button "บันทึกด่วน" [ref=e103] [cursor=pointer]:
+          - img [ref=e104]:
+            - img [ref=e105]
+        - generic [ref=e108]:
+          - img [ref=e112] [cursor=pointer]:
+            - img [ref=e113]
+          - superscript [ref=e116]:
+            - generic [ref=e119]:
+              - generic [ref=e120]: "3"
+              - generic [ref=e122]: "3"
+              - generic [ref=e123]: "3"
+    - main [ref=e124]:
+      - generic [ref=e134]:
+        - generic [ref=e136]:
+          - generic [ref=e137]:
+            - button [ref=e138] [cursor=pointer]:
+              - img [ref=e140]:
+                - img [ref=e141]
+            - generic [ref=e144]: ร่าง
+          - heading "แผนปฏิบัติการประจำปี 2569" [level=1] [ref=e145]
+          - generic [ref=e146]:
+            - generic [ref=e147]:
+              - img [ref=e148]:
+                - img [ref=e149]
+              - text: ปีงบประมาณ 2569
+            - generic [ref=e152]: "|"
+            - generic [ref=e153]:
+              - img [ref=e154]:
+                - img [ref=e155]
+              - text: 2 ยุทธศาสตร์
+            - generic [ref=e161]: "|"
+            - generic [ref=e162]:
+              - img [ref=e163]:
+                - img [ref=e164]
+              - text: 3 เป้าประสงค์
+            - generic [ref=e167]: "|"
+            - generic [ref=e168]:
+              - img [ref=e169]:
+                - img [ref=e170]
+              - text: 3 ตัวชี้วัด
+        - generic [ref=e178]:
+          - generic [ref=e181]:
+            - generic [ref=e182]:
+              - img [ref=e183]:
+                - img [ref=e184]
+              - generic [ref=e187]: ความคืบหน้ารวม
+            - generic [ref=e191]: 33%
+            - progressbar [ref=e192]
+          - generic [ref=e199]:
+            - generic [ref=e200]:
+              - img [ref=e201]:
+                - img [ref=e202]
+              - generic [ref=e206]: ตัวชี้วัดที่ผ่านเป้า
+            - generic [ref=e207]:
+              - generic [ref=e210]: "0"
+              - generic [ref=e211]: /
+              - generic [ref=e212]: "3"
+          - generic [ref=e215]:
+            - generic [ref=e216]:
+              - img [ref=e217]:
+                - img [ref=e218]
+              - generic [ref=e221]: ไตรมาสปัจจุบัน
+            - generic [ref=e225]: ไตรมาสที่ 3 (เม.ย. - มิ.ย.)
+          - generic [ref=e228]:
+            - generic [ref=e230]: ส่งออกรายงาน
+            - generic [ref=e231]:
+              - generic [ref=e234] [cursor=pointer]:
+                - generic "รายเดือน" [ref=e235]:
+                  - generic [ref=e236]: รายเดือน
+                - img "loading" [ref=e237]:
+                  - img [ref=e242]
+              - group [ref=e244]:
+                - button "PDF" [ref=e245] [cursor=pointer]:
+                  - img [ref=e247]:
+                    - img [ref=e248]
+                  - generic [ref=e251]: PDF
+                - button "Excel" [ref=e252] [cursor=pointer]:
+                  - img [ref=e254]:
+                    - img [ref=e255]
+                  - generic [ref=e260]: Excel
+        - separator [ref=e261]
+        - generic [ref=e263]:
+          - heading "โครงสร้างแผนงาน" [level=2] [ref=e264]:
+            - img [ref=e265]:
+              - img [ref=e266]
+            - text: โครงสร้างแผนงาน
+          - generic [ref=e272]:
+            - button "เพิ่มยุทธศาสตร์" [ref=e274] [cursor=pointer]:
+              - img [ref=e276]:
+                - img [ref=e277]
+              - generic [ref=e278]: เพิ่มยุทธศาสตร์
+            - table [ref=e283]:
+              - rowgroup [ref=e294]:
+                - row "รหัส ชื่อ สถานะ หน่วยนับ ค่าเป้าหมาย ค่าที่ได้ปัจจุบัน ความคืบหน้า ผู้รับผิดชอบ การดำเนินการ" [ref=e295]:
+                  - columnheader "รหัส" [ref=e296]:
+                    - generic [ref=e298]: รหัส
+                  - columnheader "ชื่อ" [ref=e299]:
+                    - generic [ref=e301]: ชื่อ
+                  - columnheader "สถานะ" [ref=e302]:
+                    - generic [ref=e304]: สถานะ
+                  - columnheader "หน่วยนับ" [ref=e305]:
+                    - generic [ref=e307]: หน่วยนับ
+                  - columnheader "ค่าเป้าหมาย" [ref=e308]:
+                    - generic [ref=e310]: ค่าเป้าหมาย
+                  - columnheader "ค่าที่ได้ปัจจุบัน" [ref=e311]:
+                    - generic [ref=e313]: ค่าที่ได้ปัจจุบัน
+                  - columnheader "ความคืบหน้า" [ref=e314]:
+                    - generic [ref=e316]: ความคืบหน้า
+                  - columnheader "ผู้รับผิดชอบ" [ref=e317]:
+                    - generic [ref=e319]: ผู้รับผิดชอบ
+                  - columnheader "การดำเนินการ" [ref=e320]:
+                    - generic [ref=e322]: การดำเนินการ
+              - rowgroup [ref=e323]:
+                - row "S1 ยุทธศาสตร์ที่ 1 ความเป็นเลิศด้านการจัดการศึกษา รอดำเนินการ loading" [ref=e324]:
+                  - cell "S1" [ref=e325]:
+                    - img [ref=e328] [cursor=pointer]
+                    - text: S1
+                  - cell "ยุทธศาสตร์ที่ 1 ความเป็นเลิศด้านการจัดการศึกษา" [ref=e330]:
+                    - generic [ref=e332]: ยุทธศาสตร์ที่ 1 ความเป็นเลิศด้านการจัดการศึกษา
+                  - cell "รอดำเนินการ loading" [ref=e333]:
+                    - generic [ref=e336] [cursor=pointer]:
+                      - generic "รอดำเนินการ" [ref=e337]:
+                        - generic [ref=e338]: รอดำเนินการ
+                      - img "loading" [ref=e339]:
+                        - img [ref=e344]
+                  - cell [ref=e346]
+                  - cell [ref=e347]
+                  - cell [ref=e348]
+                  - cell [ref=e349]
+                  - cell [ref=e350]
+                  - cell [ref=e351]:
+                    - button "เพิ่มเป้าหมาย" [ref=e352] [cursor=pointer]:
+                      - img [ref=e354]:
+                        - img [ref=e355]
+                    - button "แก้ไข" [ref=e356] [cursor=pointer]:
+                      - img [ref=e358]:
+                        - img [ref=e359]
+                    - button "ลบ" [ref=e363] [cursor=pointer]:
+                      - img [ref=e365]:
+                        - img [ref=e366]
+                - row "S1-G1 เป้าประสงค์ที่ 1.1 พัฒนาการเรียนการสอน เพื่อให้รายวิชา/หลักสูตร ทันสมัย ได้มาตรฐาน ตอบสนองและตรงตามความ ต้องการของตลาดแรงงาน รอดำเนินการ loading" [ref=e371]:
+                  - cell "S1-G1" [ref=e372]:
+                    - img [ref=e376] [cursor=pointer]
+                    - text: S1-G1
+                  - cell "เป้าประสงค์ที่ 1.1 พัฒนาการเรียนการสอน เพื่อให้รายวิชา/หลักสูตร ทันสมัย ได้มาตรฐาน ตอบสนองและตรงตามความ ต้องการของตลาดแรงงาน" [ref=e378]:
+                    - generic [ref=e380]: เป้าประสงค์ที่ 1.1 พัฒนาการเรียนการสอน เพื่อให้รายวิชา/หลักสูตร ทันสมัย ได้มาตรฐาน ตอบสนองและตรงตามความ ต้องการของตลาดแรงงาน
+                  - cell "รอดำเนินการ loading" [ref=e381]:
+                    - generic [ref=e384] [cursor=pointer]:
+                      - generic "รอดำเนินการ" [ref=e385]:
+                        - generic [ref=e386]: รอดำเนินการ
+                      - img "loading" [ref=e387]:
+                        - img [ref=e392]
+                  - cell [ref=e394]
+                  - cell [ref=e395]
+                  - cell [ref=e396]
+                  - cell [ref=e397]
+                  - cell [ref=e398]
+                  - cell [ref=e399]:
+                    - button "เพิ่มตัวชี้วัด" [ref=e400] [cursor=pointer]:
+                      - img [ref=e402]:
+                        - img [ref=e403]
+                    - button "แก้ไข" [ref=e404] [cursor=pointer]:
+                      - img [ref=e406]:
+                        - img [ref=e407]
+                    - button "ลบ" [ref=e411] [cursor=pointer]:
+                      - img [ref=e413]:
+                        - img [ref=e414]
+                - row "S1-S1-G1-K01 1.1.4. จำนวนกิจกรรมความร่วมมือทางวิชาการระหว่างประเทศ รอดำเนินการ loading ร้อยละ 40.00 60.00 100 100%" [ref=e419]:
+                  - cell "S1-S1-G1-K01" [ref=e420]: S1-S1-G1-K01
+                  - cell "1.1.4. จำนวนกิจกรรมความร่วมมือทางวิชาการระหว่างประเทศ" [ref=e424]:
+                    - generic [ref=e426]: 1.1.4. จำนวนกิจกรรมความร่วมมือทางวิชาการระหว่างประเทศ
+                  - cell "รอดำเนินการ loading" [ref=e427]:
+                    - generic [ref=e430] [cursor=pointer]:
+                      - generic "รอดำเนินการ" [ref=e431]:
+                        - generic [ref=e432]: รอดำเนินการ
+                      - img "loading" [ref=e433]:
+                        - img [ref=e438]
+                  - cell "ร้อยละ" [ref=e440]
+                  - cell "40.00" [ref=e441]
+                  - cell "60.00" [ref=e442]
+                  - cell "100 100%" [ref=e443]:
+                    - generic [ref=e444]:
+                      - progressbar [ref=e445]
+                      - generic [ref=e450]: 100%
+                  - cell [ref=e451]
+                  - cell [ref=e452]:
+                    - button "รายงาน" [ref=e453] [cursor=pointer]:
+                      - img [ref=e455]:
+                        - img [ref=e456]
+                    - button "กราฟ/ประวัติ" [ref=e457] [cursor=pointer]:
+                      - img [ref=e459]:
+                        - img [ref=e460]
+                    - button "แก้ไข" [ref=e465] [cursor=pointer]:
+                      - img [ref=e467]:
+                        - img [ref=e468]
+                    - button "ลบ" [ref=e472] [cursor=pointer]:
+                      - img [ref=e474]:
+                        - img [ref=e475]
+                - row "S1-S1-G1-K02 1.1.9. จำนวนรายวิชาของหลักสูตรแบบปริญญา (Degree) และประกาศนียบัตร (Non-degree) ที่มีการเรียนการสอนออนไลน์ แบบ On Demand รอดำเนินการ loading รายวิชา 2.00 - 0 0%" [ref=e480]:
+                  - cell "S1-S1-G1-K02" [ref=e481]: S1-S1-G1-K02
+                  - cell "1.1.9. จำนวนรายวิชาของหลักสูตรแบบปริญญา (Degree) และประกาศนียบัตร (Non-degree) ที่มีการเรียนการสอนออนไลน์ แบบ On Demand" [ref=e485]:
+                    - generic [ref=e487]: 1.1.9. จำนวนรายวิชาของหลักสูตรแบบปริญญา (Degree) และประกาศนียบัตร (Non-degree) ที่มีการเรียนการสอนออนไลน์ แบบ On Demand
+                  - cell "รอดำเนินการ loading" [ref=e488]:
+                    - generic [ref=e491] [cursor=pointer]:
+                      - generic "รอดำเนินการ" [ref=e492]:
+                        - generic [ref=e493]: รอดำเนินการ
+                      - img "loading" [ref=e494]:
+                        - img [ref=e499]
+                  - cell "รายวิชา" [ref=e501]
+                  - cell "2.00" [ref=e502]
+                  - cell "-" [ref=e503]
+                  - cell "0 0%" [ref=e504]:
+                    - generic [ref=e505]:
+                      - progressbar [ref=e506]
+                      - generic [ref=e510]: 0%
+                  - cell [ref=e511]
+                  - cell [ref=e512]:
+                    - button "รายงาน" [ref=e513] [cursor=pointer]:
+                      - img [ref=e515]:
+                        - img [ref=e516]
+                    - button "กราฟ/ประวัติ" [ref=e517] [cursor=pointer]:
+                      - img [ref=e519]:
+                        - img [ref=e520]
+                    - button "แก้ไข" [ref=e525] [cursor=pointer]:
+                      - img [ref=e527]:
+                        - img [ref=e528]
+                    - button "ลบ" [ref=e532] [cursor=pointer]:
+                      - img [ref=e534]:
+                        - img [ref=e535]
+                - row "S1-G3 กไ รอดำเนินการ loading" [ref=e540]:
+                  - cell "S1-G3" [ref=e541]: S1-G3
+                  - cell "กไ" [ref=e544]:
+                    - generic [ref=e546]: กไ
+                  - cell "รอดำเนินการ loading" [ref=e547]:
+                    - generic [ref=e550] [cursor=pointer]:
+                      - generic "รอดำเนินการ" [ref=e551]:
+                        - generic [ref=e552]: รอดำเนินการ
+                      - img "loading" [ref=e553]:
+                        - img [ref=e558]
+                  - cell [ref=e560]
+                  - cell [ref=e561]
+                  - cell [ref=e562]
+                  - cell [ref=e563]
+                  - cell [ref=e564]
+                  - cell [ref=e565]:
+                    - button "เพิ่มตัวชี้วัด" [ref=e566] [cursor=pointer]:
+                      - img [ref=e568]:
+                        - img [ref=e569]
+                    - button "แก้ไข" [ref=e570] [cursor=pointer]:
+                      - img [ref=e572]:
+                        - img [ref=e573]
+                    - button "ลบ" [ref=e577] [cursor=pointer]:
+                      - img [ref=e579]:
+                        - img [ref=e580]
+                - row "S2 กกก รอดำเนินการ loading" [ref=e585]:
+                  - cell "S2" [ref=e586]:
+                    - img [ref=e589] [cursor=pointer]
+                    - text: S2
+                  - cell "กกก" [ref=e591]:
+                    - generic [ref=e593]: กกก
+                  - cell "รอดำเนินการ loading" [ref=e594]:
+                    - generic [ref=e597] [cursor=pointer]:
+                      - generic "รอดำเนินการ" [ref=e598]:
+                        - generic [ref=e599]: รอดำเนินการ
+                      - img "loading" [ref=e600]:
+                        - img [ref=e605]
+                  - cell [ref=e607]
+                  - cell [ref=e608]
+                  - cell [ref=e609]
+                  - cell [ref=e610]
+                  - cell [ref=e611]
+                  - cell [ref=e612]:
+                    - button "เพิ่มเป้าหมาย" [ref=e613] [cursor=pointer]:
+                      - img [ref=e615]:
+                        - img [ref=e616]
+                    - button "แก้ไข" [ref=e617] [cursor=pointer]:
+                      - img [ref=e619]:
+                        - img [ref=e620]
+                    - button "ลบ" [ref=e624] [cursor=pointer]:
+                      - img [ref=e626]:
+                        - img [ref=e627]
+                - row "S2-G1 wwww รอดำเนินการ loading" [ref=e632]:
+                  - cell "S2-G1" [ref=e633]:
+                    - img [ref=e637] [cursor=pointer]
+                    - text: S2-G1
+                  - cell "wwww" [ref=e639]:
+                    - generic [ref=e641]: wwww
+                  - cell "รอดำเนินการ loading" [ref=e642]:
+                    - generic [ref=e645] [cursor=pointer]:
+                      - generic "รอดำเนินการ" [ref=e646]:
+                        - generic [ref=e647]: รอดำเนินการ
+                      - img "loading" [ref=e648]:
+                        - img [ref=e653]
+                  - cell [ref=e655]
+                  - cell [ref=e656]
+                  - cell [ref=e657]
+                  - cell [ref=e658]
+                  - cell [ref=e659]
+                  - cell [ref=e660]:
+                    - button "เพิ่มตัวชี้วัด" [ref=e661] [cursor=pointer]:
+                      - img [ref=e663]:
+                        - img [ref=e664]
+                    - button "แก้ไข" [ref=e665] [cursor=pointer]:
+                      - img [ref=e667]:
+                        - img [ref=e668]
+                    - button "ลบ" [ref=e672] [cursor=pointer]:
+                      - img [ref=e674]:
+                        - img [ref=e675]
+                - row "S2-S2-G1-K01 swqs รอดำเนินการ loading บาท 30.00 - 0 0%" [ref=e680]:
+                  - cell "S2-S2-G1-K01" [ref=e681]: S2-S2-G1-K01
+                  - cell "swqs" [ref=e685]:
+                    - generic [ref=e687]: swqs
+                  - cell "รอดำเนินการ loading" [ref=e688]:
+                    - generic [ref=e691] [cursor=pointer]:
+                      - generic "รอดำเนินการ" [ref=e692]:
+                        - generic [ref=e693]: รอดำเนินการ
+                      - img "loading" [ref=e694]:
+                        - img [ref=e699]
+                  - cell "บาท" [ref=e701]
+                  - cell "30.00" [ref=e702]
+                  - cell "-" [ref=e703]
+                  - cell "0 0%" [ref=e704]:
+                    - generic [ref=e705]:
+                      - progressbar [ref=e706]
+                      - generic [ref=e710]: 0%
+                  - cell [ref=e711]
+                  - cell [ref=e712]:
+                    - button "รายงาน" [ref=e713] [cursor=pointer]:
+                      - img [ref=e715]:
+                        - img [ref=e716]
+                    - button "กราฟ/ประวัติ" [ref=e717] [cursor=pointer]:
+                      - img [ref=e719]:
+                        - img [ref=e720]
+                    - button "แก้ไข" [ref=e725] [cursor=pointer]:
+                      - img [ref=e727]:
+                        - img [ref=e728]
+                    - button "ลบ" [ref=e732] [cursor=pointer]:
+                      - img [ref=e734]:
+                        - img [ref=e735]

@@ -1,6 +1,7 @@
 import { pgTable, uuid, varchar, text, numeric, integer, timestamp, pgEnum, index } from 'drizzle-orm/pg-core';
 import { goals } from './goals';
 import { users } from './users';
+import { planItemStatusEnum } from './plan-item-status';
 import { relations } from 'drizzle-orm';
 
 export const indicatorTypeEnum = pgEnum('indicator_type', ['amount', 'count', 'percentage']);
@@ -14,6 +15,7 @@ export const indicators = pgTable('indicators', {
   targetValue: numeric('target_value', { precision: 15, scale: 2 }).notNull(),
   unit: varchar('unit', { length: 50 }),
   indicatorType: indicatorTypeEnum('indicator_type').default('amount').notNull(),
+  status: planItemStatusEnum('status').default('pending').notNull(),
   weight: numeric('weight', { precision: 5, scale: 2 }).default('1'),
   sortOrder: integer('sort_order').default(0),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),

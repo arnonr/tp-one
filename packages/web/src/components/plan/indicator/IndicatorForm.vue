@@ -83,7 +83,7 @@ function handleSave() {
   }
   emit('save', {
     name: form.value.name.trim(),
-    description: form.value.description.trim() || undefined,
+    description: form.value.description.trim(),
     targetValue: form.value.targetValue?.toString() || '',
     unit: form.value.unit.trim() || undefined,
     indicatorType: form.value.indicatorType,

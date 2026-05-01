@@ -15,6 +15,8 @@ import {
 import { annualPlans } from '../../db/schema/annual-plans';
 import { users } from '../../db/schema/users';
 import { planIndicatorAuditLogs } from '../../db/schema/plan-indicator-audit-logs';
+import { planStatusLogs } from '../../db/schema/plan-status-logs';
+import { planItemStatusEnum } from '../../db/schema/plan-item-status';
 import { eq, and, desc, asc, count, inArray, sql, gte, lte } from 'drizzle-orm';
 import ExcelJS from 'exceljs';
 import { NotFoundError, ValidationError } from '../../shared/errors';
@@ -539,9 +541,10 @@ export const planService = {
       }),
     });
 
-    // delete updates first, then assignees, then indicator
+    // delete updates, assignees, audit logs, then indicator
     await db.delete(indicatorUpdates).where(eq(indicatorUpdates.indicatorId, indicatorId));
     await db.delete(indicatorAssignees).where(eq(indicatorAssignees.indicatorId, indicatorId));
+    await db.delete(planIndicatorAuditLogs).where(eq(planIndicatorAuditLogs.indicatorId, indicatorId));
     await db.delete(indicators).where(eq(indicators.id, indicatorId));
     return { success: true };
   },
@@ -1041,6 +1044,104 @@ export const planService = {
       plan: { id: plan.id, year: plan.year, name: plan.name, description: plan.description ?? undefined, status: plan.status },
       progress,
       monthlyUpdates: [...monthlyMap.values()],
+    };
+  },
+
+  // Status management
+
+  async updateStrategyStatus(strategyId: string, newStatus: string, changedBy: string, reason?: string) {
+    const strategy = await resolveStrategy(strategyId);
+    if (!planItemStatusEnum.enumValues.includes(newStatus as any)) {
+      throw new ValidationError('Invalid status value');
+    }
+    await db
+      .update(strategies)
+      .set({ status: newStatus as any, updatedAt: new Date() })
+      .where(eq(strategies.id, strategyId));
+    await db.insert(planStatusLogs).values({
+      entityType: 'strategy',
+      entityId: strategyId,
+      oldStatus: strategy.status,
+      newStatus: newStatus as any,
+      changedBy,
+      reason,
+    });
+    return resolveStrategy(strategyId);
+  },
+
+  async updateGoalStatus(goalId: string, newStatus: string, changedBy: string, reason?: string) {
+    const goal = await resolveGoal(goalId);
+    if (!planItemStatusEnum.enumValues.includes(newStatus as any)) {
+      throw new ValidationError('Invalid status value');
+    }
+    await db
+      .update(goals)
+      .set({ status: newStatus as any, updatedAt: new Date() })
+      .where(eq(goals.id, goalId));
+    await db.insert(planStatusLogs).values({
+      entityType: 'goal',
+      entityId: goalId,
+      oldStatus: goal.status,
+      newStatus: newStatus as any,
+      changedBy,
+      reason,
+    });
+    return resolveGoal(goalId);
+  },
+
+  async updateIndicatorStatus(indicatorId: string, newStatus: string, changedBy: string, reason?: string) {
+    const indicator = await resolveIndicator(indicatorId);
+    if (!planItemStatusEnum.enumValues.includes(newStatus as any)) {
+      throw new ValidationError('Invalid status value');
+    }
+    await db
+      .update(indicators)
+      .set({ status: newStatus as any, updatedAt: new Date() })
+      .where(eq(indicators.id, indicatorId));
+    await db.insert(planStatusLogs).values({
+      entityType: 'indicator',
+      entityId: indicatorId,
+      oldStatus: indicator.status,
+      newStatus: newStatus as any,
+      changedBy,
+      reason,
+    });
+    return resolveIndicator(indicatorId);
+  },
+
+  async getStatusLogs(entityType: string, entityId: string, page = 1, pageSize = 20) {
+    const offset = (page - 1) * pageSize;
+    const condition = and(
+      eq(planStatusLogs.entityType, entityType),
+      eq(planStatusLogs.entityId, entityId),
+    );
+    const [logs, [{ count: total }]] = await Promise.all([
+      db
+        .select({
+          id: planStatusLogs.id,
+          entityType: planStatusLogs.entityType,
+          entityId: planStatusLogs.entityId,
+          oldStatus: planStatusLogs.oldStatus,
+          newStatus: planStatusLogs.newStatus,
+          changedBy: planStatusLogs.changedBy,
+          changedByName: users.name,
+          changedAt: planStatusLogs.changedAt,
+          reason: planStatusLogs.reason,
+        })
+        .from(planStatusLogs)
+        .leftJoin(users, eq(planStatusLogs.changedBy, users.id))
+        .where(condition)
+        .orderBy(desc(planStatusLogs.changedAt))
+        .limit(pageSize)
+        .offset(offset),
+      db.select({ count: count() }).from(planStatusLogs).where(condition),
+    ]);
+    return {
+      data: logs,
+      total: Number(total),
+      page,
+      pageSize,
+      totalPages: Math.ceil(Number(total) / pageSize),
     };
   },
 
